@@ -1,5 +1,5 @@
 # Kik Bot API #
-Use this library to develop bots for Kik Messenger that are esentially automated humans.
+Use this library to develop bots for Kik Messenger that are essentially automated humans.
 
 It basically lets you do the same things as the offical Kik app by pretending to be a real smartphone client: It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
 ## Installation and dependencies ##

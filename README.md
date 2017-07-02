@@ -14,7 +14,15 @@ Then you can just clone it:
 git clone https://github.com/tomer8007/kik-bot-api-unofficial
 ```
 ## Usage ##
-An example is worth a thoursand words. a good place to start is the `examples/` directory.
+An example is worth a thoursand words. a good place to start is the `examples/` directory. 
+
+It is as simple as:
+```python
+from KikClient import KikClient
+username, password = "your_kik_username", "your_kik_password"
+kik_client = KikClient(username, password)
+kik_client.send_message("other_kik_username", "Hello from bot!")
+```
 
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).

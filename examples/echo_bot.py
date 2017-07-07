@@ -31,16 +31,10 @@ def main():
             partner = info["from"]
             print("[+] Human says: \"" + info["body"] + "\" (user "+partner+")")
             is_known_user = False
-            for jid_info in chat_partners:
-                jid = jid_info["node"] + "@talk.kik.com"
-                if jid == partner:
-                    is_known_user = True
-                    break
 
             if not is_known_user:
                 print("[+] This is a message from an unknown user.")
                 new_friend = kik_client.add_friend(partner)
-                chat_partners.append(new_friend)
 
             kik_client.send_read_confirmation(partner, info["message_id"])
             replay = "You said '"+info["body"] + "'!"

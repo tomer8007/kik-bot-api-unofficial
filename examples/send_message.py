@@ -6,7 +6,7 @@ import time
 
 
 def main():
-    username, password = "emilyajar", "12345678"
+    username, password = "your_username", "your_password"
     kik_client = KikClient(username, password)
     user_info = kik_client.get_user_info()
 
@@ -19,8 +19,7 @@ def main():
         Utilities.print_dictionary(jid_info)
 
     # let's talk
-
-    username = "shlomo91"
+    username = "other_username"
     kik_client.send_is_typing(username, "true")
     time.sleep(0.5)
     kik_client.send_is_typing(username, "false")

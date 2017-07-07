@@ -6,7 +6,7 @@ import time
 
 
 def main():
-    username, password = "emilyajar", "12345678"
+    username, password = "your_username", "your_password"
     kik_client = KikClient(username, password)
 
     print("[+] Listening for incoming events.")

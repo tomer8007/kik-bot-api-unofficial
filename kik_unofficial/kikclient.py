@@ -2,11 +2,13 @@ import socket
 import ssl
 import hashlib
 import binascii
-import xml.etree.ElementTree as ElementTree
 import base64
 import time
 import rsa
 import hmac
+
+from bs4 import BeautifulSoup
+
 from kik_unofficial.cryptographicutils import KikCryptographicUtils
 from kik_unofficial.utilities import Utilities
 
@@ -356,38 +358,46 @@ class KikClient:
             response = self.wrappedSocket.recv(16384).decode('UTF-8').strip()
 
         info = {}
+        super_element = BeautifulSoup(response, features="xml")
+        element = next(iter(super_element.children))
+        print('\n', super_element.prettify())
 
-        if "</k>" in response:
+        if element.name == 'k':
             info["type"] = "end"
-        elif "</iq>" in response:
+        elif element.name == 'iq':
             info["type"] = "qos"
-        elif "<ack" in response:
+        elif element.name == 'ack':
             info["type"] = "ack"
-        elif "<message" in response:
-            # looks like we got a message-related thing
-            try:
-                message_element = ElementTree.fromstring(response)
-            except:
-                print("[-] XML parsing of message event failed:")
-                print(response)
-                return None
-
-            message_type = message_element.attrib['type']
-            info["from"] = message_element.attrib['from']
+        elif element.name == 'message':
+            message_type = element['type']
+            info["from"] = element['from']
 
             if message_type == "receipt":
-                if "<receipt type=\"read\"":
-                    # assume the human read our message
+                if element.receipt['type'] == 'read':
                     info["type"] = "message_read"
-                    info["message_id"] = Utilities.string_between_strings(response, "msgid id=\"", "\"")
+                    info["message_id"] = element.receipt.msgid['id']
+                else:
+                    print("[-] Receipt received but not type 'read': {0}".format(response))
             elif message_type == "is-typing":
                 info["type"] = "is_typing"
-                is_typing_value = Utilities.string_between_strings(response, "<is-typing val=\"", "\"")
-                info["is_typing"] = True if is_typing_value == "true" else False
+                is_typing_value = element.find('is-typing')['val']
+                info["is_typing"] = is_typing_value == "true"
             elif message_type == "chat":
                 info["type"] = "message"
-                info["body"] = Utilities.extract_tag_from_xml(response, "body")
-                info["message_id"] = message_element.attrib['id']
+                info["body"] = element.body.text
+                info["message_id"] = element['id']
+            elif message_type == "groupchat":
+                info['group_id'] = element.g['jid']
+                info["message_id"] = element['id']
+                if element.body:
+                    info["type"] = "group_message"
+                    info["body"] = element.body.text
+                elif element.find('is-typing'):
+                    info["type"] = "group_typing"
+                    is_typing_value = element.find('is-typing')['val']
+                    info["is_typing"] = is_typing_value == "true"
+                else:
+                    print("Groupchat message doesn't contain body or is-typing")
             else:
                 print("[-] Unknown message type received: " + message_type)
                 Utilities.pretty_print_xml(response)

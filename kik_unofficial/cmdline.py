@@ -43,7 +43,15 @@ def run(kik):
             kik.send_is_typing(partner, "false")
             kik.send_message(partner, replay)
 
+        elif info['type'] == 'group_message':
+            print("[+] Human says {0} (user {1}, chat {2})".format(info['body'], info['from'], info['group_id']))
+
+        elif info['type'] == 'group_typing':
+            if info['is_typing']:
+                print("[+] Human is typing (user {0}, chat {1})".format(info['from'], info['group_id']))
+            else:
+                print("[+] Human is not typing (user {0}, chat {1})".format(info['from'], info['group_id']))
+
         elif info["type"] == "end":
             print("[!] Server ended communication.")
             break
-

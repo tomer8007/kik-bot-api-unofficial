@@ -1,8 +1,8 @@
 import sys
-from KikClient import KikClient
-from Utilities import Utilities
-
 import time
+
+from kik_unofficial.kikclient import KikClient
+from kik_unofficial.utilities import Utilities
 
 
 def main():

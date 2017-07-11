@@ -4,10 +4,13 @@ import binascii
 import pbkdf2
 import base64
 from collections import OrderedDict
-from Utilities import Utilities
+from kik_unofficial.utilities import Utilities
 
 
-class KikCryptographicUtils():
+class KikCryptographicUtils:
+    def __init__(self):
+        pass
+
     @staticmethod
     def key_from_password(username, password):
         # kik's secret algorithm for encrypting passwords
@@ -27,7 +30,8 @@ class KikCryptographicUtils():
         kik_version = "11.1.1.12218".encode('UTF-8')
         apk_signature_hex = "308203843082026CA00302010202044C23D625300D06092A864886F70D0101050500308183310B30090603550406130243413110300E060355040813074F6E746172696F3111300F0603550407130857617465726C6F6F311D301B060355040A13144B696B20496E74657261637469766520496E632E311B3019060355040B13124D6F62696C6520446576656C6F706D656E74311330110603550403130A43687269732042657374301E170D3130303632343232303331375A170D3337313130393232303331375A308183310B30090603550406130243413110300E060355040813074F6E746172696F3111300F0603550407130857617465726C6F6F311D301B060355040A13144B696B20496E74657261637469766520496E632E311B3019060355040B13124D6F62696C6520446576656C6F706D656E74311330110603550403130A4368726973204265737430820122300D06092A864886F70D01010105000382010F003082010A0282010100E2B94E5561E9A2378B657E66507809FB8E58D9FBDC35AD2A2381B8D4B51FCF50360482ECB31677BD95054FAAEC864D60E233BFE6B4C76032E5540E5BC195EBF5FF9EDFE3D99DAE8CA9A5266F36404E8A9FCDF2B09605B089159A0FFD4046EC71AA11C7639E2AE0D5C3E1C2BA8C2160AFA30EC8A0CE4A7764F28B9AE1AD3C867D128B9EAF02EF0BF60E2992E75A0D4C2664DA99AC230624B30CEA3788B23F5ABB61173DB476F0A7CF26160B8C51DE0970C63279A6BF5DEF116A7009CA60E8A95F46759DD01D91EFCC670A467166A9D6285F63F8626E87FBE83A03DA7044ACDD826B962C26E627AB1105925C74FEB77743C13DDD29B55B31083F5CF38FC29242390203010001300D06092A864886F70D010105050003820101009F89DD384926764854A4A6413BA98138CCE5AD96BF1F4830602CE84FEADD19C15BAD83130B65DC4A3B7C8DE8968ACA5CDF89200D6ACF2E7530546A0EE2BCF19F67340BE8A73777836728846FAD7F31A3C4EEAD16081BED288BB0F0FDC735880EBD8634C9FCA3A6C505CEA355BD91502226E1778E96B0C67D6A3C3F79DE6F594429F2B6A03591C0A01C3F14BB6FF56D7515BB2F38F64A00FF07834ED3A06D70C38FC18004F85CAB3C937D3F94B366E2552558929B98D088CF1C45CDC0340755E4305698A7067F696F4ECFCEEAFBD720787537199BCAC674DAB54643359BAD3E229D588E324941941E0270C355DC38F9560469B452C36560AD5AB9619B6EB33705"
         classes_dex_sha1_digest = "aCDhFLsmALSyhwi007tvowZkUd0=".encode('UTF-8')
-        source_bytes = "hello".encode('UTF-8') + binascii.unhexlify(apk_signature_hex) + kik_version + classes_dex_sha1_digest + "bar".encode('UTF-8')
+        source_bytes = "hello".encode('UTF-8') + binascii.unhexlify(
+            apk_signature_hex) + kik_version + classes_dex_sha1_digest + "bar".encode('UTF-8')
         return base64.b64encode(hashlib.sha1(source_bytes).digest())
 
     @staticmethod
@@ -41,18 +45,23 @@ class KikCryptographicUtils():
         least_significant_bits = int.from_bytes(bytes_array[8:], byteorder='big')
         i = 1
         i2 = int((-1152921504606846976 & most_significant_bits) >> 62)
-        iArr = [(3,6), (2,5), (7,1), (9,5)]
+        iArr = [(3, 6), (2, 5), (7, 1), (9, 5)]
         i3 = iArr[i2][0]
         i2 = iArr[i2][1]
-        j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ ((65280 & most_significant_bits) >> 8)
-        i2 = (KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
+        j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ (
+        (65280 & most_significant_bits) >> 8)
+        i2 = (KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
+        KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
         i4 = 0
         while i4 < 6:
             i = (i + (i2 * 7)) % 60
-            least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | ((KikCryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
+            least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | (
+            (KikCryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
             i4 += 1
-        mstb = binascii.hexlify((most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
-        lstb = binascii.hexlify((least_significant_bits.to_bytes((least_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
+        mstb = binascii.hexlify(
+            (most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
+        lstb = binascii.hexlify(
+            (least_significant_bits.to_bytes((least_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
         str1 = mstb + lstb
         uuid_final = uuid.UUID(str1.decode('UTF-8'))
         return str(uuid_final)
@@ -109,10 +118,17 @@ class KikCryptographicUtils():
             string2 += key + dictionary[key]
         bytes1 = string1.encode('UTF-8')
         bytes2 = string2.encode('UTF-8')
-        array = [KikCryptographicUtils.kik_hash_code_sub_func(0, bytes1), KikCryptographicUtils.kik_hash_code_sub_func(1, bytes1), KikCryptographicUtils.kik_hash_code_sub_func(2, bytes1), KikCryptographicUtils.kik_hash_code_sub_func(0, bytes2), KikCryptographicUtils.kik_hash_code_sub_func(1, bytes2), KikCryptographicUtils.kik_hash_code_sub_func(2, bytes2)]
+        array = [KikCryptographicUtils.kik_hash_code_sub_func(0, bytes1),
+                 KikCryptographicUtils.kik_hash_code_sub_func(1, bytes1),
+                 KikCryptographicUtils.kik_hash_code_sub_func(2, bytes1),
+                 KikCryptographicUtils.kik_hash_code_sub_func(0, bytes2),
+                 KikCryptographicUtils.kik_hash_code_sub_func(1, bytes2),
+                 KikCryptographicUtils.kik_hash_code_sub_func(2, bytes2)]
         hash_code_base = -1964139357
         hash_code_offset = 7
-        return (((hash_code_base ^ (Utilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (Utilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (Utilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
+        return (((hash_code_base ^ (Utilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (
+        Utilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
+                Utilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
 
     @staticmethod
     def kik_hash_code_sub_func(hash_id, bytes_array):
@@ -125,6 +141,8 @@ class KikCryptographicUtils():
             digest = hashlib.md5(bytes_array).digest()
 
         for i in range(0, len(digest), 4):
-            j ^= ((((Utilities.byte_to_signed_int(digest[i + 3])) << 24) | ((Utilities.byte_to_signed_int(digest[i + 2])) << 16)) | ((Utilities.byte_to_signed_int(digest[i + 1])) << 8)) | (Utilities.byte_to_signed_int(digest[i]))
+            j ^= ((((Utilities.byte_to_signed_int(digest[i + 3])) << 24) | (
+            (Utilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
+                  (Utilities.byte_to_signed_int(digest[i + 1])) << 8)) | (Utilities.byte_to_signed_int(digest[i]))
 
         return j

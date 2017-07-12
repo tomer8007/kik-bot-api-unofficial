@@ -15,7 +15,7 @@ HOST, PORT = "talk1110an.kik.com", 5223
 
 class KikClient():
     user_info = None
-    node_cache_list = []
+    jid_cache_list = []
 
     def __init__(self, username, password):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -210,50 +210,50 @@ class KikClient():
         return jid_info
 
     def send_message(self, username, body):
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        jid = self._username_to_jid(username)
 
         print("[+] Sending message \"" + body + "\" to " + username + "...")
         unix_timestamp = str(int(round(time.time() * 1000)))
         uuid = KikCryptographicUtils.make_kik_uuid()
         packet = ("<message type=\"chat\" to=\""+jid+"\" id=\""+uuid+"\" cts=\"1494428808185\"><body>"+body+"</body><preview>"+body+"</preview><kik push=\"true\" qos=\"true\" timestamp=\""+unix_timestamp+"\" /><request xmlns=\"kik:message:receipt\" r=\"true\" d=\"true\" /><ri></ri></message>").encode('UTF-8')
         self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if "kik:iq:QoS" in response:
-            response = self.wrappedSocket.recv(16384).decode('UTF-8')
-            ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if ack_id != uuid:
-            print("[-] Ack id not found: ")
-            print(response)
-            return False
+        is_acked, is_delivered, receipt_id = False, False, ""
 
-        self.wrappedSocket.settimeout(1)
-        try:
-            response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        except socket.timeout:
-            print("[+] Message seems to be sent but not delivered.")
-            self.wrappedSocket.settimeout(10)
-            return True
-        if "delivered" not in response:
-            print("[-] Couldn't deliver message.")
-            Utilities.pretty_print_xml(response)
-            return False
+        while True:
+            info = self.get_next_event(1)
+            if info is None:
+                break
+            if info["type"] == "acknowledgement":
+                is_acked = info["id"] == uuid
+            elif "delivered" in info["raw_response"]:
+                is_delivered = True
+            if "<message" in info["raw_response"] and "type=\"receipt\"" in info["raw_response"]:
+                receipt_id = Utilities.string_between_strings(info["raw_response"], "id=\"", "\"")
+            if is_acked and is_delivered and receipt_id != "":
+                break
 
-        receipt_id = Utilities.string_between_strings(response, "type=\"receipt\" id=\"", "\"")
-        if receipt_id != "":
+        if not is_acked:
+            print("[-] Failed, message was not acknowledged")
+            return False
+        elif not is_delivered or receipt_id == "":
+            print("[+] Message seems to be sent but not delivered")
+        else:
             print("[+] Message receipt id: " + receipt_id)
 
         uuid = KikCryptographicUtils.make_kik_uuid()
         packet = ("<iq type=\"set\" id=\""+uuid+"\" cts=\"1494351900281\"><query xmlns=\"kik:iq:QoS\"><msg-acks><sender jid=\""+jid+"\"><ack-id receipt=\"false\">"+receipt_id+"</ack-id></sender></msg-acks><history attach=\"false\" /></query></iq>").encode('UTF-8')
         self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if ack_id != uuid:
-            print("[-] Ack id not found: ")
-            Utilities.pretty_print_xml(response)
+        while True:
+            info = self.get_next_event(1)
+            if info is None:
+                break
+            if info["type"] == "acknowledgement":
+                is_acked = info["id"] == uuid
+            if is_acked:
+                break
+
+        if not is_acked:
+            print("[-] Message was not fully acknowledged")
             return False
 
         self.wrappedSocket.settimeout(10)
@@ -262,10 +262,7 @@ class KikClient():
 
     def send_is_typing(self, username, is_typing):
         print("[+] Sending is_typing = "+is_typing+"...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        jid = self._username_to_jid(username)
 
         unix_timestamp = str(int(time.time() * 1000))
         uuid = KikCryptographicUtils.make_kik_uuid()
@@ -281,10 +278,7 @@ class KikClient():
 
     def add_friend(self, username):
         print("[+] Adding " + username + " as a friend...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        jid = self._username_to_jid(username)
 
         uuid = KikCryptographicUtils.make_kik_uuid()
         packet = ("<iq type=\"set\" id=\""+uuid+"\"><query xmlns=\"kik:iq:friend\"><add jid=\""+jid+"\" /></query></iq>").encode('UTF-8')
@@ -312,10 +306,7 @@ class KikClient():
 
     def send_read_confirmation(self, username, message_id):
         print("[+] Sending read confirmation for message " + message_id + "...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        jid = self._username_to_jid(username)
         uuid = KikCryptographicUtils.make_kik_uuid()
         unix_timestamp = str(int(time.time() * 1000))
         packet = ("<message type=\"receipt\" id=\""+uuid+"\" to=\""+jid+"\" cts=\""+unix_timestamp+"\"><kik push=\"false\" qos=\"true\" timestamp=\""+unix_timestamp+"\" /><receipt xmlns=\"kik:message:receipt\" type=\"read\"><msgid id=\""+message_id+"\" /></receipt></message>").encode('UTF-8')
@@ -327,13 +318,17 @@ class KikClient():
             return False
         print("[+] Okay")
 
-    def get_next_event(self):
+    def get_next_event(self, timeout=None):
         response = ""
         while response == "":
-            self.wrappedSocket.settimeout(None)
-            response = self.wrappedSocket.recv(16384).decode('UTF-8').strip()
+            self.wrappedSocket.settimeout(timeout)
+            try:
+                response = self.wrappedSocket.recv(16384).decode('UTF-8').strip()
+            except socket.timeout:
+                return None
 
-        info = {}
+        info = dict()
+        info["raw_response"] = response
 
         try:
             xml_element = ET.fromstring(response)
@@ -383,22 +378,27 @@ class KikClient():
 
         return info
 
-    def _username_to_node(self, username):
+    def _username_to_jid(self, username):
+        jid_domain = "@talk.kik.com"
+
+        if username.endswith(jid_domain):
+            return username
+
         if self.user_info is not None:
             for node in self.user_info["chat_list"]:
                 if node[:node.rfind('_')] == username:
-                    return node
+                    return node + jid_domain
 
-        for node in self.node_cache_list:
-                if node[:node.rfind('_')] == username:
-                    return node
+        for jid in self.jid_cache_list:
+                if jid[:jid.rfind('_')] == username:
+                    return jid
 
         jid_info = self.get_info_for_username(username)
         if jid_info is False:
             raise Exception("Failed to convert username to kik node")
-        node = jid_info["node"]
-        self.node_cache_list.append(node)
-        return node
+        jid = jid_info["node"] + jid_domain
+        self.jid_cache_list.append(jid)
+        return jid
 
     def close(self):
         self.wrappedSocket.close()

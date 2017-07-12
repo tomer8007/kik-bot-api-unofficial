@@ -229,17 +229,22 @@ class KikClient:
         jid_info["picture_url"] = Utilities.extract_tag_from_xml(response, "pic")
         return jid_info
 
-    def send_message(self, username, body):
+    def send_message(self, username, body, groupchat=False):
         if "@" in username:
             jid = username
         else:
             jid = self._username_to_node(username) + "@talk.kik.com"
+        group_type = "groupchat" if groupchat else "chat"
 
         print("[+] Sending message \"" + body + "\" to " + username + "...")
         unix_timestamp = str(int(round(time.time() * 1000)))
-        packet = (
-            "<message type=\"chat\" to=\"" + jid + "\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\" cts=\"1494428808185\"><body>" + body + "</body><preview>" + body + "</preview><kik push=\"true\" qos=\"true\" timestamp=\"" + unix_timestamp + "\" /><request xmlns=\"kik:message:receipt\" r=\"true\" d=\"true\" /><ri></ri></message>").encode(
-            'UTF-8')
+        cts = "1499819667117" if groupchat else "1494428808185"
+        packet = ('<message type="{0}" to="{1}" id="{2}" cts="{3}"><body>{4}</body>{5}<preview>{6}</preview><kik' \
+                  ' push="true" qos="true" timestamp="{7}" /><request xmlns="kik:message:receipt" r="true" d="true"' \
+                  '/><ri></ri></message>'
+                  .format(group_type, jid, KikCryptographicUtils.make_kik_uuid(), cts, body,
+                          ("<pb></pb>" if groupchat else ""), body, unix_timestamp)).encode('UTF-8')
+        print(packet)
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')

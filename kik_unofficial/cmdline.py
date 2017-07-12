@@ -24,34 +24,55 @@ def run(kik):
             print("[-] type not in info")
             print(info)
         elif info["type"] == "message_read":
-            print("[+] Human has read the message (user " + info["from"] + ", message id: " + info["message_id"] + ")")
-
+            message_read(info)
         elif info["type"] == "is_typing":
-            if info["is_typing"]:
-                print("[+] Human is typing (user " + info["from"] + ")")
-            else:
-                print("[+] Human is not typing (user " + info["from"] + ")")
-
+            is_typing(info)
         elif info["type"] == "message":
-            partner = info["from"]
-            print("[+] Human says: \"" + info["body"] + "\" (user " + partner + ")")
-
-            kik.send_read_confirmation(partner, info["message_id"])
-            replay = "You said '" + info["body"] + "'!"
-            kik.send_is_typing(partner, "true")
-            time.sleep(0.2 * len(replay))
-            kik.send_is_typing(partner, "false")
-            kik.send_message(partner, replay)
-
+            message(info, kik)
         elif info['type'] == 'group_message':
-            print("[+] Human says {0} (user {1}, chat {2})".format(info['body'], info['from'], info['group_id']))
-
+            group_message(info, kik)
         elif info['type'] == 'group_typing':
-            if info['is_typing']:
-                print("[+] Human is typing (user {0}, chat {1})".format(info['from'], info['group_id']))
-            else:
-                print("[+] Human is not typing (user {0}, chat {1})".format(info['from'], info['group_id']))
-
+            group_typing(info)
         elif info["type"] == "end":
             print("[!] Server ended communication.")
             break
+
+
+def message_read(info):
+    print("[+] Human has read the message (user " + info["from"] + ", message id: " + info["message_id"] + ")")
+
+
+def is_typing(info):
+    if info["is_typing"]:
+        print("[+] Human is typing (user " + info["from"] + ")")
+    else:
+        print("[+] Human is not typing (user " + info["from"] + ")")
+
+
+def message(info, kik):
+    partner = info["from"]
+    print("[+] Human says: \"" + info["body"] + "\" (user " + partner + ")")
+
+    kik.send_read_confirmation(partner, info["message_id"])
+    reply = "You said '" + info["body"] + "'!"
+    kik.send_is_typing(partner, "true")
+    time.sleep(0.2 * len(reply))
+    kik.send_is_typing(partner, "false")
+    kik.send_message(partner, reply)
+
+
+def group_message(info, kik):
+    group = info['group_id']
+    reply = 'Wow, \"{0}\", really {1}?'.format(info['body'], info['from'])
+    print("[+] Human says {0} (user {1}, chat {2})".format(info['body'], info['from'], info['group_id']))
+    # kik.send_is_typing(group, "true")
+    # time.sleep(0.2 * len(reply))
+    # kik.send_is_typing(group, "false", type="groupchat")
+    kik.send_message(group, reply, groupchat=True)
+
+
+def group_typing(info):
+    if info['is_typing']:
+        print("[+] Human is typing (user {0}, chat {1})".format(info['from'], info['group_id']))
+    else:
+        print("[+] Human is not typing (user {0}, chat {1})".format(info['from'], info['group_id']))

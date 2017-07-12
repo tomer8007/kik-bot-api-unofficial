@@ -15,6 +15,10 @@ from kik_unofficial.utilities import Utilities
 HOST, PORT = "talk1110an.kik.com", 5223
 
 
+class InvalidAckException(Exception):
+    pass
+
+
 class KikClient:
     user_info = None
     node_cache_list = []
@@ -36,6 +40,26 @@ class KikClient:
     def get_user_info(self):
         return self.user_info
 
+    def request(self, data):
+        packet = data.encode('UTF-8')
+        self.wrappedSocket.send(packet)
+        response = self.get_response()
+        self.verify_ack(response)
+
+    def get_response(self):
+        response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        soup = BeautifulSoup(response, features='xml')
+        return next(iter(soup.children))
+
+    @staticmethod
+    def verify_ack(response):
+        ack_id = response['id']
+        if len(ack_id) < 10:
+            print("[-] Ack id too short: ")
+            print(response)
+            raise InvalidAckException
+        return True
+
     def connect_to_kik_server(self):
         version = "11.1.1.12218"
         timestamp = "1496333366683"
@@ -43,7 +67,12 @@ class KikClient:
         device_id = "167da12427ee4dc4a36b40e8debafc25"
 
         # some super secret cryptographic stuff - computing 'cv' and 'signed'
-        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKcQ5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY-----"
+        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
+                          "/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT" \
+                          "/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq" \
+                          "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
+                          "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
+                          "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
         private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
         signature = rsa.sign((device_id + ":" + version + ":" + timestamp + ":" + sid).encode('UTF-8'), private_key,
                              'SHA-256')
@@ -74,36 +103,29 @@ class KikClient:
 
         device_id = "167da12427ee4dc4a36b40e8debafc25"
         password_key = KikCryptographicUtils.key_from_password(username, password)
-        self.wrappedSocket.send('<iq type="set" id="{}">'
-                                '<query xmlns="jabber:iq:register">'
-                                '<username>{}</username>'
-                                '<passkey-u>{}</passkey-u>'
-                                '<device-id>{}</device-id>'
-                                '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
-                                '<operator>310260</operator>'
-                                '<install-date>1494078709023</install-date>'
-                                '<device-type>android</device-type>'
-                                '<brand>generic</brand>'
-                                '<logins-since-install>1</logins-since-install>'
-                                '<version>11.1.1.12218</version>'
-                                '<lang>en_US</lang>'
-                                '<android-sdk>19</android-sdk>'
-                                '<registrations-since-install>0</registrations-since-install>'
-                                '<prefix>CAN</prefix>'
-                                '<android-id>c10d47ba7ee17193</android-id>'
-                                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
-                                '</query>'
-                                '</iq>'
-                                .format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id)
-                                .encode('UTF-8'))
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="jabber:iq:register">'
+                '<username>{}</username>'
+                '<passkey-u>{}</passkey-u>'
+                '<device-id>{}</device-id>'
+                '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
+                '<operator>310260</operator>'
+                '<install-date>1494078709023</install-date>'
+                '<device-type>android</device-type>'
+                '<brand>generic</brand>'
+                '<logins-since-install>1</logins-since-install>'
+                '<version>11.1.1.12218</version>'
+                '<lang>en_US</lang>'
+                '<android-sdk>19</android-sdk>'
+                '<registrations-since-install>0</registrations-since-install>'
+                '<prefix>CAN</prefix>'
+                '<android-id>c10d47ba7ee17193</android-id>'
+                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
+                '</query>'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id)
+        self.request(data)
         response = self.get_response()
-        ack_id = response['id']
-        if len(ack_id) < 10:
-            print("[-] Ack id too short: ")
-            print(response)
-            return False
 
-        response = self.get_response()
         if response.error:
             print("[-] Error! Code: {}".format(response.error['code']))
             print(response.error.prettify())
@@ -136,11 +158,6 @@ class KikClient:
         self.user_info = user_info
         return user_info
 
-    def get_response(self):
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        soup = BeautifulSoup(response, features='xml')
-        return next(iter(soup.children))
-
     def establish_session(self, username, node, password):
         print("[+] Establishing session...")
         # reset the socket
@@ -158,10 +175,14 @@ class KikClient:
         version = "11.1.1.12218"
 
         # some super secret cryptographic stuff
-        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKcQ5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY-----"
+        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
+                          "/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT" \
+                          "/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq" \
+                          "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
+                          "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
+                          "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
         private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
-        signature = rsa.sign((jid + ":" + version + ":" + timestamp + ":" + sid).encode('UTF-8'), private_key,
-                             'SHA-256')
+        signature = rsa.sign("{}:{}:{}:{}".format(jid, version, timestamp, sid).encode('UTF-8'), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode('UTF-8')).decode('UTF-8')[:-2]
         hmac_data = timestamp + ":" + jid
         hmac_secret_key = KikCryptographicUtils.build_hmac_key()
@@ -187,22 +208,15 @@ class KikClient:
 
     def get_chat_partners(self):
         print("[+] Getting roster (chat partners list)...")
-        packet = (
-            "<iq type=\"get\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\"><query p=\"8\" xmlns=\"jabber:iq:roster\" /></iq>").encode(
-            'UTF-8')
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if len(ack_id) < 10:
-            print("[-] Failed. Bad ack id: ")
-            print(response)
-            return False
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        data = ('<iq type="get" id="{}">'
+                '<query p="8" xmlns="jabber:iq:roster" />'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid())
+        self.request(data)
+        response = self.get_response()
 
         # parse roster
-        root = BeautifulSoup(response, features='xml')
         chat_partners = []
-        for wht in root[0]:
+        for wht in response[0]:
             user_info = dict()
             user_info['jid'] = wht.attrib['jid']
             for child in wht:
@@ -215,175 +229,143 @@ class KikClient:
 
     def get_info_for_node(self, node):
         jid = node + "@talk.kik.com"
-        packet = (
-            "<iq type=\"get\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\"><query xmlns=\"kik:iq:friend:batch\"><item jid=\"" + jid + "\" /></query></iq>").encode(
-            'UTF-8')
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if len(ack_id) < 10:
-            print("[-] Failed. Bad ack id: ")
-            print(response)
-            return False
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        data = ('<iq type="get" id="{}">'
+                '<query xmlns="kik:iq:friend:batch">'
+                '<item jid="{}" />'
+                '</query>'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid)
+        self.request(data)
+        response = self.get_response()
 
         jid_info = dict()
         jid_info["node"] = node
-        jid_info["display_name"] = Utilities.extract_tag_from_xml(response, "display-name")
-        jid_info["username"] = Utilities.extract_tag_from_xml(response, "username")
-        jid_info["picture_url"] = Utilities.extract_tag_from_xml(response, "pic")
+        jid_info["display_name"] = response.find('display-name').text
+        jid_info["username"] = response.find('username').text
+        jid_info["picture_url"] = response.find('pic').text
         return jid_info
 
     def get_info_for_username(self, username):
-        packet = (
-            "<iq type=\"get\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\"><query xmlns=\"kik:iq:friend\"><item username=\"" + username + "\" /></query></iq>").encode(
-            'UTF-8')
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if len(ack_id) < 10:
-            print("[-] Failed to fetch info for username '" + username + "' . Bad ack id: ")
-            print(response)
-            return False
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        data = ('<iq type="get" id="{}">'
+                '<query xmlns="kik:iq:friend">'
+                '<item username="{}" />'
+                '</query>'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username)
+        self.request(data)
+        response = self.get_response()
 
         jid_info = dict()
-        jid_info["node"] = Utilities.string_between_strings(response, "jid=\"", "@")
-        jid_info["display_name"] = Utilities.extract_tag_from_xml(response, "display-name")
-        jid_info["username"] = Utilities.extract_tag_from_xml(response, "username")
-        jid_info["picture_url"] = Utilities.extract_tag_from_xml(response, "pic")
+        # jid_info["node"] = Utilities.string_between_strings(response, "jid=\"", "@")
+        jid_info["node"] = response['jid']
+        jid_info["display_name"] = response.find('display-name').text
+        jid_info["username"] = response.find('username').text
+        jid_info["picture_url"] = response.find('pic').text
         return jid_info
 
     def send_message(self, username, body, groupchat=False):
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
-        group_type = "groupchat" if groupchat else "chat"
+        print('[+] Sending message "{}" to {}...'.format(body, username))
 
-        print("[+] Sending message \"" + body + "\" to " + username + "...")
+        jid = self.resolve_user(username)
+        group_type = "groupchat" if groupchat else "chat"
         unix_timestamp = str(int(round(time.time() * 1000)))
         cts = "1494428808185"
-        packet = ('<message type="{0}" to="{1}" id="{2}" cts="{3}"><body>{4}</body>{5}<preview>{6}</preview><kik' \
-                  ' push="true" qos="true" timestamp="{7}" /><request xmlns="kik:message:receipt" r="true" d="true"' \
-                  '/><ri></ri></message>'
-                  .format(group_type, jid, KikCryptographicUtils.make_kik_uuid(), cts, body,
-                          ("<pb></pb>" if groupchat else ""), body, unix_timestamp)).encode('UTF-8')
-        print(packet)
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if len(ack_id) < 10:
-            print("[-] Failed. Bad ack id: ")
-            print(response)
-            return False
 
-        self.wrappedSocket.settimeout(1)
-        try:
-            response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        except socket.timeout:
-            print("[+] Message seems to be sent but not delivered.")
-            self.wrappedSocket.settimeout(10)
-            return True
-        if "delivered" not in response:
-            print("[-] Couldn't deliver message.")
-            Utilities.pretty_print_xml(response)
-            return False
+        data = ('<message type="{0}" to="{1}" id="{2}" cts="{3}">'
+                '<body>{4}</body>'
+                '{5}'
+                '<preview>{6}</preview>'
+                '<kik push="true" qos="true" timestamp="{7}" />'
+                '<request xmlns="kik:message:receipt" r="true" d="true" />'
+                '<ri></ri>'
+                '</message>'
+                ).format(group_type, jid, KikCryptographicUtils.make_kik_uuid(), cts, body,
+                         ("<pb></pb>" if groupchat else ""), body, unix_timestamp)
 
-        receipt_id = Utilities.string_between_strings(response, "type=\"receipt\" id=\"", "\"")
+        self.request(data)
+        response = self.get_response()
+
+        # receipt_id = Utilities.string_between_strings(response, "type=\"receipt\" id=\"", "\"")
+        receipt_id = response['id']
+
         if receipt_id != "":
             print("[+] Message receipt id: " + receipt_id)
 
-        try:
-            packet = (
-                "<iq type=\"set\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\" cts=\"1494351900281\"><query xmlns=\"kik:iq:QoS\"><msg-acks><sender jid=\"" + jid + "\"><ack-id receipt=\"false\">" + receipt_id + "</ack-id></sender></msg-acks><history attach=\"false\" /></query></iq>").encode(
-                'UTF-8')
-        except Exception as e:
-            print(e)
-            return False
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if len(ack_id) < 10:
-            print("[-] ack id too short: " + ack_id)
-            print(response)
-            return False
-
-        self.wrappedSocket.settimeout(10)
+        data = ('<iq type="set" id="{}" cts="1494351900281">'
+                '<query xmlns="kik:iq:QoS">'
+                '<msg-acks>'
+                '<sender jid="{}">'
+                '<ack-id receipt="false">{}</ack-id>'
+                '</sender>'
+                '</msg-acks>'
+                '<history attach="false" />'
+                '</query>'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid, receipt_id)
+        self.request(data)
         print("[+] Sent")
         return True
 
     def send_is_typing(self, username, is_typing, groupchat=False):
-        print("[+] Sending is_typing = " + is_typing + "...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        print('[+] Sending is_typing = {}...'.format(is_typing))
 
+        jid = self.resolve_user(username)
         unix_timestamp = str(int(time.time() * 1000))
         uuid = KikCryptographicUtils.make_kik_uuid()
         group_type = "groupchat" if groupchat else "is-typing"
-        packet = '<message type="{}" to="{}" id="{}">{}<kik push="false" qos="false" timestamp="{}" /><is-typing ' \
-                 'val="{}" /></message>'.format(group_type, jid, uuid, "<pb></pb>" if groupchat else "",
-                                                unix_timestamp, is_typing).encode('UTF-8')
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if ack_id != uuid:
-            print("[-] Failed, bad ack id: " + ack_id)
-            return False
+
+        data = '<message type="{}" to="{}" id="{}">' \
+               '{}' \
+               '<kik push="false" qos="false" timestamp="{}" />' \
+               '<is-typing ' \
+               'val="{}" />' \
+               '</message>'.format(group_type, jid, uuid, "<pb></pb>" if groupchat else "", unix_timestamp, is_typing)
+        self.request(data)
         print("[+] Okay")
 
     def add_friend(self, username):
-        print("[+] Adding " + username + " as a friend...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+        print("[+] Adding {} as a friend...".format(username))
+        jid = self.resolve_user(username)
 
         uuid = KikCryptographicUtils.make_kik_uuid()
-        packet = (
-            "<iq type=\"set\" id=\"" + uuid + "\"><query xmlns=\"kik:iq:friend\"><add jid=\"" + jid + "\" /></query></iq>").encode(
-            'UTF-8')
+        data = '<iq type="set" id="{}">' \
+               '<query xmlns="kik:iq:friend">' \
+               '<add jid="{}" />' \
+               '</query>' \
+               '</iq>'.format(uuid, jid)
 
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if ack_id != uuid:
-            print("[-] Failed, bad ack id: " + ack_id)
-            print(response)
-            return False
+        self.request(data)
+        response = self.get_response()
 
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        if "<error" in response:
+        if response.find('error'):
             print("[-] Could not add '" + username + "' as a friend.")
-            Utilities.pretty_print_xml(response)
+            print(response.prettify())
             return False
 
         jid_info = dict()
         jid_info["node"] = username[username.find("@")] if "@" in username else username
-        jid_info["display_name"] = Utilities.extract_tag_from_xml(response, "display-name")
-        jid_info["username"] = Utilities.extract_tag_from_xml(response, "username")
+        jid_info["display_name"] = response.find('display-name').text
+        jid_info["username"] = response.find('username').text
         print("[+] Okay")
         return jid_info
 
+    def resolve_user(self, username):
+        if "@" in username:
+            return username
+        else:
+            return self._username_to_node(username) + "@talk.kik.com"
+
     def send_read_confirmation(self, username, message_id):
         print("[+] Sending read confirmation for message " + message_id + "...")
-        if "@" in username:
-            jid = username
-        else:
-            jid = self._username_to_node(username) + "@talk.kik.com"
+
+        jid = self.resolve_user(username)
         uuid = KikCryptographicUtils.make_kik_uuid()
         unix_timestamp = str(int(time.time() * 1000))
-        packet = (
-            "<message type=\"receipt\" id=\"" + uuid + "\" to=\"" + jid + "\" cts=\"" + unix_timestamp + "\"><kik push=\"false\" qos=\"true\" timestamp=\"" + unix_timestamp + "\" /><receipt xmlns=\"kik:message:receipt\" type=\"read\"><msgid id=\"" + message_id + "\" /></receipt></message>").encode(
-            'UTF-8')
-        self.wrappedSocket.send(packet)
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
-        if ack_id != uuid:
-            print("[-] Failed, bad ack id: " + ack_id)
-            return False
+
+        data = ('<message type="receipt" id="{}" to="{}" cts="{}">'
+                '<kik push="false" qos="true" timestamp="{}" />'
+                '<receipt xmlns="kik:message:receipt" type="read">'
+                '<msgid id="{}" />'
+                '</receipt>'
+                '</message>').format(uuid, jid, unix_timestamp, unix_timestamp, message_id)
+        self.request(data)
         print("[+] Okay")
 
     def get_next_event(self):
@@ -435,10 +417,10 @@ class KikClient:
                     print("Groupchat message doesn't contain body or is-typing")
             else:
                 print("[-] Unknown message type received: " + message_type)
-                Utilities.pretty_print_xml(response)
+                print(response.prettify())
         else:
             print("[!] Received non-message event:")
-            Utilities.pretty_print_xml(response)
+            print(response.prettify())
 
         return info
 
@@ -462,7 +444,8 @@ class KikClient:
     def close(self):
         self.wrappedSocket.close()
 
-    def _parse_chat_list_bin(self, chat_list_bin):
+    @staticmethod
+    def _parse_chat_list_bin(chat_list_bin):
         # chat_list_bin is a binary that contains the JIDs (names) of the user's chat participants
         # before each name there are 6 bytes of information that is not decoded it.
         # TODO: see classes1/kik/core/a/a/a.java (function "b") and parse it this way

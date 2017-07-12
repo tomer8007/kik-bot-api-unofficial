@@ -238,7 +238,7 @@ class KikClient:
 
         print("[+] Sending message \"" + body + "\" to " + username + "...")
         unix_timestamp = str(int(round(time.time() * 1000)))
-        cts = "1499819667117" if groupchat else "1494428808185"
+        cts = "1494428808185"
         packet = ('<message type="{0}" to="{1}" id="{2}" cts="{3}"><body>{4}</body>{5}<preview>{6}</preview><kik' \
                   ' push="true" qos="true" timestamp="{7}" /><request xmlns="kik:message:receipt" r="true" d="true"' \
                   '/><ri></ri></message>'
@@ -284,7 +284,7 @@ class KikClient:
         print("[+] Sent")
         return True
 
-    def send_is_typing(self, username, is_typing):
+    def send_is_typing(self, username, is_typing, groupchat=False):
         print("[+] Sending is_typing = " + is_typing + "...")
         if "@" in username:
             jid = username
@@ -293,9 +293,10 @@ class KikClient:
 
         unix_timestamp = str(int(time.time() * 1000))
         uuid = KikCryptographicUtils.make_kik_uuid()
-        packet = (
-            "<message type=\"is-typing\" to=\"" + jid + "\" id=\"" + uuid + "\"><kik push=\"false\" qos=\"false\" timestamp=\"" + unix_timestamp + "\" /><is-typing val=\"" + is_typing + "\" /></message>").encode(
-            'UTF-8')
+        group_type = "groupchat" if groupchat else "is-typing"
+        packet = '<message type="{}" to="{}" id="{}">{}<kik push="false" qos="false" timestamp="{}" /><is-typing ' \
+                 'val="{}" /></message>'.format(group_type, jid, uuid, "<pb></pb>" if groupchat else "",
+                                                unix_timestamp, is_typing).encode('UTF-8')
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
@@ -365,7 +366,7 @@ class KikClient:
         info = {}
         super_element = BeautifulSoup(response, features="xml")
         element = next(iter(super_element.children))
-        print('\n', super_element.prettify())
+        # print('\n', super_element.prettify())
 
         if element.name == 'k':
             info["type"] = "end"

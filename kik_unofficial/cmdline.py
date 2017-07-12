@@ -1,3 +1,4 @@
+import random
 from argparse import ArgumentParser
 
 import sys
@@ -63,12 +64,52 @@ def message(info, kik):
 
 def group_message(info, kik):
     group = info['group_id']
-    reply = 'Wow, \"{0}\", really {1}?'.format(info['body'], info['from'])
+    if 'ping' in info['body'].lower():
+        kik.send_message(group, 'pong', groupchat=True)
+        return
+    if random.randint(0, 99) > 15:
+        return
+    reply = get_reply(info['from'].split('_')[0], info['body'])
     print("[+] Human says {0} (user {1}, chat {2})".format(info['body'], info['from'], info['group_id']))
-    # kik.send_is_typing(group, "true")
-    # time.sleep(0.2 * len(reply))
-    # kik.send_is_typing(group, "false", type="groupchat")
+    kik.send_is_typing(group, "true", groupchat=True)
+    time.sleep(0.2 * len(reply))
+    kik.send_is_typing(group, "false", groupchat=True)
     kik.send_message(group, reply, groupchat=True)
+
+
+def get_reply(name, message):
+    start = random.choice([
+        "Wow!",
+        "Sweet Jesus",
+        "uh,",
+        "HAHAHAH",
+        "What.",
+        'Hehe,',
+        "Yeah"
+    ])
+    mid = random.choice([
+        "I'm",
+        "you're",
+        "your",
+        "this crap is",
+        "this is",
+        "stopped reading cuz this is",
+        "i've never been this"
+    ])
+    end = random.choice([
+        "retarded",
+        "pure garbage",
+        "epic",
+        "huge",
+        "insightful",
+        "incredible",
+        "spiritual",
+        "sarcastic",
+        "ironic",
+        "grand",
+        "the best i've ever seen"
+    ])
+    return '> {}: "{}"\n {} {} {}'.format(name, message, start, mid, end)
 
 
 def group_typing(info):
@@ -76,3 +117,5 @@ def group_typing(info):
         print("[+] Human is typing (user {0}, chat {1})".format(info['from'], info['group_id']))
     else:
         print("[+] Human is not typing (user {0}, chat {1})".format(info['from'], info['group_id']))
+
+print(get_reply("rage", "YAY"))

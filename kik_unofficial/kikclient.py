@@ -1,12 +1,12 @@
+import base64
+import hashlib
+import hmac
 import socket
 import ssl
-import hashlib
-import binascii
-import base64
-import time
-import rsa
-import hmac
 
+import binascii
+import rsa
+import time
 from bs4 import BeautifulSoup
 
 from kik_unofficial.cryptographicutils import KikCryptographicUtils
@@ -393,8 +393,11 @@ class KikClient:
                 if element.receipt['type'] == 'read':
                     info["type"] = "message_read"
                     info["message_id"] = element.receipt.msgid['id']
+                elif element.receipt['type'] == 'delivered':
+                    info["type"] = "message_delivered"
+                    info["message_id"] = element.receipt.msgid['id']
                 else:
-                    print("[-] Receipt received but not type 'read': {0}".format(response))
+                    print("[-] Receipt received but not type 'read' or 'delivered': {0}".format(response))
             elif message_type == "is-typing":
                 info["type"] = "is_typing"
                 is_typing_value = element.find('is-typing')['val']
@@ -404,7 +407,10 @@ class KikClient:
                 info["body"] = element.body.text
                 info["message_id"] = element['id']
             elif message_type == "groupchat":
-                info['group_id'] = element.g['jid']
+                if element.g:
+                    info['group_id'] = element.g['jid']
+                else:
+                    print("[-] No group_id in groupchat message")
                 info["message_id"] = element['id']
                 if element.body:
                     info["type"] = "group_message"
@@ -415,12 +421,13 @@ class KikClient:
                     info["is_typing"] = is_typing_value == "true"
                 else:
                     print("Groupchat message doesn't contain body or is-typing")
+                    print(element.prettify())
             else:
                 print("[-] Unknown message type received: " + message_type)
-                print(response.prettify())
+                print(element.prettify())
         else:
             print("[!] Received non-message event:")
-            print(response.prettify())
+            print(element.prettify())
 
         return info
 

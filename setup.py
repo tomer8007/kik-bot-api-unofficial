@@ -16,7 +16,7 @@ setup(
     description='Python API for writing unoffical kik bots that act like humans',
     long_description=long_description,
 
-    url='https://github.com/Jaapp-/kik-bot-api-unofficial',
+    url='https://github.com/tomer8007/kik-bot-api-unofficial',
 
     author='tomer8007',
     author_email='',

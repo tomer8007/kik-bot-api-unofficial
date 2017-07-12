@@ -34,7 +34,7 @@ setup(
 
     packages=find_packages(exclude=['docs', 'test']),
 
-    install_requires=['pbkdf2', 'rsa', 'BeautifulSoup', 'lxml'],
+    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4'],
 
     extras_require={
         'dev': [],

@@ -74,47 +74,72 @@ class KikClient:
 
         device_id = "167da12427ee4dc4a36b40e8debafc25"
         password_key = KikCryptographicUtils.key_from_password(username, password)
-        self.wrappedSocket.send(("<iq type=\"set\" id=\"" + KikCryptographicUtils.make_kik_uuid() +
-                                 "\"><query xmlns=\"jabber:iq:register\"><username>" + username +
-                                 "</username><passkey-u>" + password_key +
-                                 "</passkey-u><device-id>" + device_id +
-                                 "</device-id><install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer><operator>310260</operator><install-date>1494078709023</install-date><device-type>android</device-type><brand>generic</brand><logins-since-install>1</logins-since-install><version>11.1.1.12218</version><lang>en_US</lang><android-sdk>19</android-sdk><registrations-since-install>0</registrations-since-install><prefix>CAN</prefix><android-id>c10d47ba7ee17193</android-id><model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model></query></iq>"
-                                 ).encode('UTF-8'))
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
+        self.wrappedSocket.send('<iq type="set" id="{}">'
+                                '<query xmlns="jabber:iq:register">'
+                                '<username>{}</username>'
+                                '<passkey-u>{}</passkey-u>'
+                                '<device-id>{}</device-id>'
+                                '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
+                                '<operator>310260</operator>'
+                                '<install-date>1494078709023</install-date>'
+                                '<device-type>android</device-type>'
+                                '<brand>generic</brand>'
+                                '<logins-since-install>1</logins-since-install>'
+                                '<version>11.1.1.12218</version>'
+                                '<lang>en_US</lang>'
+                                '<android-sdk>19</android-sdk>'
+                                '<registrations-since-install>0</registrations-since-install>'
+                                '<prefix>CAN</prefix>'
+                                '<android-id>c10d47ba7ee17193</android-id>'
+                                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
+                                '</query>'
+                                '</iq>'
+                                .format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id)
+                                .encode('UTF-8'))
+        response = self.get_response()
+        ack_id = response['id']
         if len(ack_id) < 10:
             print("[-] Ack id too short: ")
             print(response)
             return False
-        response = self.wrappedSocket.recv(16384).decode('UTF-8')
-        if "<captcha-type>" in response:
-            print("[-] Captcha! URL:" + response[response.index("<captcha-type>"):])
+
+        response = self.get_response()
+        if response.error:
+            print("[-] Error! Code: {}".format(response.error['code']))
+            print(response.error.prettify())
             return False
-        if "<password-mismatch" in response:
+        captcha = response.find('captcha-type')
+        if captcha:
+            print("[-] Captcha! URL:" + captcha)
+            return False
+        if response.find('password-mismatch'):
             print("[-] Password mismatch")
             return False
-        if "kik:error" in response:
+        if response.find("kik:error"):
             print("[-] Could not log in. response:")
-            Utilities.pretty_print_xml(response)
+            print(response.prettify())
             return False
 
         user_info = dict()
-        user_info["node"] = Utilities.extract_tag_from_xml(response, "node")
-        user_info["username"] = Utilities.extract_tag_from_xml(response, "username")
-        user_info["email"] = Utilities.extract_tag_from_xml(response, "email")
-        user_info["first"] = Utilities.extract_tag_from_xml(response, "first")
-        user_info["last"] = Utilities.extract_tag_from_xml(response, "last")
-        user_info["public_key"] = Utilities.extract_tag_from_xml(response, "record pk=\"messaging_pub_key\"")
-        user_info["private_key"] = Utilities.extract_tag_from_xml(response, "record pk=\"enc_messaging_priv_key\"")
-        user_info["chat_list"] = self._parse_chat_list_bin(Utilities.decode_base64(
-            Utilities.extract_tag_from_xml(response, "record pk=\"chat_list_bins\"").encode('UTF-8')))
+        user_info["node"] = response.find('node').text
+        user_info["username"] = response.find('username').text
+        user_info["email"] = response.find('email').text
+        user_info["first"] = response.find('first').text
+        user_info["last"] = response.find('last').text
+        user_info["public_key"] = response.find('record', {'pk': 'messaging_pub_key'}).text
+        user_info["private_key"] = response.find('record', {'pk': 'enc_messaging_priv_key'}).text
+        user_info["chat_list"] = self._parse_chat_list_bin(
+            Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
 
         print("[+] Logged in.")
         Utilities.print_dictionary(user_info)
-
         self.user_info = user_info
-
         return user_info
+
+    def get_response(self):
+        response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        soup = BeautifulSoup(response, features='xml')
+        return next(iter(soup.children))
 
     def establish_session(self, username, node, password):
         print("[+] Establishing session...")
@@ -175,7 +200,7 @@ class KikClient:
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
 
         # parse roster
-        root = ElementTree.fromstring(response)
+        root = BeautifulSoup(response, features='xml')
         chat_partners = []
         for wht in root[0]:
             user_info = dict()

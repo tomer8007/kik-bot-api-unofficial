@@ -1,5 +1,4 @@
 import base64
-import xml.dom.minidom
 
 
 class Utilities:
@@ -12,15 +11,6 @@ class Utilities:
         if x & (1 << (32 - 1)):  # is the highest bit (sign) set?
             return x - (1 << 32)  # 2s complement
         return x
-
-    @staticmethod
-    def string_between_strings(s, first, last):
-        try:
-            start = s.index(first) + len(first)
-            end = s.index(last, start)
-            return s[start:end]
-        except ValueError:
-            return ""
 
     @staticmethod
     def decode_base64(data):
@@ -37,28 +27,6 @@ class Utilities:
             return (256 - byte) * (-1)
         else:
             return byte
-
-    @staticmethod
-    def extract_tag_from_xml(xml, tag):
-        # quick and dirty XML parsing
-        try:
-            open_bracket = xml[xml.index("<" + tag):xml.index(">", xml.index("<" + tag)) + 1]
-            return Utilities.string_between_strings(xml, open_bracket,
-                                                    "</" + tag + ">" if " " not in tag else "</" + tag[:tag.index(
-                                                        " ")] + ">")
-        except:
-            # print("[-] Couldn't extract tag \""+tag+"\" from xml, returning None")
-            return None
-
-    @staticmethod
-    def pretty_print_xml(xml_string):
-        try:
-            xml_thing = xml.dom.minidom.parseString(xml_string)
-            pretty_xml_as_string = xml_thing.toprettyxml()
-            print(pretty_xml_as_string)
-        except:
-            print("[-] XML parsing failed:")
-            print(xml_string)
 
     @staticmethod
     def print_dictionary(dictionary):

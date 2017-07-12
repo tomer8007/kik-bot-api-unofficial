@@ -49,14 +49,14 @@ class KikCryptographicUtils:
         i3 = iArr[i2][0]
         i2 = iArr[i2][1]
         j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ (
-        (65280 & most_significant_bits) >> 8)
+            (65280 & most_significant_bits) >> 8)
         i2 = (KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
-        KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
+            KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
         i4 = 0
         while i4 < 6:
             i = (i + (i2 * 7)) % 60
             least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | (
-            (KikCryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
+                (KikCryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
             i4 += 1
         mstb = binascii.hexlify(
             (most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
@@ -127,8 +127,8 @@ class KikCryptographicUtils:
         hash_code_base = -1964139357
         hash_code_offset = 7
         return (((hash_code_base ^ (Utilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (
-        Utilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
-                Utilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
+            Utilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
+                    Utilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
 
     @staticmethod
     def kik_hash_code_sub_func(hash_id, bytes_array):
@@ -142,7 +142,7 @@ class KikCryptographicUtils:
 
         for i in range(0, len(digest), 4):
             j ^= ((((Utilities.byte_to_signed_int(digest[i + 3])) << 24) | (
-            (Utilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
-                  (Utilities.byte_to_signed_int(digest[i + 1])) << 8)) | (Utilities.byte_to_signed_int(digest[i]))
+                (Utilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
+                      (Utilities.byte_to_signed_int(digest[i + 1])) << 8)) | (Utilities.byte_to_signed_int(digest[i]))
 
         return j

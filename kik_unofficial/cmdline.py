@@ -55,7 +55,7 @@ def message(info, kik):
     print("[+] <{0}> {1}".format(partner, info['body']))
 
     kik.send_read_confirmation(partner, info["message_id"])
-    reply = "You said '" + info["body"] + "'!"
+    reply = "You said '{}'!".format(info['body'])
     kik.send_is_typing(partner, "true")
     time.sleep(0.2 * len(reply))
     kik.send_is_typing(partner, "false")

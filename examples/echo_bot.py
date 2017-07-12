@@ -1,12 +1,11 @@
 import sys
-from KikClient import KikClient
-from Utilities import Utilities
-
 import time
+
+from kik_unofficial.kikclient import KikClient
 
 
 def main():
-    username, password = "your_username", "your_password"
+    username, password = "shlomo91", "123456"
     kik_client = KikClient(username, password)
 
     print("[+] Listening for incoming events.")
@@ -19,20 +18,20 @@ def main():
             continue
 
         if info["type"] == "message_read":
-            print("[+] Human has read the message (user "+info["from"]+", message id: "+info["message_id"]+")")
+            print("[+] Human has read the message (user " + info["from"] + ", message id: " + info["message_id"] + ")")
 
         elif info["type"] == "is_typing":
             if info["is_typing"]:
-                print("[+] Human is typing (user "+info["from"]+")")
+                print("[+] Human is typing (user " + info["from"] + ")")
             else:
-                print("[+] Human is not typing (user "+info["from"]+")")
+                print("[+] Human is not typing (user " + info["from"] + ")")
 
         elif info["type"] == "message":
             partner = info["from"]
-            print("[+] Human says: \"" + info["body"] + "\" (user "+partner+")")
+            print("[+] Human says: \"" + info["body"] + "\" (user " + partner + ")")
 
             kik_client.send_read_confirmation(partner, info["message_id"])
-            replay = "You said '"+info["body"] + "'!"
+            replay = "You said '" + info["body"] + "'!"
             kik_client.send_is_typing(partner, "true")
             time.sleep(0.2 * len(replay))
             kik_client.send_is_typing(partner, "false")

@@ -5,7 +5,7 @@ from kik_unofficial.kikclient import KikClient
 
 
 def main():
-    username, password = "your_username", "your_password"
+    username, password = "shlomo91", "123456"
     kik_client = KikClient(username, password)
 
     print("[+] Listening for incoming events.")

@@ -37,7 +37,6 @@ def run(kik):
                 break
         except TypeError as e:
             print(e)
-            kik.send_message("lemagedurage", str(e))
 
 
 def message_read(info):

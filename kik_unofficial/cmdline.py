@@ -117,5 +117,3 @@ def group_typing(info):
         print("[+] Human is typing (user {0}, chat {1})".format(info['from'], info['group_id']))
     else:
         print("[+] Human is not typing (user {0}, chat {1})".format(info['from'], info['group_id']))
-
-print(get_reply("rage", "YAY"))

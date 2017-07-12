@@ -269,9 +269,13 @@ class KikClient:
         if receipt_id != "":
             print("[+] Message receipt id: " + receipt_id)
 
-        packet = (
-            "<iq type=\"set\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\" cts=\"1494351900281\"><query xmlns=\"kik:iq:QoS\"><msg-acks><sender jid=\"" + jid + "\"><ack-id receipt=\"false\">" + receipt_id + "</ack-id></sender></msg-acks><history attach=\"false\" /></query></iq>").encode(
-            'UTF-8')
+        try:
+            packet = (
+                "<iq type=\"set\" id=\"" + KikCryptographicUtils.make_kik_uuid() + "\" cts=\"1494351900281\"><query xmlns=\"kik:iq:QoS\"><msg-acks><sender jid=\"" + jid + "\"><ack-id receipt=\"false\">" + receipt_id + "</ack-id></sender></msg-acks><history attach=\"false\" /></query></iq>").encode(
+                'UTF-8')
+        except Exception as e:
+            print(e)
+            return False
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')

@@ -219,6 +219,9 @@ class KikClient():
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
+        if "kik:iq:QoS" in response:
+            response = self.wrappedSocket.recv(16384).decode('UTF-8')
+            ack_id = Utilities.string_between_strings(response, 'ack id="', '"/>')
         if len(ack_id) < 10:
             print("[-] Failed. Bad ack id: ")
             print(response)
@@ -233,7 +236,6 @@ class KikClient():
             return True
         if "delivered" not in response:
             print("[-] Couldn't deliver message.")
-            Utilities.pretty_print_xml(response)
             return False
 
         receipt_id = Utilities.string_between_strings(response, "type=\"receipt\" id=\"", "\"")

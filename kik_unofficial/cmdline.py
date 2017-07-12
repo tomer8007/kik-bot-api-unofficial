@@ -21,22 +21,26 @@ def execute(cmd=sys.argv[1:]):
 def run(kik):
     while True:
         info = kik.get_next_event()
-        if 'type' not in info:
-            print("[-] type not in info")
-            print(info)
-        elif info["type"] == "message_read":
-            message_read(info)
-        elif info["type"] == "is_typing":
-            is_typing(info)
-        elif info["type"] == "message":
-            message(info, kik)
-        elif info['type'] == 'group_message':
-            group_message(info, kik)
-        elif info['type'] == 'group_typing':
-            group_typing(info)
-        elif info["type"] == "end":
-            print("[!] Server ended communication.")
-            break
+        try:
+            if 'type' not in info:
+                print("[-] type not in info")
+                print(info)
+            elif info["type"] == "message_read":
+                message_read(info)
+            elif info["type"] == "is_typing":
+                is_typing(info)
+            elif info["type"] == "message":
+                message(info, kik)
+            elif info['type'] == 'group_message':
+                group_message(info, kik)
+            elif info['type'] == 'group_typing':
+                group_typing(info)
+            elif info["type"] == "end":
+                print("[!] Server ended communication.")
+                break
+        except TypeError as e:
+            print(e)
+            kik.send_message("lemagedurage", e.message)
 
 
 def message_read(info):

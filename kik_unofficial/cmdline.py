@@ -20,8 +20,8 @@ def execute(cmd=sys.argv[1:]):
 
 def run(kik):
     while True:
-        info = kik.get_next_event()
         try:
+            info = kik.get_next_event()
             if 'type' not in info:
                 print("[-] type not in info")
                 print(info)

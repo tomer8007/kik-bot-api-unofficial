@@ -234,11 +234,10 @@ class KikClient:
         response = self._get_response()
 
         jid_info = dict()
-        # jid_info["node"] = Utilities.string_between_strings(response, "jid=\"", "@")
-        jid_info["node"] = response['jid']
+        jid_info["jid"] = response.contents[0].contents[0]['jid']
         jid_info["display_name"] = response.find('display-name').text
         jid_info["username"] = response.find('username').text
-        jid_info["picture_url"] = response.find('pic').text
+        jid_info["picture_url"] = response.find('pic').text if response.find('pic') is not None else None
         return jid_info
 
     def send_message(self, username, body, groupchat=False):
@@ -475,7 +474,7 @@ class KikClient:
         jid_info = self.get_info_for_username(username)
         if jid_info is False:
             raise Exception("Failed to convert username to kik node")
-        jid = jid_info["node"] + jid_domain
+        jid = jid_info["jid"]
         self.jid_cache_list.append(jid)
         return jid
 

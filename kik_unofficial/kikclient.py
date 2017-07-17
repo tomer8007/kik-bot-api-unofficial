@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import socket
 import ssl
+from enum import IntEnum
 
 import binascii
 import rsa
@@ -15,18 +16,30 @@ from kik_unofficial.utilities import Utilities
 HOST, PORT = "talk1110an.kik.com", 5223
 
 
+class DebugLevel(IntEnum):
+    VERBOSE = 0,
+    WARNING = 1,
+    ERROR = 2,
+
+
 class InvalidAckException(Exception):
     pass
 
 
+class KikErrorException(Exception):
+    pass
+
+
 class KikClient:
+    debug_level = DebugLevel.VERBOSE
     user_info = None
     jid_cache_list = []
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, debug_level=DebugLevel.VERBOSE):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(10)
         self.wrappedSocket = ssl.wrap_socket(self.sock)
+        self.debug_level = debug_level
         connection_success = self.connect_to_kik_server()
         if not connection_success:
             raise Exception("Could not connect to kik server")
@@ -67,19 +80,19 @@ class KikClient:
         initial_connection_payload = KikCryptographicUtils.make_connection_payload(
             KikCryptographicUtils.sort_kik_map(mapp)).encode('UTF-8')
 
-        print("[+] Connecting to kik server...")
+        self._log("[+] Connecting to kik server...")
         self.wrappedSocket.connect((HOST, PORT))
         self.wrappedSocket.send(initial_connection_payload)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
-            print("[-] Could not connect: " + response)
+            self._log("[-] Could not connect: " + response, DebugLevel.ERROR)
             return False
 
-        print("[+] Connected.")
+        self._log("[+] Connected.")
         return True
 
     def login(self, username, password):
-        print("[+] Logging in (username: " + username + ", password: " + password + ")...")
+        self._log("[+] Logging in (username: " + username + ", password: " + password + ")...")
 
         device_id = "167da12427ee4dc4a36b40e8debafc25"
         password_key = KikCryptographicUtils.key_from_password(username, password)
@@ -107,19 +120,19 @@ class KikClient:
         response = self._get_response()
 
         if response.error:
-            print("[-] Error! Code: {}".format(response.error['code']))
-            print(response.error.prettify())
+            self._log("[-] Error! Code: {}".format(response.error['code']), DebugLevel.ERROR)
+            self._log(response.error.prettify(), DebugLevel.ERROR)
             return False
         captcha = response.find('captcha-type')
         if captcha:
-            print("[-] Captcha! URL:" + captcha)
+            self._log("[-] Captcha! URL:" + captcha, DebugLevel.WARNING)
             return False
         if response.find('password-mismatch'):
-            print("[-] Password mismatch")
+            self._log("[-] Password mismatch", DebugLevel.WARNING)
             return False
         if response.find("kik:error"):
-            print("[-] Could not log in. response:")
-            print(response.prettify())
+            self._log("[-] Could not log in. response:", DebugLevel.ERROR)
+            self._log(response.prettify(), DebugLevel.ERROR)
             return False
 
         user_info = dict()
@@ -133,13 +146,14 @@ class KikClient:
         user_info["chat_list"] = self._parse_chat_list_bin(
             Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
 
-        print("[+] Logged in.")
-        Utilities.print_dictionary(user_info)
+        self._log("[+] Logged in.")
+        if self.debug_level == DebugLevel.VERBOSE:
+            Utilities.print_dictionary(user_info)
         self.user_info = user_info
         return user_info
 
     def establish_session(self, username, node, password):
-        print("[+] Establishing session...")
+        self._log("[+] Establishing session...")
         # reset the socket
         self.wrappedSocket.send("</k>".encode('UTF-8'))
         self.wrappedSocket.close()
@@ -180,14 +194,14 @@ class KikClient:
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
-            print("[-] Could not init session: " + response)
+            self._log("[-] Could not init session: " + response, DebugLevel.ERROR)
             return False
-        print("[+] Session established.")
+        self._log("[+] Session established.")
 
         return True
 
     def get_chat_partners(self):
-        print("[+] Getting roster (chat partners list)...")
+        self._log("[+] Getting roster (chat partners list)...")
         data = ('<iq type="get" id="{}">'
                 '<query p="8" xmlns="jabber:iq:roster" />'
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid())
@@ -203,7 +217,7 @@ class KikClient:
                 user_info[child.tag[child.tag.find('}') + 1:]] = child.text
             user_info['node'] = user_info['jid'][:user_info['jid'].find('@')]
             chat_partners.append(user_info)
-        print("[+] Fine.")
+        self._log("[+] Fine.")
 
         return chat_partners
 
@@ -233,6 +247,10 @@ class KikClient:
         self._make_request(data)
         response = self._get_response()
 
+        if response.error:
+            self._log("[-] Failed to get user info: " + response.error.text, DebugLevel.WARNING)
+            raise KikErrorException(response.error.text)
+
         jid_info = dict()
         jid_info["jid"] = response.contents[0].contents[0]['jid']
         jid_info["display_name"] = response.find('display-name').text
@@ -241,7 +259,7 @@ class KikClient:
         return jid_info
 
     def send_message(self, username, body, groupchat=False):
-        print('[+] Sending message "{}" to {}...'.format(body, username))
+        self._log('[+] Sending message "{}" to {}...'.format(body, username))
 
         jid = self._resolve_username(username)
         group_type = "groupchat" if groupchat else "chat"
@@ -276,12 +294,12 @@ class KikClient:
                 break
 
         if not is_acked:
-            print("[-] Failed, message was not acknowledged")
+            self._log("[-] Failed, message was not acknowledged", DebugLevel.ERROR)
             return False
         elif not is_delivered or receipt_id == "":
-            print("[+] Message seems to be sent but not delivered")
+            self._log("[+] Message '"+uuid+"' seems to be sent but not delivered", DebugLevel.WARNING)
         else:
-            print("[+] Message receipt id: " + receipt_id)
+            self._log("[+] Message receipt id: " + receipt_id)
 
             data = ('<iq type="set" id="{}" cts="1494351900281">'
                     '<query xmlns="kik:iq:QoS">'
@@ -294,11 +312,11 @@ class KikClient:
                     '</query>'
                     '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid, receipt_id)
             self._make_request(data)
-            print("[+] Sent")
+            self._log("[+] Sent")
         return True
 
     def send_is_typing(self, username, is_typing, groupchat=False):
-        print('[+] Sending is_typing = {}...'.format(is_typing))
+        self._log('[+] Sending is_typing = {}...'.format(is_typing))
 
         jid = self._resolve_username(username)
         unix_timestamp = str(int(time.time() * 1000))
@@ -312,10 +330,10 @@ class KikClient:
                'val="{}" />' \
                '</message>'.format(group_type, jid, uuid, "<pb></pb>" if groupchat else "", unix_timestamp, is_typing)
         self._make_request(data)
-        print("[+] Okay")
+        self._log("[+] Okay")
 
     def add_friend(self, username):
-        print("[+] Adding {} as a friend...".format(username))
+        self._log("[+] Adding {} as a friend...".format(username))
         jid = self._resolve_username(username)
 
         uuid = KikCryptographicUtils.make_kik_uuid()
@@ -329,19 +347,19 @@ class KikClient:
         response = self._get_response()
 
         if response.find('error'):
-            print("[-] Could not add '" + username + "' as a friend.")
-            print(response.prettify())
+            self._log("[-] Could not add '" + username + "' as a friend.", DebugLevel.ERROR)
+            self._log(response.prettify(), DebugLevel.ERROR)
             return False
 
         jid_info = dict()
         jid_info["node"] = username[username.find("@")] if "@" in username else username
         jid_info["display_name"] = response.find('display-name').text
         jid_info["username"] = response.find('username').text
-        print("[+] Okay")
+        self._log("[+] Okay")
         return jid_info
 
     def send_read_confirmation(self, username, message_id):
-        print("[+] Sending read confirmation for message " + message_id + "...")
+        self._log("[+] Sending read confirmation for message " + message_id + "...")
 
         jid = self._resolve_username(username)
         uuid = KikCryptographicUtils.make_kik_uuid()
@@ -354,7 +372,7 @@ class KikClient:
                 '</receipt>'
                 '</message>').format(uuid, jid, unix_timestamp, unix_timestamp, message_id)
         self._make_request(data)
-        print("[+] Okay")
+        self._log("[+] Okay")
 
     def get_next_event(self, timeout=None):
         response = ""
@@ -371,13 +389,13 @@ class KikClient:
             super_element = BeautifulSoup(response, features="xml")
             element = next(iter(super_element.children))
             info["xml_element"] = element
-        except:
+        except StopIteration:
             if response == "</k>":
                 info["type"] = "end"
                 return info
             else:
-                print("[-] XML parsing of event failed:")
-                print(response)
+                self._log("[-] XML parsing of event failed:", DebugLevel.WARNING)
+                self._log(response, DebugLevel.WARNING)
                 return None
 
         if element.name == 'iq':
@@ -398,12 +416,16 @@ class KikClient:
                     info["message_id"] = element.receipt.msgid['id']
                 else:
                     info["type"] = message_type
-                    print("[-] Receipt received but not type 'read' or 'delivered': {0}".format(response))
+                    self._log("[-] Receipt received but not type 'read' or 'delivered': {0}".format(response), DebugLevel.WARNING)
             elif message_type == "is-typing":
                 info["type"] = "is_typing"
                 is_typing_value = element.find('is-typing')['val']
                 info["is_typing"] = is_typing_value == "true"
             elif message_type == "chat":
+                if element.body is None:
+                    self._log("[-] Received message without body: ", DebugLevel.WARNING)
+                    self._log(element.prettify(), DebugLevel.WARNING)
+                    return None
                 info["type"] = "message"
                 info["body"] = element.body.text
                 info["message_id"] = element['id']
@@ -411,7 +433,7 @@ class KikClient:
                 if element.g:
                     info['group_id'] = element.g['jid']
                 else:
-                    print("[-] No group_id in groupchat message:")
+                    self._log("[-] No group_id in groupchat message:", DebugLevel.WARNING)
                 info["message_id"] = element['id']
                 if element.body:
                     info["type"] = "group_message"
@@ -421,14 +443,14 @@ class KikClient:
                     is_typing_value = element.find('is-typing')['val']
                     info["is_typing"] = is_typing_value == "true"
                 else:
-                    print("[-] Groupchat message doesn't contain body or is-typing: ")
-                    print(element.prettify())
+                    self._log("[-] Groupchat message doesn't contain body or is-typing: ", DebugLevel.WARNING)
+                    self._log(element.prettify(), DebugLevel.WARNING)
             else:
-                print("[-] Unknown message type received: " + message_type)
-                print(element.prettify())
+                self._log("[-] Unknown message type received: " + message_type, DebugLevel.WARNING)
+                self._log(element.prettify(), DebugLevel.WARNING)
         else:
-            print("[!] Received unknown event:")
-            print(element.prettify())
+            self._log("[!] Received unknown event:", DebugLevel.WARNING)
+            self._log(element.prettify(), DebugLevel.WARNING)
 
         return info
 
@@ -446,13 +468,12 @@ class KikClient:
         soup = BeautifulSoup(response, features='xml')
         return next(iter(soup.children))
 
-    @staticmethod
-    def _verify_ack(response, uuid):
+    def _verify_ack(self, response, uuid):
         ack_id = response['id']
         is_valid = ack_id == uuid if uuid is not None else len(ack_id) > 10
         if not is_valid:
-            print("[-] Ack id was not found:")
-            print(response)
+            self._log("[-] Ack id was not found:")
+            self._log(response)
             raise InvalidAckException
         return True
 
@@ -472,11 +493,19 @@ class KikClient:
                     return jid
 
         jid_info = self.get_info_for_username(username)
-        if jid_info is False:
+        if jid_info is None:
             raise Exception("Failed to convert username to kik node")
         jid = jid_info["jid"]
         self.jid_cache_list.append(jid)
         return jid
+
+    def _log(self, message, message_level=DebugLevel.VERBOSE):
+        if self.debug_level == DebugLevel.VERBOSE:
+            print(message)
+        elif self.debug_level == DebugLevel.WARNING and int(message_level) >= int(DebugLevel.WARNING):
+            print(message)
+        elif self.debug_level == DebugLevel.ERROR and int(message_level) >= int(DebugLevel.ERROR):
+            print(message)
 
     def close(self):
         self.wrappedSocket.close()

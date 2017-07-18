@@ -498,10 +498,23 @@ class KikClient:
                     is_typing_value = element.find('is-typing')['val']
                     info["is_typing"] = is_typing_value == "true"
                 elif element.find('content'):
-                    info["type"] = "content"
+                    info["type"] = "group_content"
                     info["app_id"] = element.find("content")["app-id"]
                     if info["app_id"] == "com.kik.ext.stickers":
-                        info["type"] = "sticker"
+                        info["type"] = "group_sticker"
+                    elif info["app_id"] == "com.kik.ext.gallery":
+                        info["type"] = "group_gallery"
+                        info['file_url'] = element.find('file-url').text
+                        info['file_name'] = element.find('file-name').text
+                    elif info["app_id"] == "com.kik.ext.gif":
+                        info["type"] = "group_gif"
+                        info['uris'] = {}
+                        uris = element.find('uris')
+                        for uri in uris:
+                            info['uris'][uri['file-content-type']] = uri.text
+                    else:
+                        print("[-] Unknown content type: {}".format(info["app_id"]))
+                        print(element.prettify())
                     items = element.findAll("item")
                     if items:
                         for item in items:

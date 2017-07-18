@@ -39,21 +39,31 @@ class CmdLine:
                     self.group_message(info)
                 elif info['type'] == 'group_typing':
                     self.group_typing(info)
-                elif info['type'] == 'content':
-                    self.content(info)
-                elif info['type'] == 'sticker':
-                    self.sticker(info)
+                elif info['type'] == 'group_content':
+                    self.group_content(info)
+                elif info['type'] == 'group_sticker':
+                    self.group_sticker(info)
+                elif info['type'] == 'group_gallery':
+                    self.group_gallery(info)
+                elif info['type'] == 'group_gif':
+                    self.group_gif(info)
                 elif info["type"] == "end":
                     print("[!] Server ended communication.")
                     break
             except TypeError as e:
                 print(e)
 
-    def content(self, info):
+    def group_content(self, info):
         print("[+] Unknown content received of type {}".format(info["app_id"]))
 
-    def sticker(self, info):
+    def group_sticker(self, info):
         print("[+] Sticker received in pack {}: {}".format(info["sticker_pack_id"], info["sticker_url"]))
+
+    def group_gallery(self, info):
+        print("[+] Gallery image received '{}': {}".format(info['file_name'], info['file_url']))
+
+    def group_gif(self, info):
+        print("[+] Gif received: {}".format(info['uris']))
 
     def list_chats(self):
         print("[+] Chats\n{}".format("\n".join([self.full_name(peer['jid']) for peer in self.partners.values()])))

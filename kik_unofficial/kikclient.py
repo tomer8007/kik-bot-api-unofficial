@@ -502,9 +502,11 @@ class KikClient:
                     info["app_id"] = element.find("content")["app-id"]
                     if info["app_id"] == "com.kik.ext.stickers":
                         info["type"] = "sticker"
-                    for item in element.findAll("item"):
-                        if item.key and item.val:
-                            info[item.key.text] = item.val.text
+                    items = element.findAll("item")
+                    if items:
+                        for item in items:
+                            if item.key and item.val:
+                                info[item.key.text] = item.val.text
                 else:
                     print("[-] Unknown groupchat message: ")
                     print(element.prettify())

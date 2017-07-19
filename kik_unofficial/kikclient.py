@@ -450,8 +450,7 @@ class KikClient:
                 info["type"] = "end"
                 return info
             else:
-                print("[-] XML parsing of event failed:")
-                print(response)
+                print("[-] XML parsing of event failed: {}...".format(response[:80]))
                 return None
 
         if element.name == 'iq':
@@ -479,10 +478,13 @@ class KikClient:
                 info["is_typing"] = is_typing_value == "true"
             elif message_type == "chat":
                 info["type"] = "message"
-                if not element.body:
-                    print("[!] Message without body")
+                if element.body:
+                    info["body"] = element.body.text
+                elif element.find('content'):
+                    self.parse_content_message(info, element, False)
+                else:
+                    print("[!] Unknown chat message")
                     print(element.prettify())
-                info["body"] = element.body.text
                 info["message_id"] = element['id']
             elif message_type == "groupchat":
                 if element.g:
@@ -498,28 +500,7 @@ class KikClient:
                     is_typing_value = element.find('is-typing')['val']
                     info["is_typing"] = is_typing_value == "true"
                 elif element.find('content'):
-                    info["type"] = "group_content"
-                    info["app_id"] = element.find("content")["app-id"]
-                    if info["app_id"] == "com.kik.ext.stickers":
-                        info["type"] = "group_sticker"
-                    elif info["app_id"] == "com.kik.ext.gallery":
-                        info["type"] = "group_gallery"
-                        info['file_url'] = element.find('file-url').text
-                        info['file_name'] = element.find('file-name').text
-                    elif info["app_id"] == "com.kik.ext.gif":
-                        info["type"] = "group_gif"
-                        info['uris'] = {}
-                        uris = element.find('uris')
-                        for uri in uris:
-                            info['uris'][uri['file-content-type']] = uri.text
-                    else:
-                        print("[-] Unknown content type: {}".format(info["app_id"]))
-                        print(element.prettify())
-                    items = element.findAll("item")
-                    if items:
-                        for item in items:
-                            if item.key and item.val:
-                                info[item.key.text] = item.val.text
+                    self.parse_content_message(info, element, True)
                 else:
                     print("[-] Unknown groupchat message: ")
                     print(element.prettify())
@@ -531,6 +512,39 @@ class KikClient:
             print(element.prettify())
 
         return info
+
+    def parse_content_message(self, info, element, groupchat=False):
+        info["type"] = "content"
+        info["app_id"] = element.find("content")["app-id"]
+        items = element.findAll("item")
+        if items:
+            for item in items:
+                if item.key and item.val:
+                    info[item.key.text] = item.val.text
+        if info["app_id"] == "com.kik.ext.stickers":
+            info["type"] = "sticker"
+        elif info["app_id"] == "com.kik.ext.gallery":
+            info["type"] = "gallery"
+            info['file_url'] = element.find('file-url').text
+            info['file_name'] = element.find('file-name').text
+        elif info["app_id"] == "com.kik.ext.gif":
+            info["type"] = "gif"
+            info['uris'] = {}
+            uris = element.find('uris')
+            for uri in uris:
+                info['uris'][uri['file-content-type']] = uri.text
+        elif info["app_id"] == "com.kik.cards":
+            info["type"] = "card"
+            info['app_name'] = element.find('app-name').text
+            if info['app_name'] == 'ScribbleChat':
+                info['video_url'] = element.find('uri', {'type': 'video'}).text
+            elif element.find('uri', {'platform': 'cards'}):
+                info['url'] = element.find('uri', {'platform': 'cards'}).text
+        else:
+            print("[-] Unknown content type: {}".format(info["app_id"]))
+            print(element.prettify())
+        if groupchat:
+            info["type"] = "group_" + info["type"]
 
     def _send_packet(self, packet):
         self.wrappedSocket.send(packet)

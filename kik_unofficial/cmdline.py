@@ -26,7 +26,9 @@ class CmdLine:
         while True:
             try:
                 info = self.kik.get_next_event()
-                if 'type' not in info:
+                if not info:
+                    print("[-] failed to parse info")
+                elif 'type' not in info:
                     print("[-] type not in info")
                     print(info)
                 elif info["type"] == "message_read":
@@ -47,11 +49,51 @@ class CmdLine:
                     self.group_gallery(info)
                 elif info['type'] == 'group_gif':
                     self.group_gif(info)
+                elif info['type'] == 'group_card':
+                    self.group_card(info)
+                elif info['type'] == 'message':
+                    self.message(info)
+                elif info['type'] == 'content':
+                    self.content(info)
+                elif info['type'] == 'sticker':
+                    self.sticker(info)
+                elif info['type'] == 'gallery':
+                    self.gallery(info)
+                elif info['type'] == 'gif':
+                    self.gif(info)
+                elif info['type'] == 'card':
+                    self.card(info)
+                elif info['type'] == 'qos' or info['type'] == 'acknowledgement':
+                    pass
                 elif info["type"] == "end":
                     print("[!] Server ended communication.")
                     break
+                else:
+                    print("[-] Unknown message: {}".format(info))
             except TypeError as e:
                 print(e)
+
+    def content(self, info):
+        print("[+] Unknown content received of type {}".format(info["app_id"]))
+
+    def sticker(self, info):
+        print("[+] Sticker received in pack {}: {}".format(info["sticker_pack_id"], info["sticker_url"]))
+
+    def gallery(self, info):
+        print("[+] Gallery image received '{}': {}".format(info['file_name'], info['file_url']))
+
+    def gif(self, info):
+        print("[+] Gif received: {}".format(info['uris']))
+
+    def card(self, info):
+        if 'jsonData' in info:
+            print("[+] Card received: {}: {}".format(info['app_name'], info['jsonData']))
+        elif info['app_name'] == 'ScribbleChat':
+            print("[+] Card received: {}: {}".format(info['app_name'], info['video_url']))
+        elif 'url' in info:
+            print("[+] Card received: '{}': {}".format(info['app_name'], info['url']))
+        else:
+            print("[-] Unknown card received: {}".format(info['app_name']))
 
     def group_content(self, info):
         print("[+] Unknown content received of type {}".format(info["app_id"]))
@@ -64,6 +106,16 @@ class CmdLine:
 
     def group_gif(self, info):
         print("[+] Gif received: {}".format(info['uris']))
+
+    def group_card(self, info):
+        if 'jsonData' in info:
+            print("[+] Card received: {}: {}".format(info['app_name'], info['jsonData']))
+        elif info['app_name'] == 'ScribbleChat':
+            print("[+] Card received: {}: {}".format(info['app_name'], info['video_url']))
+        elif 'url' in info:
+            print("[+] Card received: '{}': {}".format(info['app_name'], info['url']))
+        else:
+            print("[-] Unknown card received: {}".format(info['app_name']))
 
     def list_chats(self):
         print("[+] Chats\n{}".format("\n".join([self.full_name(peer['jid']) for peer in self.partners.values()])))

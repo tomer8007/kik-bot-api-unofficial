@@ -19,7 +19,7 @@ class Utilities:
         missing_padding = len(data) % 4
         if missing_padding != 0:
             data += b'=' * (4 - missing_padding)
-        return base64.decodestring(data)
+        return base64.decodebytes(data)
 
     @staticmethod
     def byte_to_signed_int(byte):

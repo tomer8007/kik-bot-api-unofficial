@@ -208,20 +208,19 @@ class KikClient:
         self._make_request(data)
         response = self._get_response()
 
-        chat_partners = list(map(KikClient._parse_chat_jid, list(response.query.children)))
+        chat_partners = list(map(self._parse_chat_jid, list(response.query.children)))
         chat_partner_dict = {user['jid']: user for user in chat_partners}
         self._log("[+] Fine.")
 
         return chat_partner_dict
 
-    @staticmethod
-    def _parse_chat_jid(element):
+    def _parse_chat_jid(self, element):
         if element.name == 'g':
             return KikClient._parse_group_jid(element)
         elif element.name == 'item':
             return KikClient._parse_user_jid(element)
         else:
-            print("[-] Unknown peer type: {}".format(element))
+            self._log("[-] Unknown peer type: {}".format(element), DebugLevel.WARNING)
 
     @staticmethod
     def _parse_user_jid(element):
@@ -450,15 +449,16 @@ class KikClient:
 
     def get_next_event(self, timeout=None):
         response = ""
-        while response == "":
+        while response == "" or response[-1:] != ">":
             self.wrappedSocket.settimeout(timeout)
             try:
-                response = self.wrappedSocket.recv(16384).decode('UTF-8').strip()
+                response = response + self.wrappedSocket.recv(16384).decode('UTF-8').strip()
             except socket.timeout:
                 return None
 
         info = dict()
         info["raw_response"] = response
+        self._log("Last characters: {}".format(response[-10:]))
         try:
             super_element = BeautifulSoup(response, features="xml")
             element = next(iter(super_element.children))
@@ -497,18 +497,14 @@ class KikClient:
                 is_typing_value = element.find('is-typing')['val']
                 info["is_typing"] = is_typing_value == "true"
             elif message_type == "chat":
-                if element.body is None:
-                    self._log("[-] Received message without body: ", DebugLevel.WARNING)
-                    self._log(element.prettify(), DebugLevel.WARNING)
-                    return None
                 info["type"] = "message"
                 if element.body:
                     info["body"] = element.body.text
                 elif element.find('content'):
                     self.parse_content_message(info, element, False)
                 else:
-                    print("[!] Unknown chat message")
-                    print(element.prettify())
+                    self._log("[-] Unknown chat message: ", DebugLevel.WARNING)
+                    self._log(element.prettify(), DebugLevel.WARNING)
                 info["message_id"] = element['id']
             elif message_type == "groupchat":
                 if element.g:
@@ -537,8 +533,7 @@ class KikClient:
 
         return info
 
-    @staticmethod
-    def parse_content_message(info, element, groupchat=False):
+    def parse_content_message(self, info, element, groupchat=False):
         info["type"] = "content"
         info["app_id"] = element.find("content")["app-id"]
         items = element.findAll("item")
@@ -561,13 +556,14 @@ class KikClient:
         elif info["app_id"] == "com.kik.cards":
             info["type"] = "card"
             info['app_name'] = element.find('app-name').text
+            url_element = element.find('uri', {'platform': 'cards'})
             if info['app_name'] == 'ScribbleChat':
                 info['video_url'] = element.find('uri', {'type': 'video'}).text
-            elif element.find('uri', {'platform': 'cards'}):
-                info['url'] = element.find('uri', {'platform': 'cards'}).text
+            elif url_element:
+                info['url'] = url_element.text
         else:
-            print("[-] Unknown content type: {}".format(info["app_id"]))
-            print(element.prettify())
+            self._log("[-] Unknown content type: {}".format(info["app_id"]))
+            self._log(element.prettify())
         if groupchat:
             info["type"] = "group_" + info["type"]
 

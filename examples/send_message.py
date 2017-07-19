@@ -12,7 +12,7 @@ def main():
     print("[+] Chats\n{}".format("\n".join([peer['jid'] for peer in chat_partners.values()])))
 
     # let's talk
-    username = "lemagedurage"
+    username = "other_username"
     kik_client.send_is_typing(username, "true")
     time.sleep(0.5)
     kik_client.send_is_typing(username, "false")

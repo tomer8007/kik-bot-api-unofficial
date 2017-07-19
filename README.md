@@ -25,9 +25,11 @@ kik.send_message("other_kik_username", "Hello from bot!")
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).
 - Fetch chat partners information
-- Send text messages and listen for incoming messages
+- Send text messages to users\groups and listen for incoming messages
 - Send and receive 'is-typing' status
-- Send and receive read confirmations
+- Send and receive read receipts
+- Fetch group information (name, partners, etc.)
+- Receive media content: camera, gallery, stickets
 - Add a kik user as a friend
 
 Sending multimedia (images, videos) is not suported yet.

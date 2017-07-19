@@ -230,7 +230,8 @@ class KikClient:
         jid_info["node"] = KikClient.jid_to_node(element['jid'])
         jid_info["display_name"] = element.find('display-name').text
         jid_info["username"] = element.find('username').text
-        jid_info["picture_url"] = element.find('pic').text
+        if element.find('pic'):
+            jid_info["picture_url"] = element.find('pic').text
         return jid_info
 
     @staticmethod
@@ -289,7 +290,7 @@ class KikClient:
         return jid.replace('@talk.kik.com', '')
 
     def get_info_for_node(self, node):
-        jid = node + "@talk.kik.com"
+        jid = node if "@" in node else node + "@talk.kik.com"
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:friend:batch">'
                 '<item jid="{}" />'
@@ -297,7 +298,7 @@ class KikClient:
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid)
         self._make_request(data)
         response = self._get_response()
-        return self._parse_user_jid(response)
+        return self._parse_user_jid(response.query.success.item)
 
     def get_info_for_username(self, username):
         data = ('<iq type="get" id="{}">'
@@ -458,7 +459,6 @@ class KikClient:
 
         info = dict()
         info["raw_response"] = response
-        self._log("Last characters: {}".format(response[-10:]))
         try:
             super_element = BeautifulSoup(response, features="xml")
             element = next(iter(super_element.children))
@@ -545,6 +545,10 @@ class KikClient:
             info["type"] = "sticker"
         elif info["app_id"] == "com.kik.ext.gallery":
             info["type"] = "gallery"
+            info['file_url'] = element.find('file-url').text
+            info['file_name'] = element.find('file-name').text
+        elif info["app_id"] == "com.kik.ext.camera":
+            info["type"] = "camera"
             info['file_url'] = element.find('file-url').text
             info['file_name'] = element.find('file-name').text
         elif info["app_id"] == "com.kik.ext.gif":

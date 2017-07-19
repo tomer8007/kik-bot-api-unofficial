@@ -47,6 +47,8 @@ class CmdLine:
                     self.group_sticker(info)
                 elif info['type'] == 'group_gallery':
                     self.group_gallery(info)
+                elif info['type'] == 'group_camera':
+                    self.group_camera(info)
                 elif info['type'] == 'group_gif':
                     self.group_gif(info)
                 elif info['type'] == 'group_card':
@@ -59,6 +61,8 @@ class CmdLine:
                     self.sticker(info)
                 elif info['type'] == 'gallery':
                     self.gallery(info)
+                elif info['type'] == 'camera':
+                    self.camera(info)
                 elif info['type'] == 'gif':
                     self.gif(info)
                 elif info['type'] == 'card':
@@ -82,6 +86,9 @@ class CmdLine:
     def gallery(self, info):
         print("[+] Gallery image received '{}': {}".format(info['file_name'], info['file_url']))
 
+    def camera(self, info):
+        print("[+] Camera image received '{}': {}".format(info['file_name'], info['file_url']))
+
     def gif(self, info):
         print("[+] Gif received: {}".format(info['uris']))
 
@@ -104,6 +111,9 @@ class CmdLine:
     def group_gallery(self, info):
         print("[+] Gallery image received '{}': {}".format(info['file_name'], info['file_url']))
 
+    def group_camera(self, info):
+        print("[+] Camera image received '{}': {}".format(info['file_name'], info['file_url']))
+
     def group_gif(self, info):
         print("[+] Gif received: {}".format(info['uris']))
 
@@ -121,6 +131,10 @@ class CmdLine:
         print("[+] Chats\n{}".format("\n".join([self.full_name(peer['jid']) for peer in self.partners.values()])))
 
     def display_name(self, name):
+        if name not in self.partners:
+            peer_info = self.kik.get_info_for_node(name)
+            print(peer_info)
+            self.partners[peer_info['jid']] = peer_info
         peer = self.partners[name]
         return peer['display_name'].strip()
 

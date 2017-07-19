@@ -28,7 +28,7 @@ Currently Supported Operations:
 - Send text messages to users\groups and listen for incoming messages
 - Send and receive 'is-typing' status
 - Send and receive read receipts
-- Fetch group information (name, partners, etc.)
+- Fetch group information (name, participants, etc.)
 - Receive media content: camera, gallery, stickets
 - Add a kik user as a friend
 

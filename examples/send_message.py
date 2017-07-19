@@ -2,21 +2,14 @@ import sys
 import time
 
 from kik_unofficial.kikclient import KikClient
-from kik_unofficial.utilities import Utilities
 
 
 def main():
-    username, password = "your_username", "your_password"
+    username, password = "username", "password"
     kik_client = KikClient(username, password)
-    user_info = kik_client.get_user_info()
 
-    # getting information of chat partners
-    chat_partners = []
-    for username in user_info["chat_list"]:
-        print("[+] Fetching info for friend '"+username+"'...")
-        jid_info = kik_client.get_info_for_node(username)
-        chat_partners.append(jid_info)
-        Utilities.print_dictionary(jid_info)
+    chat_partners = kik_client.get_chat_partners()
+    print("[+] Chats\n{}".format("\n".join([peer['jid'] for peer in chat_partners.values()])))
 
     # let's talk
     username = "other_username"

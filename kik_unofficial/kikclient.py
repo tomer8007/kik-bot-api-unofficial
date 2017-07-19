@@ -1,13 +1,13 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import socket
 import ssl
+import time
 from enum import IntEnum
 
-import binascii
 import rsa
-import time
 from bs4 import BeautifulSoup
 
 from kik_unofficial.cryptographicutils import KikCryptographicUtils
@@ -208,21 +208,89 @@ class KikClient:
         self._make_request(data)
         response = self._get_response()
 
-        # parse roster
-        chat_partners = []
-        for wht in response[0]:
-            user_info = dict()
-            user_info['jid'] = wht.attrib['jid']
-            for child in wht:
-                user_info[child.tag[child.tag.find('}') + 1:]] = child.text
-            user_info['node'] = user_info['jid'][:user_info['jid'].find('@')]
-            chat_partners.append(user_info)
+        chat_partners = list(map(self._parse_chat_jid, list(response.query.children)))
+        chat_partner_dict = {user['jid']: user for user in chat_partners}
         self._log("[+] Fine.")
 
-        return chat_partners
+        return chat_partner_dict
+
+    def _parse_chat_jid(self, element):
+        if element.name == 'g':
+            return KikClient._parse_group_jid(element)
+        elif element.name == 'item':
+            return KikClient._parse_user_jid(element)
+        else:
+            self._log("[-] Unknown peer type: {}".format(element), DebugLevel.WARNING)
+
+    @staticmethod
+    def _parse_user_jid(element):
+        jid_info = dict()
+        jid_info["type"] = 'user'
+        jid_info["jid"] = element['jid']
+        jid_info["node"] = KikClient.jid_to_node(element['jid'])
+        jid_info["display_name"] = element.find('display-name').text
+        jid_info["username"] = element.find('username').text
+        if element.find('pic'):
+            jid_info["picture_url"] = element.find('pic').text
+        return jid_info
+
+    @staticmethod
+    def _parse_group_jid(element):
+        jid_info = dict()
+        public = element.has_attr('is-public') and element['is-public'] == 'true'
+        jid_info["jid"] = element['jid']
+        jid_info['public'] = public
+
+        if element.pic:
+            jid_info['picture_url'] = element.pic.text
+
+        jid_info["display_name"] = element.n.text if element.n else None
+        jid_info["picture_url"] = element.find('pic').text if element.pic else None
+        users = element.findAll('m')
+        if public:
+            jid_info['type'] = 'group'
+            jid_info["code"] = element.code.text
+            jid_info['users'] = list(map(KikClient.extract_chat_user_info, users))
+        else:
+            jid_info['type'] = 'group'
+            jid_info['users'] = list(map(KikClient.extract_chat_user_info, users))
+
+        return jid_info
+
+    @staticmethod
+    def extract_public_chat_user_info(user):
+        info = {'first-name': user.find('first-name').text}
+        picture_url = user.find('pic')
+        if picture_url:
+            info['picture_url'] = picture_url
+        if user.a:
+            info['a'] = user.a
+        if user.s:
+            info['s'] = user.s
+        return info
+
+    @staticmethod
+    def extract_chat_user_info(user):
+        info = {}
+        firstname = user.find('first-name')
+        if firstname:
+            info['first_name'] = firstname.text
+        if user.pic:
+            info['picture_url'] = user.pic.text
+        if user.a:
+            info['a'] = user.a
+        if user.s:
+            info['s'] = user.s
+        if not user.pic and not firstname:
+            info['jid'] = user.text
+        return info
+
+    @staticmethod
+    def jid_to_node(jid):
+        return jid.replace('@talk.kik.com', '')
 
     def get_info_for_node(self, node):
-        jid = node + "@talk.kik.com"
+        jid = node if "@" in node else node + "@talk.kik.com"
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:friend:batch">'
                 '<item jid="{}" />'
@@ -230,13 +298,7 @@ class KikClient:
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid)
         self._make_request(data)
         response = self._get_response()
-
-        jid_info = dict()
-        jid_info["node"] = node
-        jid_info["display_name"] = response.find('display-name').text
-        jid_info["username"] = response.find('username').text
-        jid_info["picture_url"] = response.find('pic').text
-        return jid_info
+        return self._parse_user_jid(response.query.success.item)
 
     def get_info_for_username(self, username):
         data = ('<iq type="get" id="{}">'
@@ -258,10 +320,22 @@ class KikClient:
         jid_info["picture_url"] = response.find('pic').text if response.find('pic') is not None else None
         return jid_info
 
+    def get_info_for_group(self, code):
+        data = ('<iq type="get" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g action="search">'
+                '<code>{}</code>'
+                '</g>'
+                '</query>'
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), code)
+        self._make_request(data)
+        response = self._get_response()
+        return self._parse_group_jid(response)
+
     def send_message(self, username, body, groupchat=False):
         self._log('[+] Sending message "{}" to {}...'.format(body, username))
 
-        jid = self._resolve_username(username)
+        jid = username if groupchat else self._resolve_username(username)
         group_type = "groupchat" if groupchat else "chat"
         unix_timestamp = str(int(round(time.time() * 1000)))
         cts = "1494428808185"
@@ -297,7 +371,7 @@ class KikClient:
             self._log("[-] Failed, message was not acknowledged", DebugLevel.ERROR)
             return False
         elif not is_delivered or receipt_id == "":
-            self._log("[+] Message '"+uuid+"' seems to be sent but not delivered", DebugLevel.WARNING)
+            self._log("[+] Message '" + uuid + "' seems to be sent but not delivered", DebugLevel.WARNING)
         else:
             self._log("[+] Message receipt id: " + receipt_id)
 
@@ -318,7 +392,7 @@ class KikClient:
     def send_is_typing(self, username, is_typing, groupchat=False):
         self._log('[+] Sending is_typing = {}...'.format(is_typing))
 
-        jid = self._resolve_username(username)
+        jid = username if groupchat else self._resolve_username(username)
         unix_timestamp = str(int(time.time() * 1000))
         uuid = KikCryptographicUtils.make_kik_uuid()
         group_type = "groupchat" if groupchat else "is-typing"
@@ -376,10 +450,10 @@ class KikClient:
 
     def get_next_event(self, timeout=None):
         response = ""
-        while response == "":
+        while response == "" or response[-1:] != ">":
             self.wrappedSocket.settimeout(timeout)
             try:
-                response = self.wrappedSocket.recv(16384).decode('UTF-8').strip()
+                response = response + self.wrappedSocket.recv(16384).decode('UTF-8').strip()
             except socket.timeout:
                 return None
 
@@ -416,18 +490,21 @@ class KikClient:
                     info["message_id"] = element.receipt.msgid['id']
                 else:
                     info["type"] = message_type
-                    self._log("[-] Receipt received but not type 'read' or 'delivered': {0}".format(response), DebugLevel.WARNING)
+                    self._log("[-] Receipt received but not type 'read' or 'delivered': {0}".format(response),
+                              DebugLevel.WARNING)
             elif message_type == "is-typing":
                 info["type"] = "is_typing"
                 is_typing_value = element.find('is-typing')['val']
                 info["is_typing"] = is_typing_value == "true"
             elif message_type == "chat":
-                if element.body is None:
-                    self._log("[-] Received message without body: ", DebugLevel.WARNING)
-                    self._log(element.prettify(), DebugLevel.WARNING)
-                    return None
                 info["type"] = "message"
-                info["body"] = element.body.text
+                if element.body:
+                    info["body"] = element.body.text
+                elif element.find('content'):
+                    self.parse_content_message(info, element, False)
+                else:
+                    self._log("[-] Unknown chat message: ", DebugLevel.WARNING)
+                    self._log(element.prettify(), DebugLevel.WARNING)
                 info["message_id"] = element['id']
             elif message_type == "groupchat":
                 if element.g:
@@ -442,8 +519,10 @@ class KikClient:
                     info["type"] = "group_typing"
                     is_typing_value = element.find('is-typing')['val']
                     info["is_typing"] = is_typing_value == "true"
+                elif element.find('content'):
+                    self.parse_content_message(info, element, True)
                 else:
-                    self._log("[-] Groupchat message doesn't contain body or is-typing: ", DebugLevel.WARNING)
+                    self._log("[-] Unknown groupchat message: ", DebugLevel.WARNING)
                     self._log(element.prettify(), DebugLevel.WARNING)
             else:
                 self._log("[-] Unknown message type received: " + message_type, DebugLevel.WARNING)
@@ -453,6 +532,44 @@ class KikClient:
             self._log(element.prettify(), DebugLevel.WARNING)
 
         return info
+
+    def parse_content_message(self, info, element, groupchat=False):
+        info["type"] = "content"
+        info["app_id"] = element.find("content")["app-id"]
+        items = element.findAll("item")
+        if items:
+            for item in items:
+                if item.key and item.val:
+                    info[item.key.text] = item.val.text
+        if info["app_id"] == "com.kik.ext.stickers":
+            info["type"] = "sticker"
+        elif info["app_id"] == "com.kik.ext.gallery":
+            info["type"] = "gallery"
+            info['file_url'] = element.find('file-url').text
+            info['file_name'] = element.find('file-name').text
+        elif info["app_id"] == "com.kik.ext.camera":
+            info["type"] = "camera"
+            info['file_url'] = element.find('file-url').text
+            info['file_name'] = element.find('file-name').text
+        elif info["app_id"] == "com.kik.ext.gif":
+            info["type"] = "gif"
+            info['uris'] = {}
+            uris = element.find('uris')
+            for uri in uris:
+                info['uris'][uri['file-content-type']] = uri.text
+        elif info["app_id"] == "com.kik.cards":
+            info["type"] = "card"
+            info['app_name'] = element.find('app-name').text
+            url_element = element.find('uri', {'platform': 'cards'})
+            if info['app_name'] == 'ScribbleChat':
+                info['video_url'] = element.find('uri', {'type': 'video'}).text
+            elif url_element:
+                info['url'] = url_element.text
+        else:
+            self._log("[-] Unknown content type: {}".format(info["app_id"]))
+            self._log(element.prettify())
+        if groupchat:
+            info["type"] = "group_" + info["type"]
 
     def _send_packet(self, packet):
         self.wrappedSocket.send(packet)
@@ -489,8 +606,8 @@ class KikClient:
                     return node + jid_domain
 
         for jid in self.jid_cache_list:
-                if jid[:jid.rfind('_')] == username:
-                    return jid
+            if jid[:jid.rfind('_')] == username:
+                return jid
 
         jid_info = self.get_info_for_username(username)
         if jid_info is None:

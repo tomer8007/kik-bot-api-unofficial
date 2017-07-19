@@ -2,10 +2,11 @@ import sys
 import time
 
 from kik_unofficial.kikclient import KikClient
+from kik_unofficial.kikclient import DebugLevel
 
 
 def main():
-    username, password = "shlomo91", "123456"
+    username, password = "your_kik_username", "your_kik_password"
     kik_client = KikClient(username, password)
 
     print("[+] Listening for incoming events.")

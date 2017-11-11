@@ -141,8 +141,10 @@ class KikClient:
         user_info["email"] = response.find('email').text
         user_info["first"] = response.find('first').text
         user_info["last"] = response.find('last').text
-        user_info["public_key"] = response.find('record', {'pk': 'messaging_pub_key'}).text
-        user_info["private_key"] = response.find('record', {'pk': 'enc_messaging_priv_key'}).text
+        pubkey = response.find('record', {'pk': 'messaging_pub_key'})
+        if pubkey:
+            user_info["public_key"] = pubkey.text
+            user_info["private_key"] = response.find('record', {'pk': 'enc_messaging_priv_key'}).text
         user_info["chat_list"] = self._parse_chat_list_bin(
             Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
 
@@ -206,7 +208,7 @@ class KikClient:
                 '<query p="8" xmlns="jabber:iq:roster" />'
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid())
         self._make_request(data)
-        response = self._get_response()
+        response = self._get_full_response()
 
         chat_partners = list(map(self._parse_chat_jid, list(response.query.children)))
         chat_partner_dict = {user['jid']: user for user in chat_partners}
@@ -582,6 +584,16 @@ class KikClient:
 
     def _get_response(self):
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        soup = BeautifulSoup(response, features='xml')
+        return next(iter(soup.children))
+
+    def _get_full_response(self):
+        response = ""
+        while response == "" or response[-1:] != ">":
+            try:
+                response = response + self.wrappedSocket.recv(16384).decode('UTF-8').strip()
+            except socket.timeout:
+                return None
         soup = BeautifulSoup(response, features='xml')
         return next(iter(soup.children))
 

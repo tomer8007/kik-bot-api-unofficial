@@ -6,14 +6,8 @@ from kik_unofficial.kikclient import KikCryptographicUtils
 
 
 def main():
-    username, password = "shlomo91", "123456"
+    username, password = "your_kik_username", "your_kik_password"
     kik_client = KikClient(username, password)
-
-    uuid = KikCryptographicUtils.make_kik_uuid()
-
-    packet = "<iq type=\"set\" id=\"f5956f8e-ba4e-4fc6-8348-48dffd73c39a\"><query xmlns=\"kik:groups:admin\"><g jid=\"1099909556061_g@groups.kik.com\" action=\"join\"><code>#music</code><token>Q0FFU21nRUtsd0VCQVFNQWVJQ2NxQ0NoNjZKdktzMU45aHhEN0ZmSXowdWR4cUZpZWhlWjYzc2UzV3AxQUFBQWJqQnNCZ2txaGtpRzl3MEJCd2FnWHpCZEFnRUFNRmdHQ1NxR1NJYjNEUUVIQVRBZUJnbGdoa2dCWlFNRUFTNHdFUVFNYm1PZHhyMnRHUk5jU3hWcEFnRVFnQ3NuU1pFZEJhT2FWWUQ4MlZPQXRDaWctazFvWnJod3gxNmpOMmdLMHBFUlpFbUJvOEJIUkN1N09ISEZHaEFrb3IxbUdiV2tsZmNKVVJSd1huTHdJalNJMW5hZ2NPbnBZUl9GaGxQUWhwaU9aZVdBUWdaa0dXbVc1WUxuUGU3aWVDOWI1cVdXUk9sZGcwTWU1ZHc0NUhLdFRoT0I</token></g></query></iq>"
-    kik_client._make_request(packet)
-    print(kik_client._get_response())
 
     print("[+] Listening for incoming events.")
 

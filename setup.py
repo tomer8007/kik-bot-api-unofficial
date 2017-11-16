@@ -30,7 +30,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
 
-    keywords=['kik', 'bot', 'api', 'unofficial', 'python',],
+    keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
 
     packages=find_packages(exclude=['docs', 'test']),
 

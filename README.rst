@@ -7,8 +7,12 @@ essentially automated humans.
 It basically lets you do the same things as the offical Kik app by
 pretending to be a real smartphone client: It communicates with Kik’s
 servers at ``talk1110an.kik.com:5223`` over a modified version of the
-`XMPP`_ protocol. ## Installation and dependencies ## First, make sure
-you are using **Python 3.4**, not python 2.7. Second, just clone it with
+`XMPP`_ protocol. 
+
+Installation and dependencies
+-----
+
+First, make sure you are using **Python 3.4**, not python 2.7. Second, just clone it with
 ``git``:
 
 ::

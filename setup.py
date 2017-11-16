@@ -18,8 +18,8 @@ setup(
 
     url='https://github.com/tomer8007/kik-bot-api-unofficial',
 
-    author='tomer8007',
-    author_email='',
+    author='Tomer',
+    author_email='tomer8007@gmail.com',
 
     license='MIT',
 
@@ -30,7 +30,7 @@ setup(
         'Programming Language :: Python :: 3',
     ],
 
-    keywords='kik api unofficial',
+    keywords=['kik', 'bot', 'api', 'unofficial', 'python',],
 
     packages=find_packages(exclude=['docs', 'test']),
 

@@ -7,7 +7,7 @@ First, make sure you are using **Python 3.4**, not python 2.7. Second, just inst
 ```
 pip3 install kik-unofficial
 ```
-Or, directly from github:
+Or, directly from GitHub:
 ```
 git clone https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-unofficial-api

@@ -2,7 +2,6 @@ import sys
 import time
 
 from kik_unofficial.kikclient import KikClient
-from kik_unofficial.kikclient import KikCryptographicUtils
 
 
 def main():

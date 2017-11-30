@@ -10,8 +10,9 @@ from enum import IntEnum
 import rsa
 from bs4 import BeautifulSoup
 
-from kik_unofficial.cryptographicutils import KikCryptographicUtils
+from kik_unofficial.cryptographic_utils import KikCryptographicUtils
 from kik_unofficial.utilities import Utilities
+from kik_unofficial.kik_exceptions import *
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -26,75 +27,45 @@ class InvalidAckException(Exception):
     pass
 
 
-class KikErrorException(Exception):
-    pass
-
-
 class KikClient:
     debug_level = DebugLevel.VERBOSE
     user_info = None
-    jid_cache_list = []
+    jid_cache_list = [] # shared for all instances
 
-    def __init__(self, username, password, debug_level=DebugLevel.VERBOSE):
+    # hardcoded by default
+    device_id = "167da12427ee4dc4a36b40e8debafc25"
+    kik_version = "11.1.1.12218"
+    android_id = "c10d47ba7ee17193"
+
+    def __init__(self, username=None, password=None, debug_level=DebugLevel.VERBOSE):
+        self.user_info = None
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(10)
         self.wrappedSocket = ssl.wrap_socket(self.sock)
         self.debug_level = debug_level
-        connection_success = self.connect_to_kik_server()
-        if not connection_success:
-            raise Exception("Could not connect to kik server")
-        login_success = self.login(username, password)
-        if not login_success:
-            raise Exception("Could not log in")
-        session_success = self.establish_session(self.user_info["username"], self.user_info["node"], password)
-        if not session_success:
-            raise Exception("Could not establish session")
+        self.connect_to_kik_server()
+        if username is not None and password is not None:
+            self.login(username, password)
 
     def get_user_info(self):
         return self.user_info
 
     def connect_to_kik_server(self):
-        version = "11.1.1.12218"
-        timestamp = "1496333366683"
-        sid = KikCryptographicUtils.make_kik_uuid()
-        device_id = "167da12427ee4dc4a36b40e8debafc25"
-
-        # some super secret cryptographic stuff - computing 'cv' and 'signed'
-        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
-                          "/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT" \
-                          "/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq" \
-                          "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
-                          "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
-                          "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
-        private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
-        signature = rsa.sign((device_id + ":" + version + ":" + timestamp + ":" + sid).encode('UTF-8'), private_key,
-                             'SHA-256')
-        signature = base64.b64encode(signature, '-_'.encode('UTF-8')).decode('UTF-8')[:-2]
-        hmac_data = timestamp + ":" + "CAN" + device_id
-        hmac_secret_key = KikCryptographicUtils.build_hmac_key()
-        cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode('UTF-8'), hashlib.sha1).digest()).decode(
-            'UTF-8')
-
-        mapp = {'cv': cv, 'v': version, 'anon': "1", 'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp,
-                'lang': 'en_US', 'dev': 'CAN' + device_id, 'signed': signature}
-        initial_connection_payload = KikCryptographicUtils.make_connection_payload(
-            KikCryptographicUtils.sort_kik_map(mapp)).encode('UTF-8')
+        initial_connection_payload = '<k anon="">'.encode('UTF-8')
 
         self._log("[+] Connecting to kik server...")
         self.wrappedSocket.connect((HOST, PORT))
         self.wrappedSocket.send(initial_connection_payload)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
-            self._log("[-] Could not connect: " + response, DebugLevel.ERROR)
-            return False
+            raise KikErrorException(response, "[-] Could not connect to kik server: " + response)
 
         self._log("[+] Connected.")
-        return True
 
-    def login(self, username, password):
+    def login(self, username, password, establish_session_on_success=True):
         self._log("[+] Logging in (username: " + username + ", password: " + password + ")...")
 
-        device_id = "167da12427ee4dc4a36b40e8debafc25"
+        device_id = self.device_id
         password_key = KikCryptographicUtils.key_from_password(username, password)
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
@@ -107,7 +78,7 @@ class KikClient:
                 '<device-type>android</device-type>'
                 '<brand>generic</brand>'
                 '<logins-since-install>1</logins-since-install>'
-                '<version>11.1.1.12218</version>'
+                '<version>{}</version>'
                 '<lang>en_US</lang>'
                 '<android-sdk>19</android-sdk>'
                 '<registrations-since-install>0</registrations-since-install>'
@@ -115,25 +86,32 @@ class KikClient:
                 '<android-id>c10d47ba7ee17193</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id)
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id, self.kik_version)
         self._make_request(data)
         response = self._get_response()
 
         if response.error:
-            self._log("[-] Error! Code: {}".format(response.error['code']), DebugLevel.ERROR)
-            self._log(response.error.prettify(), DebugLevel.ERROR)
-            return False
-        captcha = response.find('captcha-type')
-        if captcha:
-            self._log("[-] Captcha! URL:" + captcha, DebugLevel.WARNING)
-            return False
-        if response.find('password-mismatch'):
-            self._log("[-] Password mismatch", DebugLevel.WARNING)
-            return False
+            if response.find('password-mismatch'):
+                self._log("[-] Password mismatch, can't login", DebugLevel.ERROR)
+                raise KikLoginException(response.error, "Password mismatch")
+            elif response.error.find('not-registered'):
+                self._log("[-] User not registered, can't login", DebugLevel.ERROR)
+                raise KikLoginException(response.error, "Not registered")
+            else:
+                captcha = response.find('captcha-url')
+                if captcha:
+                    self._log("[-} Encountered a captcha. URL: " + captcha.string, DebugLevel.ERROR)
+                    raise KikCaptchaException(response.error, "Captcha when trying to log in! URL: " + captcha.string, captcha.string)
+                else:
+                    self._log("[-] Kik error code: {}".format(response.error['code']), DebugLevel.ERROR)
+                    self._log(response.error.prettify(), DebugLevel.ERROR)
+                    raise KikLoginException(response.error, "Kik error code: {}".format(response.error['code']))
+
         if response.find("kik:error"):
-            self._log("[-] Could not log in. response:", DebugLevel.ERROR)
-            self._log(response.prettify(), DebugLevel.ERROR)
-            return False
+            captcha = response.find('captcha-type')
+            if captcha:
+                self._log("[-} Encountered a captcha. URL: " + captcha.string, DebugLevel.ERROR)
+                raise KikLoginException(response, "Captcha! URL:" + captcha.string)
 
         user_info = dict()
         user_info["node"] = response.find('node').text
@@ -145,14 +123,18 @@ class KikClient:
         if pubkey:
             user_info["public_key"] = pubkey.text
             user_info["private_key"] = response.find('record', {'pk': 'enc_messaging_priv_key'}).text
-        user_info["chat_list"] = self._parse_chat_list_bin(
-            Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
+            user_info["chat_list"] = self._parse_chat_list_bin(
+                Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
 
         self._log("[+] Logged in.")
         if self.debug_level == DebugLevel.VERBOSE:
             Utilities.print_dictionary(user_info)
+
         self.user_info = user_info
-        return user_info
+        if establish_session_on_success:
+            self.establish_session(self.user_info["username"], self.user_info["node"], password)
+
+        return self.user_info
 
     def establish_session(self, username, node, password):
         self._log("[+] Establishing session...")
@@ -165,7 +147,7 @@ class KikClient:
         self.wrappedSocket.connect((HOST, PORT))
 
         jid = node + "@talk.kik.com"
-        jid_with_resource = jid + "/CAN167da12427ee4dc4a36b40e8debafc25"
+        jid_with_resource = jid + "/CAN" + self.device_id
         timestamp = "1496333389122"
         sid = KikCryptographicUtils.make_kik_uuid()
         version = "11.1.1.12218"
@@ -196,11 +178,8 @@ class KikClient:
         self.wrappedSocket.send(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
-            self._log("[-] Could not init session: " + response, DebugLevel.ERROR)
-            return False
+            raise KikErrorException(response, "Could not init session: " + response)
         self._log("[+] Session established.")
-
-        return True
 
     def get_chat_partners(self):
         self._log("[+] Getting roster (chat partners list)...")
@@ -210,86 +189,11 @@ class KikClient:
         self._make_request(data)
         response = self._get_full_response()
 
-        chat_partners = list(map(self._parse_chat_jid, list(response.query.children)))
+        chat_partners = list(map(self._parse_chat_partner, list(response.query.children)))
         chat_partner_dict = {user['jid']: user for user in chat_partners}
         self._log("[+] Fine.")
 
         return chat_partner_dict
-
-    def _parse_chat_jid(self, element):
-        if element.name == 'g':
-            return KikClient._parse_group_jid(element)
-        elif element.name == 'item':
-            return KikClient._parse_user_jid(element)
-        else:
-            self._log("[-] Unknown peer type: {}".format(element), DebugLevel.WARNING)
-
-    @staticmethod
-    def _parse_user_jid(element):
-        jid_info = dict()
-        jid_info["type"] = 'user'
-        jid_info["jid"] = element['jid']
-        jid_info["node"] = KikClient.jid_to_node(element['jid'])
-        jid_info["display_name"] = element.find('display-name').text
-        jid_info["username"] = element.find('username').text
-        if element.find('pic'):
-            jid_info["picture_url"] = element.find('pic').text
-        return jid_info
-
-    @staticmethod
-    def _parse_group_jid(element):
-        jid_info = dict()
-        public = element.has_attr('is-public') and element['is-public'] == 'true'
-        jid_info["jid"] = element['jid']
-        jid_info['public'] = public
-
-        if element.pic:
-            jid_info['picture_url'] = element.pic.text
-
-        jid_info["display_name"] = element.n.text if element.n else None
-        jid_info["picture_url"] = element.find('pic').text if element.pic else None
-        users = element.findAll('m')
-        if public:
-            jid_info['type'] = 'group'
-            jid_info["code"] = element.code.text
-            jid_info['users'] = list(map(KikClient.extract_chat_user_info, users))
-        else:
-            jid_info['type'] = 'group'
-            jid_info['users'] = list(map(KikClient.extract_chat_user_info, users))
-
-        return jid_info
-
-    @staticmethod
-    def extract_public_chat_user_info(user):
-        info = {'first-name': user.find('first-name').text}
-        picture_url = user.find('pic')
-        if picture_url:
-            info['picture_url'] = picture_url
-        if user.a:
-            info['a'] = user.a
-        if user.s:
-            info['s'] = user.s
-        return info
-
-    @staticmethod
-    def extract_chat_user_info(user):
-        info = {}
-        firstname = user.find('first-name')
-        if firstname:
-            info['first_name'] = firstname.text
-        if user.pic:
-            info['picture_url'] = user.pic.text
-        if user.a:
-            info['a'] = user.a
-        if user.s:
-            info['s'] = user.s
-        if not user.pic and not firstname:
-            info['jid'] = user.text
-        return info
-
-    @staticmethod
-    def jid_to_node(jid):
-        return jid.replace('@talk.kik.com', '')
 
     def get_info_for_node(self, node):
         jid = node if "@" in node else node + "@talk.kik.com"
@@ -300,9 +204,10 @@ class KikClient:
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid)
         self._make_request(data)
         response = self._get_response()
-        return self._parse_user_jid(response.query.success.item)
+        return self._parse_user_jid_element(response.query.success.item)
 
     def get_info_for_username(self, username):
+        self._log("[+] Getting info for username '" + username + "'...")
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:friend">'
                 '<item username="{}" />'
@@ -312,27 +217,54 @@ class KikClient:
         response = self._get_response()
 
         if response.error:
-            self._log("[-] Failed to get user info: " + response.error.text, DebugLevel.WARNING)
-            raise KikErrorException(response.error.text)
+            if response.error.text == "User not found":
+                self._log("[-] No users were found for username '" + username + "'")
+                return None
+            else:
+                self._log("[-] Failed to get user info: " + response.error.text, DebugLevel.WARNING)
+                raise KikErrorException(response.error.text)
 
         jid_info = dict()
         jid_info["jid"] = response.contents[0].contents[0]['jid']
         jid_info["display_name"] = response.find('display-name').text
         jid_info["username"] = response.find('username').text
         jid_info["picture_url"] = response.find('pic').text if response.find('pic') is not None else None
+
+        self._log("[+] Okay")
+
         return jid_info
 
-    def get_info_for_group(self, code):
+    def get_info_for_group(self, group_hashtag, add_hashtag_symbol=True):
+        # essentially doing a group search
+        if add_hashtag_symbol and not group_hashtag.startswith("#"):
+            group_hashtag = "#" + group_hashtag
+
+        self._log("[+] Getting info for group (code: " + str(group_hashtag) + ")...")
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:groups:admin">'
                 '<g action="search">'
                 '<code>{}</code>'
                 '</g>'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), code)
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), group_hashtag)
         self._make_request(data)
         response = self._get_response()
-        return self._parse_group_jid(response)
+        if response.error:
+            self._log("[-] Error when trying to get group info:", DebugLevel.ERROR)
+            self._log(response.error.prettify(), DebugLevel.ERROR)
+            raise KikErrorException(response.error, "Unable to get info for group, code: " + str(group_hashtag))
+
+        if response.find("g") is None:
+            self._log("[-] No groups found for hashtag " + group_hashtag)
+            return None
+
+        groups_info = []
+        for group in response.findAll("g"):
+            groups_info.append(self._parse_group_element(group))
+
+        self._log("[+] Okay")
+
+        return groups_info
 
     def send_message(self, username, body, groupchat=False):
         self._log('[+] Sending message "{}" to {}...'.format(body, username))
@@ -450,6 +382,49 @@ class KikClient:
         self._make_request(data)
         self._log("[+] Okay")
 
+    def sign_up(self, email, username, password, first_name, last_name, birthday="1974-11-20"):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+        passkey_e = KikCryptographicUtils.key_from_password(email, password)
+        passkey_u = KikCryptographicUtils.key_from_password(username, password)
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="jabber:iq:register">'
+                '<email>{}</email>'
+                '<passkey-e>{}</passkey-e>'
+                '<passkey-u>{}</passkey-u>'
+                '<device-id>{}</device-id>'
+                '<username>{}</username>'
+                '<first>{}</first>'
+                '<last>{}</last>'
+                '<birthday>{}</birthday>'
+                '<version>{}</version>'
+                '<device-type>android</device-type>'
+                '<model>Nexus 7</model>'
+                '<android-sdk>25</android-sdk>'
+                '<registrations-since-install>1</registrations-since-install>'
+                '<install-date>unknown</install-date>'
+                '<logins-since-install>0</logins-since-install>'
+                '<prefix>CAN</prefix>'
+                '<lang>en_US</lang>'
+                '<brand>google</brand>'
+                '<android-id>{}</android-id>'
+                '</query>'
+                '</iq>').format(uuid, email, passkey_e, passkey_u, self.device_id, username, first_name, last_name, birthday, self.kik_version, self.android_id)
+
+        self._log("[+] Registering...")
+        self._make_request(data)
+        response = self._get_response()
+        if response.error:
+            captcha = response.find('captcha-url')
+            if captcha:
+                self._log("[-} Encountered a captcha. URL: " + captcha.string, DebugLevel.ERROR)
+                raise KikCaptchaException(response.error, "Captcha when trying to sign up! URL: " + captcha.string, captcha.string)
+            else:
+                self._log("[-] Kik error code: {}".format(response.error['code']), DebugLevel.ERROR)
+                self._log(response.error.prettify(), DebugLevel.ERROR)
+                raise KikLoginException(response.error, "Kik error code: {}".format(response.error['code']))
+
+        self._log("[+] Registration seems successful")
+
     def get_next_event(self, timeout=None):
         response = ""
         while response == "" or response[-1:] != ">":
@@ -517,6 +492,9 @@ class KikClient:
                 if element.body:
                     info["type"] = "group_message"
                     info["body"] = element.body.text
+                elif element.sysmsg:
+                    info["type"] = "system_message"
+                    info["message"] = element.sysmsg.text
                 elif element.find('is-typing'):
                     info["type"] = "group_typing"
                     is_typing_value = element.find('is-typing')['val']
@@ -573,6 +551,69 @@ class KikClient:
         if groupchat:
             info["type"] = "group_" + info["type"]
 
+    def set_device_identifiers(self, device_id, android_id):
+        self.device_id = device_id
+        self.android_id = android_id
+
+    def _parse_chat_partner(self, element):
+        if element.name == 'g':
+            return KikClient._parse_group_element(element)
+        elif element.name == 'item':
+            return KikClient._parse_user_jid_element(element)
+        else:
+            self._log("[-] Unknown peer type: {}".format(element), DebugLevel.WARNING)
+
+    @staticmethod
+    def _parse_user_jid_element(element):
+        jid_info = dict()
+        jid_info["type"] = 'user'
+        jid_info["jid"] = element['jid']
+        jid_info["node"] = KikClient.jid_to_node(element['jid'])
+        jid_info["display_name"] = element.find('display-name').text
+        jid_info["username"] = element.find('username').text
+        if element.find('pic'):
+            jid_info["picture_url"] = element.find('pic').text
+        return jid_info
+
+    @staticmethod
+    def _parse_group_element(element):
+        jid_info = dict()
+        is_public = element.has_attr('is-public') and element['is-public'] == 'true'
+        jid_info["jid"] = element['jid']
+        jid_info['is_public'] = is_public
+
+        if element.pic:
+            jid_info['picture_url'] = element.pic.text
+
+        users = element.findAll('m')
+        jid_info["display_name"] = element.n.text if element.n else None
+        jid_info["picture_url"] = element.find('pic').text if element.pic else None
+        jid_info["code"] = element.code.text
+        jid_info['users'] = list(map(KikClient._parse_user_element, users))
+        if is_public:
+            jid_info['type'] = 'group'
+
+        return jid_info
+
+    @staticmethod
+    def _parse_user_element(user):
+        info = {}
+        if user.find('first-name'):
+            info['first_name'] = user.find('first-name').text
+        if user.find("pic"):
+            info['picture_url'] = user.find("pic").text
+        if user.a or user["a"]:
+            info['is_admin'] = user.a == "1" or user["a"] == "1"
+        if user.s or user["s"]:
+            info['is_owner'] = user.s == "1" or user["s"] == "1"
+        if not user.find("pic") and not user.find('first-name'):
+            info['jid'] = user.text
+        return info
+
+    @staticmethod
+    def jid_to_node(jid):
+        return jid.replace('@talk.kik.com', '')
+
     def _send_packet(self, packet):
         self.wrappedSocket.send(packet)
 
@@ -584,6 +625,8 @@ class KikClient:
 
     def _get_response(self):
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
+        if response == '':
+            raise KikEmptyResponseException(response, "Kik server returned empty response")
         soup = BeautifulSoup(response, features='xml')
         return next(iter(soup.children))
 
@@ -593,7 +636,8 @@ class KikClient:
             try:
                 response = response + self.wrappedSocket.recv(16384).decode('UTF-8').strip()
             except socket.timeout:
-                return None
+                self._log("[-] Timeout in waiting for response")
+                raise KikEmptyResponseException(response, "Kik server returned empty response")
         soup = BeautifulSoup(response, features='xml')
         return next(iter(soup.children))
 
@@ -603,7 +647,7 @@ class KikClient:
         if not is_valid:
             self._log("[-] Ack id was not found:")
             self._log(response)
-            raise InvalidAckException
+            raise KikInvalidAckException
         return True
 
     def _resolve_username(self, username):

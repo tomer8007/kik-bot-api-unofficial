@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 import hmac
+import re
 import socket
 import ssl
 import time
@@ -86,7 +87,8 @@ class KikClient:
                 '<android-id>c10d47ba7ee17193</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id, self.kik_version)
+                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id,
+                                self.kik_version)
         self._make_request(data)
         response = self._get_response()
 
@@ -101,7 +103,8 @@ class KikClient:
                 captcha = response.find('captcha-url')
                 if captcha:
                     self._log("[-} Encountered a captcha. URL: " + captcha.string, DebugLevel.ERROR)
-                    raise KikCaptchaException(response.error, "Captcha when trying to log in! URL: " + captcha.string, captcha.string)
+                    raise KikCaptchaException(response.error, "Captcha when trying to log in! URL: " + captcha.string,
+                                              captcha.string)
                 else:
                     self._log("[-] Kik error code: {}".format(response.error['code']), DebugLevel.ERROR)
                     self._log(response.error.prettify(), DebugLevel.ERROR)
@@ -123,8 +126,9 @@ class KikClient:
         if pubkey:
             user_info["public_key"] = pubkey.text
             user_info["private_key"] = response.find('record', {'pk': 'enc_messaging_priv_key'}).text
-            user_info["chat_list"] = self._parse_chat_list_bin(
-                Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
+            if response.find('record', {'pk': 'chat_list_bins'}):
+                user_info["chat_list"] = self._parse_chat_list_bin(
+                    Utilities.decode_base64(response.find('record', {'pk': 'chat_list_bins'}).text.encode('UTF-8')))
 
         self._log("[+] Logged in.")
         if self.debug_level == DebugLevel.VERBOSE:
@@ -382,7 +386,7 @@ class KikClient:
         self._make_request(data)
         self._log("[+] Okay")
 
-    def sign_up(self, email, username, password, first_name, last_name, birthday="1974-11-20"):
+    def sign_up(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         uuid = KikCryptographicUtils.make_kik_uuid()
         passkey_e = KikCryptographicUtils.key_from_password(email, password)
         passkey_u = KikCryptographicUtils.key_from_password(username, password)
@@ -396,6 +400,7 @@ class KikClient:
                 '<first>{}</first>'
                 '<last>{}</last>'
                 '<birthday>{}</birthday>'
+                '{}'
                 '<version>{}</version>'
                 '<device-type>android</device-type>'
                 '<model>Nexus 7</model>'
@@ -408,7 +413,8 @@ class KikClient:
                 '<brand>google</brand>'
                 '<android-id>{}</android-id>'
                 '</query>'
-                '</iq>').format(uuid, email, passkey_e, passkey_u, self.device_id, username, first_name, last_name, birthday, self.kik_version, self.android_id)
+                '</iq>').format(uuid, email, passkey_e, passkey_u, self.device_id, username, first_name, last_name,
+                                birthday, '<challenge><response>{}</response></challenge>'.format(captcha_result) if captcha_result else '', self.kik_version, self.android_id)
 
         self._log("[+] Registering...")
         self._make_request(data)
@@ -417,13 +423,17 @@ class KikClient:
             captcha = response.find('captcha-url')
             if captcha:
                 self._log("[-} Encountered a captcha. URL: " + captcha.string, DebugLevel.ERROR)
-                raise KikCaptchaException(response.error, "Captcha when trying to sign up! URL: " + captcha.string, captcha.string)
+                raise KikCaptchaException(response.error, "Captcha when trying to sign up! URL: " + captcha.string,
+                                          captcha.string)
             else:
                 self._log("[-] Kik error code: {}".format(response.error['code']), DebugLevel.ERROR)
                 self._log(response.error.prettify(), DebugLevel.ERROR)
                 raise KikLoginException(response.error, "Kik error code: {}".format(response.error['code']))
 
-        self._log("[+] Registration seems successful")
+        if not response.find('node'):
+            raise KikErrorException(response, "No node in registration response")
+        node = response.find('node').text
+        self._log("[+] Registration seems successful, node: {}".format(node))
 
     def get_next_event(self, timeout=None):
         response = ""
@@ -647,7 +657,7 @@ class KikClient:
         if not is_valid:
             self._log("[-] Ack id was not found:")
             self._log(response)
-            raise KikInvalidAckException
+            raise KikInvalidAckException(response)
         return True
 
     def _resolve_username(self, username):
@@ -696,3 +706,35 @@ class KikClient:
             names.append(name.decode('UTF-8'))
             current_index = current_index + 6 + name_length
         return names
+
+    def validate_username(self, username):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = """
+<iq type="get" id="{}">
+    <query xmlns="kik:iq:check-unique">
+    <username>{}</username>
+    </query>
+</iq>
+""".format(uuid, username)
+        self._make_request(data)
+        element = self._get_response()
+        unique = element.find("username")["is-unique"]
+        return unique == "true"
+
+    def validate_name(self, first_name, last_name):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = """
+<iq type="get" id="{}">
+    <query xmlns="kik:iq:check-unique">
+    <first>{}</first>
+    <last>{}</last>
+    </query>
+</iq>
+""".format(uuid, first_name, last_name)
+        self._make_request(data)
+        element = self._get_response()
+        first_valid = element.find("first")["is-valid"]
+        last_valid = element.find("last")["is-valid"]
+        return first_valid == "true" and last_valid == "true"

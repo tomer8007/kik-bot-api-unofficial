@@ -435,6 +435,36 @@ class KikClient:
         node = response.find('node').text
         self._log("[+] Registration seems successful, node: {}".format(node))
 
+    def validate_username_for_registration(self, username):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = ('<iq type="get" id="{}">'
+                '<query xmlns="kik:iq:check-unique">'
+                ' <username>{}</username>'
+                '</query>'
+                '</iq>').format(uuid, username)
+        self._make_request(data)
+        element = self._get_response()
+        is_unique = element.find("username")["is-unique"] == "true"
+
+        return is_unique
+
+    def validate_name_for_registration(self, first_name, last_name):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = ('<iq type="get" id="{}">'
+                '<query xmlns="kik:iq:check-unique">'
+                '<first>{}</first>'
+                '<last>{}</last>'
+                '</query>'
+                '</iq>').format(uuid, first_name, last_name)
+        self._make_request(data)
+        element = self._get_response()
+        is_first_name_valid = element.find("first")["is-valid"] == "true"
+        is_last_name_valid = element.find("last")["is-valid"] == "true"
+
+        return is_first_name_valid and is_last_name_valid
+
     def get_next_event(self, timeout=None):
         response = ""
         while response == "" or response[-1:] != ">":
@@ -706,35 +736,3 @@ class KikClient:
             names.append(name.decode('UTF-8'))
             current_index = current_index + 6 + name_length
         return names
-
-    def validate_username(self, username):
-        uuid = KikCryptographicUtils.make_kik_uuid()
-
-        data = """
-<iq type="get" id="{}">
-    <query xmlns="kik:iq:check-unique">
-    <username>{}</username>
-    </query>
-</iq>
-""".format(uuid, username)
-        self._make_request(data)
-        element = self._get_response()
-        unique = element.find("username")["is-unique"]
-        return unique == "true"
-
-    def validate_name(self, first_name, last_name):
-        uuid = KikCryptographicUtils.make_kik_uuid()
-
-        data = """
-<iq type="get" id="{}">
-    <query xmlns="kik:iq:check-unique">
-    <first>{}</first>
-    <last>{}</last>
-    </query>
-</iq>
-""".format(uuid, first_name, last_name)
-        self._make_request(data)
-        element = self._get_response()
-        first_valid = element.find("first")["is-valid"]
-        last_valid = element.find("last")["is-valid"]
-        return first_valid == "true" and last_valid == "true"

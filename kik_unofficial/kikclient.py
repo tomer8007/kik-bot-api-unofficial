@@ -2,7 +2,6 @@ import base64
 import binascii
 import hashlib
 import hmac
-import re
 import socket
 import ssl
 import time

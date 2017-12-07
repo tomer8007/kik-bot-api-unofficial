@@ -627,7 +627,7 @@ class KikClient:
         users = element.findAll('m')
         jid_info["display_name"] = element.n.text if element.n else None
         jid_info["picture_url"] = element.find('pic').text if element.pic else None
-        jid_info["code"] = element.code.text
+        jid_info["code"] = element.code.text if element.find('code') else None
         jid_info['users'] = list(map(KikClient._parse_user_element, users))
         if is_public:
             jid_info['type'] = 'group'
@@ -641,9 +641,9 @@ class KikClient:
             info['first_name'] = user.find('first-name').text
         if user.find("pic"):
             info['picture_url'] = user.find("pic").text
-        if user.a or user["a"]:
+        if user.a or "a" in user:
             info['is_admin'] = user.a == "1" or user["a"] == "1"
-        if user.s or user["s"]:
+        if user.s or "s" in user:
             info['is_owner'] = user.s == "1" or user["s"] == "1"
         if not user.find("pic") and not user.find('first-name'):
             info['jid'] = user.text

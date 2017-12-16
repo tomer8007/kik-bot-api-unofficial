@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='kik_unofficial',
 
-    version='0.2',
+    version='0.2.1',
 
     description='Python API for writing unoffical kik bots that act like humans',
 	long_description=long_description,

@@ -608,8 +608,10 @@ class KikClient:
         jid_info["type"] = 'user'
         jid_info["jid"] = element['jid']
         jid_info["node"] = KikClient.jid_to_node(element['jid'])
-        jid_info["display_name"] = element.find('display-name').text
-        jid_info["username"] = element.find('username').text
+        if element.find('display-name'):
+            jid_info["display_name"] = element.find('display-name').text
+        if element.find("username"):
+            jid_info["username"] = element.find('username').text
         if element.find('pic'):
             jid_info["picture_url"] = element.find('pic').text
         return jid_info

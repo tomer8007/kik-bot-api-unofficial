@@ -464,6 +464,20 @@ class KikClient:
 
         return is_first_name_valid and is_last_name_valid
 
+    def get_history(self):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = ('<iq type="set" id="af0811f1-446f-4103-ba04-2eedf8397008" cts="1513349802685">'
+                '<query xmlns="kik:iq:QoS">'
+                '<msg-acks />'
+                '<history attach="true" />'
+                '</query>'
+                '</iq>'
+                ).format(uuid)
+        self._make_request(data)
+        element = self._get_response()
+        print(element.prettify())
+
     def get_next_event(self, timeout=None):
         response = ""
         while response == "" or response[-1:] != ">":

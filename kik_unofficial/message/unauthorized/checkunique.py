@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-from kik_unofficial.message.message import Message
+from kik_unofficial.message.message import Message, Response
 
 
 class CheckUniqueMessage(Message):
@@ -18,8 +18,9 @@ class CheckUniqueMessage(Message):
         return data.encode()
 
 
-class CheckUniqueResponse:
+class CheckUniqueResponse(Response):
     def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
         username_element = data.find('username')
         self.unique = True if username_element['is-unique'] == "true" else False
         self.username = username_element.text

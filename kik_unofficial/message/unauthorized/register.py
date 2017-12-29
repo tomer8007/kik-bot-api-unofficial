@@ -6,7 +6,7 @@ import hmac
 import rsa
 from bs4 import BeautifulSoup
 from kik_unofficial.cryptographic_utils import KikCryptographicUtils
-from kik_unofficial.message.message import Message
+from kik_unofficial.message.message import Message, Response
 
 device_id = "167da12427ee4dc4a36b40e8debafc25"
 kik_version = "11.1.1.12218"
@@ -103,17 +103,19 @@ class RegisterMessage(Message):
         return data.encode()
 
 
-class RegisterResponse:
+class RegisterResponse(Response):
     def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
         self.node = data.query.node.text
 
 
-class RegisterError:
+class RegisterError(Response):
     error_messages = {
         409: "Already registered",
     }
 
     def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
         error = data.find("error")
         self.code = int(error['code'])
         self.type = error['type']

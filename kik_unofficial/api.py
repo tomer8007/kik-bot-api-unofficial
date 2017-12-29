@@ -6,11 +6,14 @@ from threading import Thread
 
 from bs4 import BeautifulSoup
 from kik_unofficial.callback import KikCallback
-from kik_unofficial.handler import CheckUniqueHandler, RegisterHandler, RosterHandler
+from kik_unofficial.handler import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
+    GroupMessageHandler
+from kik_unofficial.message.chat import GroupChatMessage, ChatMessage
 from kik_unofficial.message.message import Message
 from kik_unofficial.message.roster import RosterMessage
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueMessage
 from kik_unofficial.message.unauthorized.register import LoginMessage, RegisterMessage, EstablishConnectionMessage
+from kik_unofficial.peer import Peer, Group
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -25,6 +28,8 @@ class KikApi:
             'kik:iq:check-unique': CheckUniqueHandler(callback, self),
             'jabber:iq:register': RegisterHandler(callback, self),
             'jabber:iq:roster': RosterHandler(callback, self),
+            'jabber:client': MessageHandler(callback, self),
+            'kik:groups': GroupMessageHandler(callback, self),
         }
         self.connected = False
         self.loop = asyncio.get_event_loop()
@@ -46,19 +51,25 @@ class KikApi:
         self.username = username
         self.password = password
         login_message = LoginMessage(username, password, captcha_url)
-        self._send(login_message)
+        return self._send(login_message)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         self.username = username
         self.password = password
         register_message = RegisterMessage(email, username, password, first_name, last_name, birthday, captcha_result)
-        self._send(register_message)
+        return self._send(register_message)
 
     def check_unique(self, username):
-        self._send(CheckUniqueMessage(username))
+        return self._send(CheckUniqueMessage(username))
 
     def roster(self):
-        self._send(RosterMessage())
+        return self._send(RosterMessage())
+
+    def send(self, peer: Peer, message: str):
+        if isinstance(peer, Group):
+            return self._send(GroupChatMessage(peer.jid, message))
+        else:
+            return self._send(ChatMessage(peer.jid, message))
 
     def establish_connection(self, node, username, password):
         message = EstablishConnectionMessage(node, username, password)
@@ -78,6 +89,7 @@ class KikApi:
 
     def _send(self, message: Message):
         self.loop.call_soon_threadsafe(self.connection.send, (message.serialize()))
+        return message.message_id
 
     def data_received(self, data: bytes):
         message = BeautifulSoup(data.decode(), features='xml')
@@ -93,14 +105,15 @@ class KikApi:
                 self.callback.on_authorized()
 
     def _handle_iq(self, message: BeautifulSoup):
-        query = message.find("query")
-        xmlns = query['xmlns']
+        self._handle(message.query['xmlns'], message)
+
+    def _handle_message(self, message: BeautifulSoup):
+        self._handle(message['xmlns'], message)
+
+    def _handle(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.handlers:
             raise NotImplementedError
         self.handlers[xmlns].handle(message)
-
-    def _handle_message(self, message: BeautifulSoup):
-        raise NotImplementedError
 
 
 class KikConnection(Protocol):

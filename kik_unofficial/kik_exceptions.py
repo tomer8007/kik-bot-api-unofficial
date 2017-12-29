@@ -1,4 +1,3 @@
-
 class KikErrorException(Exception):
     def __init__(self, xml_error, message=None):
         self.message = message
@@ -33,4 +32,8 @@ class KikInvalidAckException(KikErrorException):
 
 
 class KikEmptyResponseException(KikErrorException):
+    pass
+
+
+class KikApiException(Exception):
     pass

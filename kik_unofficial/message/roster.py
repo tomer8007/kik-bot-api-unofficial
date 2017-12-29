@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 
 from kik_unofficial.message.message import Message
+from kik_unofficial.peer import Group, User
 
 
 class RosterMessage(Message):
@@ -17,5 +18,10 @@ class RosterMessage(Message):
 
 class RosterResponse:
     def __init__(self, data: BeautifulSoup):
-        raise NotImplementedError
+        self.members = [self.parse_member(element) for element in iter(data.query)]
 
+    def parse_member(self, element):
+        if element.name == "m":
+            return Group(element)
+        elif element.name == "item":
+            return User(element)

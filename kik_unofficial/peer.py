@@ -17,6 +17,9 @@ class User(Peer):
         self.pic = data.pic.text if data.pic else None
         self.verified = True if data.verified else False
 
+    def __str__(self):
+        return "{} ({})".format(self.display_name, self.username)
+
     def __repr__(self):
         return "User(jid={}, username={}, display_name={})".format(self.jid, self.username, self.display_name)
 

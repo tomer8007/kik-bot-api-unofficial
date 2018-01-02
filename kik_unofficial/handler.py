@@ -1,8 +1,8 @@
 from bs4 import BeautifulSoup
 from kik_unofficial.api import KikCallback
 from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
-    GroupMessageResponse
-from kik_unofficial.message.roster import RosterResponse
+    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse
+from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
 from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse
 
@@ -25,16 +25,19 @@ class RegisterHandler(Handler):
     def handle(self, data: BeautifulSoup):
         message_type = data['type']
         if message_type == "error":
-            self.callback.on_register_error(RegisterError(data))
+            if data.find('email'):
+                self.callback.on_register_error(RegisterError(data))
+            else:
+                self.callback.on_login_error(RegisterError(data))
         elif message_type == "result":
             if data.find('email'):
                 response = LoginResponse(data)
                 self.callback.on_login(response)
-                self.api.establish_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_connection(response.node, self.api.username, self.api.password)
             else:
                 response = RegisterResponse(data)
                 self.callback.on_register(response)
-                self.api.establish_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_connection(response.node, self.api.username, self.api.password)
 
 
 class RosterHandler(Handler):
@@ -45,12 +48,20 @@ class RosterHandler(Handler):
 class MessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
         if data['type'] == 'chat':
-            self.callback.on_message(MessageResponse(data))
+            if data.body:
+                self.callback.on_message(MessageResponse(data))
+            elif data.find('friend-attribution'):
+                self.callback.on_friend_attribution(FriendAttributionResponse(data))
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(MessageDeliveredResponse(data))
             else:
                 self.callback.on_message_read(MessageReadResponse(data))
+        elif data['type'] == 'is-typing':
+            raise NotImplementedError
+            # self.callback.on_is_typing(IsTypingReponse(data))
+        elif data['type'] == 'groupchat':
+            self.callback.on_group_status(GroupStatusResponse(data))
         else:
             raise NotImplementedError
 
@@ -58,3 +69,8 @@ class MessageHandler(Handler):
 class GroupMessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
         self.callback.on_group_message(GroupMessageResponse(data))
+
+
+class FriendMessageHandler(Handler):
+    def handle(self, data: BeautifulSoup):
+        self.callback.on_peer_info(FriendMessageResponse(data))

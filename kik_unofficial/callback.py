@@ -1,6 +1,6 @@
 from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
-    GroupMessageResponse
-from kik_unofficial.message.roster import RosterResponse
+    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse
+from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
 from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse
 
@@ -10,6 +10,9 @@ class KikCallback:
         raise NotImplementedError
 
     def on_register_error(self, response: RegisterError):
+        raise NotImplementedError
+
+    def on_login_error(self, response: RegisterError):
         raise NotImplementedError
 
     def on_register(self, response: RegisterResponse):
@@ -34,4 +37,13 @@ class KikCallback:
         raise NotImplementedError
 
     def on_group_message(self, response: GroupMessageResponse):
+        raise NotImplementedError
+
+    def on_friend_attribution(self, response: FriendAttributionResponse):
+        raise NotImplementedError
+
+    def on_peer_info(self, response: FriendMessageResponse):
+        raise NotImplementedError
+
+    def on_group_status(self, response: GroupStatusResponse):
         raise NotImplementedError

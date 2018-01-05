@@ -9,11 +9,11 @@ class CheckUniqueMessage(Message):
         self.username = username
 
     def serialize(self) -> bytes:
-        data = ('<iq type="get" id="{}">'
-                '<query xmlns="kik:iq:check-unique">'
-                '<username>{}</username>'
-                '</query>'
-                '</iq>').format(self.message_id, self.username)
+        data = self.format(('<iq type="get" id="{}">'
+                            '<query xmlns="kik:iq:check-unique">'
+                            '<username>{}</username>'
+                            '</query>'
+                            '</iq>'), self.message_id, self.username)
 
         return data.encode()
 

@@ -121,8 +121,11 @@ class RegisterError(Response):
         self.type = error['type']
         self.errors = [e.name for e in error.children]
         if self.code == 406:
-            self.captcha_url = data.find('captcha-url').text + "&callback_url=https://kik.com/captcha-url"
-            self.message = "Captcha required" if self.captcha_url is not None else "Password mismatch"
+            if data.find('captcha-url'):
+                self.captcha_url = data.find('captcha-url').text + "&callback_url=https://kik.com/captcha-url"
+                self.message = "Captcha required"
+            else:
+                self.message = "Password mismatch"
         else:
             self.message = self.error_messages[self.code]
 

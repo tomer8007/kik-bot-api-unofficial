@@ -10,7 +10,7 @@ from kik_unofficial.handler import CheckUniqueHandler, RegisterHandler, RosterHa
     GroupMessageHandler, FriendMessageHandler
 from kik_unofficial.kik_exceptions import KikApiException
 from kik_unofficial.message.chat import GroupChatMessage, ChatMessage, ReadReceiptMessage, DeliveredReceiptMessage, \
-    IsTypingMessage, GroupIsTypingMessage
+    IsTypingMessage, GroupIsTypingMessage, GroupReceiptResponse
 from kik_unofficial.message.message import Message
 from kik_unofficial.message.roster import RosterMessage, BatchFriendMesssage, FriendMesssage, AddFriendMessage
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueMessage
@@ -156,7 +156,10 @@ class KikApi:
         self._handle(message.query['xmlns'], message)
 
     def _handle_message(self, message: BeautifulSoup):
-        self._handle(message['xmlns'], message)
+        if 'xmlns' in message.attrs:
+            self._handle(message['xmlns'], message)
+        elif message['type'] == 'receipt':
+            self.callback.on_group_receipt(GroupReceiptResponse(message))
 
     def _handle(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.handlers:

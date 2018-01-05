@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from kik_unofficial.api import KikCallback
 from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
-    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse
+    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse, IsTypingResponse, GroupIsTypingResponse
 from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
 from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse
@@ -58,8 +58,7 @@ class MessageHandler(Handler):
             else:
                 self.callback.on_message_read(MessageReadResponse(data))
         elif data['type'] == 'is-typing':
-            raise NotImplementedError
-            # self.callback.on_is_typing(IsTypingReponse(data))
+            self.callback.on_is_typing(IsTypingResponse(data))
         elif data['type'] == 'groupchat':
             self.callback.on_group_status(GroupStatusResponse(data))
         else:
@@ -68,7 +67,12 @@ class MessageHandler(Handler):
 
 class GroupMessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_group_message(GroupMessageResponse(data))
+        if data.body:
+            self.callback.on_group_message(GroupMessageResponse(data))
+        elif data.find('is-typing'):
+            self.callback.on_group_is_typing(GroupIsTypingResponse(data))
+        else:
+            raise NotImplementedError
 
 
 class FriendMessageHandler(Handler):

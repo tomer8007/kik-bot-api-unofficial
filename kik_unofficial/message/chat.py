@@ -2,6 +2,7 @@ import time
 
 from bs4 import BeautifulSoup
 from kik_unofficial.message.message import Message, Response
+from kik_unofficial.utilities import Utilities
 
 
 class ChatMessage(Message):
@@ -19,7 +20,8 @@ class ChatMessage(Message):
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.peer_jid, self.message_id, timestamp, self.body, self.body[0:20], timestamp)
+                ).format(self.peer_jid, self.message_id, timestamp, Utilities.escape_xml(self.body),
+                         Utilities.escape_xml(self.body[0:20]), timestamp)
         return data.encode()
 
 
@@ -39,7 +41,8 @@ class GroupChatMessage(Message):
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.group_jid, self.message_id, timestamp, self.body, self.body[0:20], timestamp)
+                ).format(self.group_jid, self.message_id, timestamp, Utilities.escape_xml(self.body),
+                         Utilities.escape_xml(self.body[0:20]), timestamp)
         return data.encode()
 
 
@@ -92,6 +95,13 @@ class IsTypingMessage(Message):
         return data.encode()
 
 
+class IsTypingResponse(Response):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.from_jid = data['from']
+        self.is_typing = data.find('is-typing')['val'] == 'true'
+
+
 class GroupIsTypingMessage(Message):
     def __init__(self, group_jid, is_typing):
         super().__init__()
@@ -108,16 +118,26 @@ class GroupIsTypingMessage(Message):
         return data.encode()
 
 
+class GroupIsTypingResponse(Response):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.from_jid = data['from']
+        self.is_typing = data.find('is-typing')['val'] == 'true'
+        self.group_jid = data.g['jid']
+
+
 class MessageDeliveredResponse(Response):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
+        self.from_jid = data['from']
 
 
 class MessageReadResponse(Response):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
+        self.from_jid = data['from']
 
 
 class MessageResponse(Response):
@@ -158,6 +178,15 @@ class GroupStatusResponse(Response):
         self.to_jid = data['to']
         self.sysmsg = data.sysmsg.text if data.sysmsg else None
         self.status = data.status.text if data.status else None
+
+
+class GroupReceiptResponse(Response):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+        self.group_jid = data.g['jid']
+        self.receipt_ids = [msgid['id'] for msgid in data.receipt.findAll('msgid')]
 
 
 class FriendAttributionResponse(Response):

@@ -14,7 +14,8 @@ from kik_unofficial.message.chat import GroupChatMessage, ChatMessage, ReadRecei
 from kik_unofficial.message.message import Message
 from kik_unofficial.message.roster import RosterMessage, BatchFriendMesssage, FriendMesssage, AddFriendMessage
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueMessage
-from kik_unofficial.message.unauthorized.register import LoginMessage, RegisterMessage, EstablishConnectionMessage
+from kik_unofficial.message.unauthorized.register import LoginMessage, RegisterMessage, EstablishAuthConnectionMessage, \
+    ConnectionFailedResponse
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -32,7 +33,8 @@ class KikApi:
         :param loglevel: logging level.
         """
         logging_format = '%(asctime)-15s %(levelname)-6s %(threadName)-10s %(message)s'
-        logging.basicConfig(format=logging_format, level=loglevel, datefmt='%Y-%m-%d %H:%M:%S')
+        logging.basicConfig(format=logging_format, level=loglevel, datefmt='%Y-%m-%d %H:%M:%S',
+                            filemode='w')
         self.callback = callback
         self.handlers = {
             'kik:iq:check-unique': CheckUniqueHandler(callback, self),
@@ -43,16 +45,19 @@ class KikApi:
             'kik:iq:friend': FriendMessageHandler(callback, self),
         }
         self.connected = False
+        self.authenticated = False
         self.connection = None
         self.loop = asyncio.get_event_loop()
         self.username = username
         self.password = password
+        self.node = node
         if username and password:
             if node:
-                self._establish_connection(node, self.username, self.password)
+                self.attempting_direct_auth = True
+                self._establish_auth_connection(node, self.username, self.password)
             else:
+                self.authenticate_on_connection = True
                 self._connect('<k anon="">'.encode())
-                self.login(self.username, self.password)
         else:
             self._connect('<k anon="">'.encode())
 
@@ -115,8 +120,8 @@ class KikApi:
     def add_friend(self, peer_jid):
         return self._send(AddFriendMessage(peer_jid))
 
-    def _establish_connection(self, node, username, password):
-        message = EstablishConnectionMessage(node, username, password)
+    def _establish_auth_connection(self, node, username, password):
+        message = EstablishAuthConnectionMessage(node, username, password)
         self._connect(message.serialize())
 
     def _kik_connection_thread_function(self, payload):
@@ -129,7 +134,6 @@ class KikApi:
         coro = self.loop.create_connection(lambda: self.connection, HOST, PORT, ssl=True)
         self.loop.run_until_complete(coro)
         logging.info("New connection made")
-        self.connected = True
         self.loop.run_forever()
 
     def _send(self, message: Message):
@@ -149,8 +153,20 @@ class KikApi:
         elif message.name == "message":
             self._handle_message(message)
         elif message.name == "k":
-            if message['ok'] == "1" and 'ts' in message.attrs:
-                self.callback.on_authorized()
+            if message['ok'] == "1":
+                self.connected = True
+                if 'ts' in message.attrs:
+                    self.authenticated = True
+                    self.callback.on_authorized()
+                elif self.authenticate_on_connection:
+                    self.authenticate_on_connection = False
+                    self.login(self.username, self.password)
+            else:
+                if self.attempting_direct_auth:
+                    logging.debug("Direct authentication failed, logging in through conventionally.")
+                    self.authenticate_on_connection = True
+                    self._connect('<k anon="">'.encode())
+                self.callback.on_connection_failed(ConnectionFailedResponse(message))
 
     def _handle_iq(self, message: BeautifulSoup):
         self._handle(message.query['xmlns'], message)
@@ -165,6 +181,11 @@ class KikApi:
         if xmlns not in self.handlers:
             raise NotImplementedError
         self.handlers[xmlns].handle(message)
+
+    def connection_lost(self):
+        print("Connection lost")
+        if not self.authenticated:
+            self._establish_auth_connection(self.node, self.username, self.password)
 
 
 class KikConnection(Protocol):
@@ -184,6 +205,7 @@ class KikConnection(Protocol):
 
     def connection_lost(self, exc):
         logging.warning('Connection lost')
+        self.loop.call_soon_threadsafe(self.api.connection_lost)
         self.loop.stop()
 
     def send(self, data: bytes):
@@ -191,5 +213,6 @@ class KikConnection(Protocol):
         self.transport.write(data)
 
     def close(self):
-        self.transport.write(b'</k>')
+        if self.transport:
+            self.transport.write(b'</k>')
         logging.debug("Transport closed")

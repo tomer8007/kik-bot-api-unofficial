@@ -30,14 +30,16 @@ class RegisterHandler(Handler):
             else:
                 self.callback.on_login_error(RegisterError(data))
         elif message_type == "result":
+            if data.find('node'):
+                self.api.node = data.find('node').text
             if data.find('email'):
                 response = LoginResponse(data)
                 self.callback.on_login(response)
-                self.api._establish_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_auth_connection(response.node, self.api.username, self.api.password)
             else:
                 response = RegisterResponse(data)
                 self.callback.on_register(response)
-                self.api._establish_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_auth_connection(response.node, self.api.username, self.api.password)
 
 
 class RosterHandler(Handler):

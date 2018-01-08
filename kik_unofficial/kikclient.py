@@ -1,13 +1,13 @@
 import base64
-import binascii
 import hashlib
 import hmac
 import socket
 import ssl
-import time
 from enum import IntEnum
 
+import binascii
 import rsa
+import time
 from bs4 import BeautifulSoup
 from kik_unofficial.cryptographic_utils import KikCryptographicUtils
 from kik_unofficial.kik_exceptions import *
@@ -412,8 +412,8 @@ class KikClient:
                 '<android-id>{}</android-id>'
                 '</query>'
                 '</iq>').format(uuid, email, passkey_e, passkey_u, self.device_id, username, first_name, last_name,
-                                birthday, '<challenge><response>{}</response></challenge>'.format(
-                captcha_result) if captcha_result else '', self.kik_version, self.android_id)
+                                birthday, '<challenge><response>{}</response></challenge>'
+                                .format(captcha_result) if captcha_result else '', self.kik_version, self.android_id)
 
         self._log("[+] Registering...")
         self._make_request(data)

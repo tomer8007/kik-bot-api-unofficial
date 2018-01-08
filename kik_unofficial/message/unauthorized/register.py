@@ -133,7 +133,7 @@ class RegisterError(Response):
         return "IqError code={} type={} errors={}".format(self.code, self.type, ",".join(self.errors))
 
 
-class EstablishConnectionMessage(Message):
+class EstablishAuthConnectionMessage(Message):
     def __init__(self, node, username, password):
         super().__init__()
         self.node = node
@@ -167,3 +167,8 @@ class EstablishConnectionMessage(Message):
                    'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
         packet = KikCryptographicUtils.make_connection_payload(KikCryptographicUtils.sort_kik_map(the_map)).encode()
         return packet
+
+
+class ConnectionFailedResponse:
+    def __init__(self, data: BeautifulSoup):
+        self.message = data.find('msg').text

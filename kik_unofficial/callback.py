@@ -1,6 +1,6 @@
 from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
     GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse, IsTypingResponse, GroupIsTypingResponse, \
-    GroupReceiptResponse
+    GroupReceiptResponse, StatusResponse
 from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
 from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse, \
@@ -62,8 +62,14 @@ class KikCallback:
     def on_connection_failed(self, response: ConnectionFailedResponse):
         raise NotImplementedError
 
+    def on_status_message(self, response: StatusResponse):
+        raise NotImplementedError
+
 
 class KikAdapter(KikCallback):
+    def on_status_message(self, response: StatusResponse):
+        pass
+
     def on_check_unique(self, response: CheckUniqueResponse):
         pass
 

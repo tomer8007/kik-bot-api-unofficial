@@ -178,6 +178,7 @@ class GroupStatusResponse(Response):
         self.to_jid = data['to']
         self.sysmsg = data.sysmsg.text if data.sysmsg else None
         self.status = data.status.text if data.status else None
+        self.status_jid = data.status['jid'] if data.status and 'jid' in data.status.attrs else None
 
 
 class GroupReceiptResponse(Response):
@@ -197,3 +198,13 @@ class FriendAttributionResponse(Response):
         self.referrer_jid = friend_attribution.context['referrer']
         self.reply = friend_attribution.context['reply'] == 'true'
         self.body = friend_attribution.body.text
+
+
+class StatusResponse(Response):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        status = data.find('status')
+        self.from_jid = data['from']
+        self.status = status.text
+        self.special_visibility = status['special-visibility'] == 'true'
+        self.status_jid = status['jid']

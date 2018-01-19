@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 from kik_unofficial.api import KikCallback
 from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
-    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse, IsTypingResponse, GroupIsTypingResponse
+    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse, IsTypingResponse, GroupIsTypingResponse, \
+    StatusResponse
 from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
 from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
 from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse
@@ -35,11 +36,11 @@ class RegisterHandler(Handler):
             if data.find('email'):
                 response = LoginResponse(data)
                 self.callback.on_login(response)
-                self.api._establish_auth_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_auth_connection()
             else:
                 response = RegisterResponse(data)
                 self.callback.on_register(response)
-                self.api._establish_auth_connection(response.node, self.api.username, self.api.password)
+                self.api._establish_auth_connection()
 
 
 class RosterHandler(Handler):
@@ -54,6 +55,10 @@ class MessageHandler(Handler):
                 self.callback.on_message(MessageResponse(data))
             elif data.find('friend-attribution'):
                 self.callback.on_friend_attribution(FriendAttributionResponse(data))
+            elif data.find('status'):
+                self.callback.on_status_message(StatusResponse(data))
+            else:
+                raise NotImplementedError
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(MessageDeliveredResponse(data))

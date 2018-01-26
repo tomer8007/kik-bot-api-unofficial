@@ -36,3 +36,11 @@ class Utilities:
             data = dictionary[x]
             info = (data[:50] + '...') if isinstance(data, str) and len(data) > 50 else data
             print("\t" + x + ':', info)
+
+    @staticmethod
+    def escape_xml(s: str):
+        s = s.replace("&", "&amp;")
+        s = s.replace("<", "&lt;")
+        s = s.replace(">", "&gt;")
+        s = s.replace("\"", "&quot;")
+        return s

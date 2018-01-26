@@ -1,18 +1,17 @@
 import base64
-import binascii
 import hashlib
 import hmac
 import socket
 import ssl
-import time
 from enum import IntEnum
 
+import binascii
 import rsa
+import time
 from bs4 import BeautifulSoup
-
 from kik_unofficial.cryptographic_utils import KikCryptographicUtils
-from kik_unofficial.utilities import Utilities
 from kik_unofficial.kik_exceptions import *
+from kik_unofficial.utilities import Utilities
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -30,7 +29,7 @@ class InvalidAckException(Exception):
 class KikClient:
     debug_level = DebugLevel.VERBOSE
     user_info = None
-    jid_cache_list = [] # shared for all instances
+    jid_cache_list = []  # shared for all instances
 
     # hardcoded by default
     device_id = "167da12427ee4dc4a36b40e8debafc25"
@@ -413,7 +412,8 @@ class KikClient:
                 '<android-id>{}</android-id>'
                 '</query>'
                 '</iq>').format(uuid, email, passkey_e, passkey_u, self.device_id, username, first_name, last_name,
-                                birthday, '<challenge><response>{}</response></challenge>'.format(captcha_result) if captcha_result else '', self.kik_version, self.android_id)
+                                birthday, '<challenge><response>{}</response></challenge>'
+                                .format(captcha_result) if captcha_result else '', self.kik_version, self.android_id)
 
         self._log("[+] Registering...")
         self._make_request(data)
@@ -463,6 +463,20 @@ class KikClient:
         is_last_name_valid = element.find("last")["is-valid"] == "true"
 
         return is_first_name_valid and is_last_name_valid
+
+    def get_history(self):
+        uuid = KikCryptographicUtils.make_kik_uuid()
+
+        data = ('<iq type="set" id="af0811f1-446f-4103-ba04-2eedf8397008" cts="1513349802685">'
+                '<query xmlns="kik:iq:QoS">'
+                '<msg-acks />'
+                '<history attach="true" />'
+                '</query>'
+                '</iq>'
+                ).format(uuid)
+        self._make_request(data)
+        element = self._get_response()
+        print(element.prettify())
 
     def get_next_event(self, timeout=None):
         response = ""

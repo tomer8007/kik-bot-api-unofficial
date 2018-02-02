@@ -4,10 +4,10 @@ import binascii
 import pbkdf2
 import base64
 from collections import OrderedDict
-from kik_unofficial.utilities import Utilities
+from kik_unofficial.utilities.parsing import ParsingUtilities
 
 
-class KikCryptographicUtils:
+class CryptographicUtils:
     def __init__(self):
         pass
 
@@ -71,13 +71,13 @@ class KikCryptographicUtils:
         i2 = iArr[i2][1]
         j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ (
             (65280 & most_significant_bits) >> 8)
-        i2 = (KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
-            KikCryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
+        i2 = (CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
+            CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
         i4 = 0
         while i4 < 6:
             i = (i + (i2 * 7)) % 60
             least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | (
-                (KikCryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
+                (CryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
             i4 += 1
         mstb = binascii.hexlify(
             (most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
@@ -116,7 +116,7 @@ class KikCryptographicUtils:
         keys = list(dictionary.keys())
         keys.sort()
         for i in range(0, original_length):
-            hash_code = KikCryptographicUtils.kik_map_hash_code(dictionary)
+            hash_code = CryptographicUtils.kik_map_hash_code(dictionary)
             hash_code = (hash_code % len(dictionary) if hash_code > 0 else hash_code % -len(dictionary))
             if hash_code < 0:
                 hash_code += len(dictionary)
@@ -139,17 +139,17 @@ class KikCryptographicUtils:
             string2 += key + dictionary[key]
         bytes1 = string1.encode('UTF-8')
         bytes2 = string2.encode('UTF-8')
-        array = [KikCryptographicUtils.kik_hash_code_sub_func(0, bytes1),
-                 KikCryptographicUtils.kik_hash_code_sub_func(1, bytes1),
-                 KikCryptographicUtils.kik_hash_code_sub_func(2, bytes1),
-                 KikCryptographicUtils.kik_hash_code_sub_func(0, bytes2),
-                 KikCryptographicUtils.kik_hash_code_sub_func(1, bytes2),
-                 KikCryptographicUtils.kik_hash_code_sub_func(2, bytes2)]
+        array = [CryptographicUtils.kik_hash_code_sub_func(0, bytes1),
+                 CryptographicUtils.kik_hash_code_sub_func(1, bytes1),
+                 CryptographicUtils.kik_hash_code_sub_func(2, bytes1),
+                 CryptographicUtils.kik_hash_code_sub_func(0, bytes2),
+                 CryptographicUtils.kik_hash_code_sub_func(1, bytes2),
+                 CryptographicUtils.kik_hash_code_sub_func(2, bytes2)]
         hash_code_base = -1964139357
         hash_code_offset = 7
-        return (((hash_code_base ^ (Utilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (
-            Utilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
-                    Utilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
+        return (((hash_code_base ^ (ParsingUtilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (
+            ParsingUtilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
+                    ParsingUtilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]
 
     @staticmethod
     def kik_hash_code_sub_func(hash_id, bytes_array):
@@ -162,8 +162,8 @@ class KikCryptographicUtils:
             digest = hashlib.md5(bytes_array).digest()
 
         for i in range(0, len(digest), 4):
-            j ^= ((((Utilities.byte_to_signed_int(digest[i + 3])) << 24) | (
-                (Utilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
-                      (Utilities.byte_to_signed_int(digest[i + 1])) << 8)) | (Utilities.byte_to_signed_int(digest[i]))
+            j ^= ((((ParsingUtilities.byte_to_signed_int(digest[i + 3])) << 24) | (
+                (ParsingUtilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
+                      (ParsingUtilities.byte_to_signed_int(digest[i + 1])) << 8)) | (ParsingUtilities.byte_to_signed_int(digest[i]))
 
         return j

@@ -1,17 +1,18 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import socket
 import ssl
+import time
 from enum import IntEnum
 
-import binascii
 import rsa
-import time
 from bs4 import BeautifulSoup
-from kik_unofficial.cryptographic_utils import KikCryptographicUtils
-from kik_unofficial.kik_exceptions import *
+
+from kik_unofficial.datatypes.exceptions import *
 from kik_unofficial.utilities import Utilities
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -65,7 +66,7 @@ class KikClient:
         self._log("[+] Logging in (username: " + username + ", password: " + password + ")...")
 
         device_id = self.device_id
-        password_key = KikCryptographicUtils.key_from_password(username, password)
+        password_key = CryptographicUtils.key_from_password(username, password)
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
                 '<username>{}</username>'
@@ -85,7 +86,7 @@ class KikClient:
                 '<android-id>c10d47ba7ee17193</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id,
+                '</iq>').format(CryptographicUtils.make_kik_uuid(), username, password_key, device_id,
                                 self.kik_version)
         self._make_request(data)
         response = self._get_response()
@@ -151,7 +152,7 @@ class KikClient:
         jid = node + "@talk.kik.com"
         jid_with_resource = jid + "/CAN" + self.device_id
         timestamp = "1496333389122"
-        sid = KikCryptographicUtils.make_kik_uuid()
+        sid = CryptographicUtils.make_kik_uuid()
         version = "11.1.1.12218"
 
         # some super secret cryptographic stuff
@@ -165,15 +166,15 @@ class KikClient:
         signature = rsa.sign("{}:{}:{}:{}".format(jid, version, timestamp, sid).encode('UTF-8'), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode('UTF-8')).decode('UTF-8')[:-2]
         hmac_data = timestamp + ":" + jid
-        hmac_secret_key = KikCryptographicUtils.build_hmac_key()
+        hmac_secret_key = CryptographicUtils.build_hmac_key()
         cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode('UTF-8'), hashlib.sha1).digest()).decode(
             'UTF-8')
 
-        password_key = KikCryptographicUtils.key_from_password(username, password)
+        password_key = CryptographicUtils.key_from_password(username, password)
 
         the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': version,
                    'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
-        packet = KikCryptographicUtils.make_connection_payload(KikCryptographicUtils.sort_kik_map(the_map)).encode(
+        packet = CryptographicUtils.make_connection_payload(CryptographicUtils.sort_kik_map(the_map)).encode(
             'UTF-8')
 
         # send session request
@@ -187,7 +188,7 @@ class KikClient:
         self._log("[+] Getting roster (chat partners list)...")
         data = ('<iq type="get" id="{}">'
                 '<query p="8" xmlns="jabber:iq:roster" />'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid())
+                '</iq>').format(CryptographicUtils.make_kik_uuid())
         self._make_request(data)
         response = self._get_full_response()
 
@@ -203,7 +204,7 @@ class KikClient:
                 '<query xmlns="kik:iq:friend:batch">'
                 '<item jid="{}" />'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid)
+                '</iq>').format(CryptographicUtils.make_kik_uuid(), jid)
         self._make_request(data)
         response = self._get_response()
         return self._parse_user_jid_element(response.query.success.item)
@@ -214,7 +215,7 @@ class KikClient:
                 '<query xmlns="kik:iq:friend">'
                 '<item username="{}" />'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username)
+                '</iq>').format(CryptographicUtils.make_kik_uuid(), username)
         self._make_request(data)
         response = self._get_response()
 
@@ -248,7 +249,7 @@ class KikClient:
                 '<code>{}</code>'
                 '</g>'
                 '</query>'
-                '</iq>').format(KikCryptographicUtils.make_kik_uuid(), group_hashtag)
+                '</iq>').format(CryptographicUtils.make_kik_uuid(), group_hashtag)
         self._make_request(data)
         response = self._get_response()
         if response.error:
@@ -275,7 +276,7 @@ class KikClient:
         group_type = "groupchat" if groupchat else "chat"
         unix_timestamp = str(int(round(time.time() * 1000)))
         cts = "1494428808185"
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
 
         packet = ('<message type="{0}" to="{1}" id="{2}" cts="{3}">'
                   '<body>{4}</body>'
@@ -320,7 +321,7 @@ class KikClient:
                     '</msg-acks>'
                     '<history attach="false" />'
                     '</query>'
-                    '</iq>').format(KikCryptographicUtils.make_kik_uuid(), jid, receipt_id)
+                    '</iq>').format(CryptographicUtils.make_kik_uuid(), jid, receipt_id)
             self._make_request(data)
             self._log("[+] Sent")
         return True
@@ -330,7 +331,7 @@ class KikClient:
 
         jid = username if groupchat else self._resolve_username(username)
         unix_timestamp = str(int(time.time() * 1000))
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
         group_type = "groupchat" if groupchat else "is-typing"
 
         data = '<message type="{}" to="{}" id="{}">' \
@@ -346,7 +347,7 @@ class KikClient:
         self._log("[+] Adding {} as a friend...".format(username))
         jid = self._resolve_username(username)
 
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
         data = '<iq type="set" id="{}">' \
                '<query xmlns="kik:iq:friend">' \
                '<add jid="{}" />' \
@@ -372,7 +373,7 @@ class KikClient:
         self._log("[+] Sending read confirmation for message " + message_id + "...")
 
         jid = self._resolve_username(username)
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
         unix_timestamp = str(int(time.time() * 1000))
 
         data = ('<message type="receipt" id="{}" to="{}" cts="{}">'
@@ -385,9 +386,9 @@ class KikClient:
         self._log("[+] Okay")
 
     def sign_up(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
-        uuid = KikCryptographicUtils.make_kik_uuid()
-        passkey_e = KikCryptographicUtils.key_from_password(email, password)
-        passkey_u = KikCryptographicUtils.key_from_password(username, password)
+        uuid = CryptographicUtils.make_kik_uuid()
+        passkey_e = CryptographicUtils.key_from_password(email, password)
+        passkey_u = CryptographicUtils.key_from_password(username, password)
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
                 '<email>{}</email>'
@@ -435,7 +436,7 @@ class KikClient:
         self._log("[+] Registration seems successful, node: {}".format(node))
 
     def validate_username_for_registration(self, username):
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
 
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:check-unique">'
@@ -449,7 +450,7 @@ class KikClient:
         return is_unique
 
     def validate_name_for_registration(self, first_name, last_name):
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
 
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:check-unique">'
@@ -465,7 +466,7 @@ class KikClient:
         return is_first_name_valid and is_last_name_valid
 
     def get_history(self):
-        uuid = KikCryptographicUtils.make_kik_uuid()
+        uuid = CryptographicUtils.make_kik_uuid()
 
         data = ('<iq type="set" id="af0811f1-446f-4103-ba04-2eedf8397008" cts="1513349802685">'
                 '<query xmlns="kik:iq:QoS">'

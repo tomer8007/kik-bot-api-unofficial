@@ -5,8 +5,9 @@ import hmac
 
 import rsa
 from bs4 import BeautifulSoup
-from kik_unofficial.cryptographic_utils import KikCryptographicUtils
-from kik_unofficial.message.message import Message, Response
+
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 device_id = "167da12427ee4dc4a36b40e8debafc25"
 kik_version = "11.1.1.12218"
@@ -14,7 +15,7 @@ android_id = "c10d47ba7ee17193"
 captcha_element = '<challenge><response>{}</response></challenge>'
 
 
-class LoginMessage(Message):
+class LoginRequest(XMPPElement):
     def __init__(self, username, password, captcha_result=None):
         super().__init__()
         self.username = username
@@ -22,7 +23,7 @@ class LoginMessage(Message):
         self.captcha_result = captcha_result
 
     def serialize(self) -> bytes:
-        password_key = KikCryptographicUtils.key_from_password(self.username, self.password)
+        password_key = CryptographicUtils.key_from_password(self.username, self.password)
         captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
@@ -59,7 +60,7 @@ class LoginResponse:
         self.last = data.query.last.text
 
 
-class RegisterMessage(Message):
+class RegisterRequest(XMPPElement):
     def __init__(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         super().__init__()
         self.email = email
@@ -71,8 +72,8 @@ class RegisterMessage(Message):
         self.captcha_result = captcha_result
 
     def serialize(self):
-        passkey_e = KikCryptographicUtils.key_from_password(self.email, self.password)
-        passkey_u = KikCryptographicUtils.key_from_password(self.username, self.password)
+        passkey_e = CryptographicUtils.key_from_password(self.email, self.password)
+        passkey_u = CryptographicUtils.key_from_password(self.username, self.password)
         captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
@@ -103,13 +104,13 @@ class RegisterMessage(Message):
         return data.encode()
 
 
-class RegisterResponse(Response):
+class RegisterResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.node = data.query.node.text
 
 
-class RegisterError(Response):
+class RegisterError(XMPPResponse):
     error_messages = {
         409: "Already registered",
     }
@@ -133,7 +134,30 @@ class RegisterError(Response):
         return "IqError code={} type={} errors={}".format(self.code, self.type, ",".join(self.errors))
 
 
-class EstablishAuthConnectionMessage(Message):
+class CheckUsernameUniquenessRequest(XMPPElement):
+    def __init__(self, username):
+        super().__init__()
+        self.username = username
+
+    def serialize(self) -> bytes:
+        data = self.format(('<iq type="get" id="{}">'
+                            '<query xmlns="kik:iq:check-unique">'
+                            '<username>{}</username>'
+                            '</query>'
+                            '</iq>'), self.message_id, self.username)
+
+        return data.encode()
+
+
+class UsernameUniquenessResponse(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        username_element = data.find('username')
+        self.unique = True if username_element['is-unique'] == "true" else False
+        self.username = username_element.text
+
+
+class EstablishAuthConnectionRequest(XMPPElement):
     def __init__(self, node, username, password):
         super().__init__()
         self.node = node
@@ -144,7 +168,7 @@ class EstablishAuthConnectionMessage(Message):
         jid = self.node + "@talk.kik.com"
         jid_with_resource = jid + "/CAN" + device_id
         timestamp = "1496333389122"
-        sid = KikCryptographicUtils.make_kik_uuid()
+        sid = CryptographicUtils.make_kik_uuid()
         version = "11.1.1.12218"
 
         # some super secret cryptographic stuff
@@ -158,14 +182,14 @@ class EstablishAuthConnectionMessage(Message):
         signature = rsa.sign("{}:{}:{}:{}".format(jid, version, timestamp, sid).encode(), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode()[:-2]
         hmac_data = timestamp + ":" + jid
-        hmac_secret_key = KikCryptographicUtils.build_hmac_key()
+        hmac_secret_key = CryptographicUtils.build_hmac_key()
         cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode(), hashlib.sha1).digest()).decode()
 
-        password_key = KikCryptographicUtils.key_from_password(self.username, self.password)
+        password_key = CryptographicUtils.key_from_password(self.username, self.password)
 
         the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': version,
                    'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
-        packet = KikCryptographicUtils.make_connection_payload(KikCryptographicUtils.sort_kik_map(the_map)).encode()
+        packet = CryptographicUtils.make_connection_payload(CryptographicUtils.sort_kik_map(the_map)).encode()
         return packet
 
 

@@ -2,7 +2,7 @@ import sys
 import time
 from argparse import ArgumentParser
 
-from kik_unofficial.kikclient import KikClient
+from kik_unofficial.client_legacy import KikClient
 
 
 def execute(cmd=sys.argv[1:]):

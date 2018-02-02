@@ -1,7 +1,7 @@
-from kik_unofficial.message.message import Message
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 
 
-class AddToGroupMessage(Message):
+class AddToGroupRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):
         super().__init__()
         self.group_jid = group_jid
@@ -18,7 +18,7 @@ class AddToGroupMessage(Message):
         return data.encode()
 
 
-class RemoveFromGroupMessage(Message):
+class RemoveFromGroupRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):
         super().__init__()
         self.group_jid = group_jid
@@ -35,7 +35,7 @@ class RemoveFromGroupMessage(Message):
         return data.encode()
 
 
-class UnbanMessage(Message):
+class UnbanRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):
         super().__init__()
         self.group_jid = group_jid
@@ -52,7 +52,7 @@ class UnbanMessage(Message):
         return data.encode()
 
 
-class BanMessage(Message):
+class BanMemberRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):
         super().__init__()
         self.group_jid = group_jid

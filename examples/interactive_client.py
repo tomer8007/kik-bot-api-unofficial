@@ -1,11 +1,11 @@
 import logging
 import time
 
-from kik_unofficial.api import KikApi
-from kik_unofficial.callback import KikAdapter
-from kik_unofficial.message.chat import MessageResponse, GroupMessageResponse, StatusResponse, GroupStatusResponse
-from kik_unofficial.message.roster import RosterResponse
-from kik_unofficial.message.unauthorized.register import ConnectionFailedResponse
+from kik_unofficial.client import KikClient
+from kik_unofficial.datatypes.callbacks import KikClientCallback
+from kik_unofficial.datatypes.xmpp.chatting import IncomingChatMessage, IncomingGroupChatMessage, IncomingStatusResponse, IncomingGroupStatus
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
+from kik_unofficial.datatypes.xmpp.sign_up import ConnectionFailedResponse
 
 username = 'username'
 password = 'password'
@@ -13,16 +13,16 @@ password = 'password'
 friends = {}
 
 
-class ChatClient(KikAdapter):
+class InteractiveChatClient(KikClientCallback):
     def on_authorized(self):
         client.request_roster()
 
-    def on_roster(self, response: RosterResponse):
+    def on_roster_received(self, response: FetchRosterResponse):
         for m in response.members:
             friends[m.jid] = m
         print("-Peers-\n{}".format("\n".join([str(m) for m in response.members])))
 
-    def on_message(self, response: MessageResponse):
+    def on_chat_message_received(self, response: IncomingChatMessage):
         print("{}: {}".format(jid_to_username(response.from_jid), response.body))
         if response.from_jid not in friends:
             print("New friend: {}".format(jid_to_username(response.from_jid)))
@@ -31,18 +31,18 @@ class ChatClient(KikAdapter):
             client.add_friend(response.from_jid)
             client.request_roster()
 
-    def on_group_message(self, response: GroupMessageResponse):
+    def on_group_message_received(self, response: IncomingGroupChatMessage):
         print("{} - {}: {}".format(friends[response.group_jid].name, jid_to_username(response.from_jid),
                                    jid_to_username(response.body)))
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
         print("Connection failed")
 
-    def on_status_message(self, response: StatusResponse):
+    def on_status_message(self, response: IncomingStatusResponse):
         print(response.status)
         client.add_friend(response.from_jid)
 
-    def on_group_status(self, response: GroupStatusResponse):
+    def on_group_status_received(self, response: IncomingGroupStatus):
         client.request_info_from_jid(response.status_jid)
 
 
@@ -74,6 +74,6 @@ def chat():
 
 
 if __name__ == '__main__':
-    callback = ChatClient()
-    client = KikApi(callback=callback, username=username, password=password, loglevel=logging.DEBUG)
+    callback = InteractiveChatClient()
+    client = KikClient(callback=callback, username=username, password=password, log_level=logging.DEBUG)
     chat()

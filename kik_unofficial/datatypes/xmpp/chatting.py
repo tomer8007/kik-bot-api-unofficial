@@ -1,11 +1,12 @@
 import time
 
 from bs4 import BeautifulSoup
-from kik_unofficial.message.message import Message, Response
-from kik_unofficial.utilities import Utilities
+
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
+from kik_unofficial.utilities.parsing import ParsingUtilities
 
 
-class ChatMessage(Message):
+class OutgoingChatMessage(XMPPElement):
     def __init__(self, peer_jid, body):
         super().__init__()
         self.peer_jid = peer_jid
@@ -20,12 +21,12 @@ class ChatMessage(Message):
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.peer_jid, self.message_id, timestamp, Utilities.escape_xml(self.body),
-                         Utilities.escape_xml(self.body[0:20]), timestamp)
+                ).format(self.peer_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
+                         ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
         return data.encode()
 
 
-class GroupChatMessage(Message):
+class OutgoingGroupChatMessage(XMPPElement):
     def __init__(self, group_jid, body):
         super().__init__()
         self.group_jid = group_jid
@@ -41,12 +42,39 @@ class GroupChatMessage(Message):
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.group_jid, self.message_id, timestamp, Utilities.escape_xml(self.body),
-                         Utilities.escape_xml(self.body[0:20]), timestamp)
+                ).format(self.group_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
+                         ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
         return data.encode()
 
 
-class ReadReceiptMessage(Message):
+class IncomingChatMessage(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true'
+        self.requets_read_receipt = data.request['r'] == 'true'
+        self.body = data.body.text
+        self.status = data.status.text if data.status else None
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+
+
+class IncomingGroupChatMessage(XMPPResponse):
+    """ xmlns=kik:groups type=groupchat """
+
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.body = data.body.text if data.body else None
+        self.preview = data.preview.text if data.preview else None
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+        self.group_jid = data.g['jid']
+        self.is_typing = data.find('is-typing')
+        self.is_typing = self.is_typing['val'] == 'true' if self.is_typing else None
+
+
+class OutgoingReadReceipt(XMPPElement):
     def __init__(self, peer_jid, receipt_message_id):
         super().__init__()
         self.peer_jid = peer_jid
@@ -63,7 +91,7 @@ class ReadReceiptMessage(Message):
         return data.encode()
 
 
-class DeliveredReceiptMessage(Message):
+class OutgoingDeliveredReceipt(XMPPElement):
     def __init__(self, peer_jid, receipt_message_id):
         super().__init__()
         self.peer_jid = peer_jid
@@ -80,7 +108,7 @@ class DeliveredReceiptMessage(Message):
         return data.encode()
 
 
-class IsTypingMessage(Message):
+class OutgoingIsTypingEvent(XMPPElement):
     def __init__(self, peer_jid, is_typing):
         super().__init__()
         self.peer_jid = peer_jid
@@ -95,14 +123,7 @@ class IsTypingMessage(Message):
         return data.encode()
 
 
-class IsTypingResponse(Response):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.from_jid = data['from']
-        self.is_typing = data.find('is-typing')['val'] == 'true'
-
-
-class GroupIsTypingMessage(Message):
+class OutgoingGroupIsTypingEvent(XMPPElement):
     def __init__(self, group_jid, is_typing):
         super().__init__()
         self.peer_jid = group_jid
@@ -118,7 +139,28 @@ class GroupIsTypingMessage(Message):
         return data.encode()
 
 
-class GroupIsTypingResponse(Response):
+class IncomingMessageReadEvent(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.receipt_message_id = data.receipt.msgid['id']
+        self.from_jid = data['from']
+
+
+class IncomingMessageDeliveredEvent(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.receipt_message_id = data.receipt.msgid['id']
+        self.from_jid = data['from']
+
+
+class IncomingIsTypingEvent(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.from_jid = data['from']
+        self.is_typing = data.find('is-typing')['val'] == 'true'
+
+
+class IncomingGroupIsTypingEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.from_jid = data['from']
@@ -126,48 +168,7 @@ class GroupIsTypingResponse(Response):
         self.group_jid = data.g['jid']
 
 
-class MessageDeliveredResponse(Response):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.receipt_message_id = data.receipt.msgid['id']
-        self.from_jid = data['from']
-
-
-class MessageReadResponse(Response):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.receipt_message_id = data.receipt.msgid['id']
-        self.from_jid = data['from']
-
-
-class MessageResponse(Response):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.requets_read_receipt = data.request['r'] == 'true'
-        self.body = data.body.text
-        self.status = data.status.text if data.status else None
-        self.from_jid = data['from']
-        self.to_jid = data['to']
-
-
-class GroupMessageResponse(Response):
-    """ xmlns=kik:groups type=groupchat """
-
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
-        self.body = data.body.text if data.body else None
-        self.preview = data.preview.text if data.preview else None
-        self.from_jid = data['from']
-        self.to_jid = data['to']
-        self.group_jid = data.g['jid']
-        self.is_typing = data.find('is-typing')
-        self.is_typing = self.is_typing['val'] == 'true' if self.is_typing else None
-
-
-class GroupStatusResponse(Response):
+class IncomingGroupStatus(XMPPResponse):
     """ xmlns=jabber:client type=groupchat """
 
     def __init__(self, data: BeautifulSoup):
@@ -181,7 +182,7 @@ class GroupStatusResponse(Response):
         self.status_jid = data.status['jid'] if data.status and 'jid' in data.status.attrs else None
 
 
-class GroupReceiptResponse(Response):
+class IncomingGroupReceiptsEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.from_jid = data['from']
@@ -190,7 +191,7 @@ class GroupReceiptResponse(Response):
         self.receipt_ids = [msgid['id'] for msgid in data.receipt.findAll('msgid')]
 
 
-class FriendAttributionResponse(Response):
+class IncomingFriendAttribution(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         friend_attribution = data.find('friend-attribution')
@@ -200,7 +201,7 @@ class FriendAttributionResponse(Response):
         self.body = friend_attribution.body.text
 
 
-class StatusResponse(Response):
+class IncomingStatusResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         status = data.find('status')

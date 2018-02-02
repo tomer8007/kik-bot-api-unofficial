@@ -1,10 +1,10 @@
 from bs4 import BeautifulSoup
 
-from kik_unofficial.message.message import Message, Response
-from kik_unofficial.peer import Group, User
+from kik_unofficial.datatypes.peers import Group, User
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 
 
-class RosterMessage(Message):
+class FetchRoasterRequest(XMPPElement):
     def __init__(self):
         super().__init__()
 
@@ -15,7 +15,7 @@ class RosterMessage(Message):
         return data.encode()
 
 
-class RosterResponse(Response):
+class FetchRosterResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.members = [self.parse_member(element) for element in iter(data.query)]
@@ -28,7 +28,7 @@ class RosterResponse(Response):
             return User(element)
 
 
-class FriendMesssage(Message):
+class FriendRequest(XMPPElement):
     def __init__(self, username):
         super().__init__()
         self.username = username
@@ -42,13 +42,13 @@ class FriendMesssage(Message):
         return data.encode()
 
 
-class FriendMessageResponse(Response):
+class FriendResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.user = User(data.query.item)
 
 
-class BatchFriendMesssage(Message):
+class BatchFriendRequest(XMPPElement):
     def __init__(self, peer_jid):
         super().__init__()
         self.peer_jid = peer_jid
@@ -62,7 +62,7 @@ class BatchFriendMesssage(Message):
         return data.encode()
 
 
-class AddFriendMessage(Message):
+class AddFriendRequest(XMPPElement):
     def __init__(self, peer_jid):
         super().__init__()
         self.peer_jid = peer_jid

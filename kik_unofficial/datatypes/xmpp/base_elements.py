@@ -1,23 +1,24 @@
 from bs4 import BeautifulSoup
-from kik_unofficial.cryptographic_utils import KikCryptographicUtils
+
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 
-class Message:
+class XMPPElement:
     def __init__(self):
-        self.message_id = KikCryptographicUtils.make_kik_uuid()
+        self.message_id = CryptographicUtils.make_kik_uuid()
 
     def serialize(self) -> bytes:
         raise NotImplementedError
 
 
-class Response:
+class XMPPResponse:
     def __init__(self, data: BeautifulSoup):
         self.message_id = data['id']
         if data.kik:
-            self.metadata = Metadata(data.kik)
+            self.metadata = XMPPResponseMetadata(data.kik)
 
 
-class Metadata:
+class XMPPResponseMetadata:
     def __init__(self, data: BeautifulSoup):
         self.timestamp = data['timestamp']
         self.app = data['app']

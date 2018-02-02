@@ -1,15 +1,15 @@
 from bs4 import BeautifulSoup
-from kik_unofficial.api import KikCallback
-from kik_unofficial.message.chat import MessageDeliveredResponse, MessageReadResponse, MessageResponse, \
-    GroupMessageResponse, FriendAttributionResponse, GroupStatusResponse, IsTypingResponse, GroupIsTypingResponse, \
-    StatusResponse
-from kik_unofficial.message.roster import RosterResponse, FriendMessageResponse
-from kik_unofficial.message.unauthorized.checkunique import CheckUniqueResponse
-from kik_unofficial.message.unauthorized.register import RegisterError, RegisterResponse, LoginResponse
+
+from kik_unofficial.client import KikClientCallback
+from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
+    IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
+    IncomingStatusResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse
+from kik_unofficial.datatypes.xmpp.sign_up import RegisterError, RegisterResponse, LoginResponse, UsernameUniquenessResponse
 
 
 class Handler:
-    def __init__(self, callback: KikCallback, api):
+    def __init__(self, callback: KikClientCallback, api):
         self.callback = callback
         self.api = api
 
@@ -19,7 +19,7 @@ class Handler:
 
 class CheckUniqueHandler(Handler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_check_unique(CheckUniqueResponse(data))
+        self.callback.on_username_uniqueness_received(UsernameUniquenessResponse(data))
 
 
 class RegisterHandler(Handler):
@@ -35,39 +35,39 @@ class RegisterHandler(Handler):
                 self.api.node = data.find('node').text
             if data.find('email'):
                 response = LoginResponse(data)
-                self.callback.on_login(response)
+                self.callback.on_login_ended(response)
                 self.api._establish_auth_connection()
             else:
                 response = RegisterResponse(data)
-                self.callback.on_register(response)
+                self.callback.on_sign_up_ended(response)
                 self.api._establish_auth_connection()
 
 
 class RosterHandler(Handler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_roster(RosterResponse(data))
+        self.callback.on_roster_received(FetchRosterResponse(data))
 
 
 class MessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
         if data['type'] == 'chat':
             if data.body:
-                self.callback.on_message(MessageResponse(data))
+                self.callback.on_chat_message_received(IncomingChatMessage(data))
             elif data.find('friend-attribution'):
-                self.callback.on_friend_attribution(FriendAttributionResponse(data))
+                self.callback.on_friend_attribution(IncomingFriendAttribution(data))
             elif data.find('status'):
-                self.callback.on_status_message(StatusResponse(data))
+                self.callback.on_status_message(IncomingStatusResponse(data))
             else:
                 raise NotImplementedError
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':
-                self.callback.on_message_delivered(MessageDeliveredResponse(data))
+                self.callback.on_message_delivered(IncomingMessageDeliveredEvent(data))
             else:
-                self.callback.on_message_read(MessageReadResponse(data))
+                self.callback.on_message_read(IncomingMessageReadEvent(data))
         elif data['type'] == 'is-typing':
-            self.callback.on_is_typing(IsTypingResponse(data))
+            self.callback.on_is_typing_event_received(IncomingIsTypingEvent(data))
         elif data['type'] == 'groupchat':
-            self.callback.on_group_status(GroupStatusResponse(data))
+            self.callback.on_group_status_received(IncomingGroupStatus(data))
         else:
             raise NotImplementedError
 
@@ -75,13 +75,13 @@ class MessageHandler(Handler):
 class GroupMessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
         if data.body:
-            self.callback.on_group_message(GroupMessageResponse(data))
+            self.callback.on_group_message_received(IncomingGroupChatMessage(data))
         elif data.find('is-typing'):
-            self.callback.on_group_is_typing(GroupIsTypingResponse(data))
+            self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
         else:
             raise NotImplementedError
 
 
 class FriendMessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_peer_info(FriendMessageResponse(data))
+        self.callback.on_peer_info_received(FriendResponse(data))

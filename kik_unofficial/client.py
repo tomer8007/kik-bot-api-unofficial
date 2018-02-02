@@ -5,34 +5,34 @@ from asyncio import Transport, Protocol
 from threading import Thread
 
 from bs4 import BeautifulSoup
-from kik_unofficial.callback import KikCallback
-from kik_unofficial.handler import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
+
+from kik_unofficial.datatypes.callbacks import KikClientCallback
+from kik_unofficial.datatypes.exceptions import KikApiException
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
+from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
+    OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
+from kik_unofficial.datatypes.xmpp.group_adminship import AddToGroupRequest, RemoveFromGroupRequest, BanMemberRequest, UnbanRequest
+from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchFriendRequest, FriendRequest, AddFriendRequest
+from kik_unofficial.datatypes.xmpp.sign_up import LoginRequest, RegisterRequest, EstablishAuthConnectionRequest, \
+    ConnectionFailedResponse, CheckUsernameUniquenessRequest
+from kik_unofficial.handlers import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
     GroupMessageHandler, FriendMessageHandler
-from kik_unofficial.kik_exceptions import KikApiException
-from kik_unofficial.message.chat import GroupChatMessage, ChatMessage, ReadReceiptMessage, DeliveredReceiptMessage, \
-    IsTypingMessage, GroupIsTypingMessage, GroupReceiptResponse
-from kik_unofficial.message.group import AddToGroupMessage, RemoveFromGroupMessage, BanMessage, UnbanMessage
-from kik_unofficial.message.message import Message
-from kik_unofficial.message.roster import RosterMessage, BatchFriendMesssage, FriendMesssage, AddFriendMessage
-from kik_unofficial.message.unauthorized.checkunique import CheckUniqueMessage
-from kik_unofficial.message.unauthorized.register import LoginMessage, RegisterMessage, EstablishAuthConnectionMessage, \
-    ConnectionFailedResponse
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
 
-class KikApi:
-    def __init__(self, callback: KikCallback, username=None, password=None, loglevel=logging.INFO):
+class KikClient:
+    def __init__(self, callback: KikClientCallback, username=None, password=None, log_level=logging.INFO):
         """
         Initializes a connection to Kik servers. Use username and password for logging in.
 
         :param callback: KikCallback containing callback implementation.
         :param username: username.
         :param password: password.
-        :param loglevel: logging level.
+        :param log_level: logging level.
         """
         logging_format = '%(asctime)-15s %(levelname)-6s %(threadName)-10s %(message)s'
-        logging.basicConfig(format=logging_format, level=loglevel, datefmt='%Y-%m-%d %H:%M:%S', filename='kik.log',
+        logging.basicConfig(format=logging_format, level=log_level, datefmt='%Y-%m-%d %H:%M:%S', filename='kik.log',
                             filemode='w')
         self.callback = callback
         self.handlers = {
@@ -62,26 +62,26 @@ class KikApi:
     def login(self, username, password, captcha_result=None):
         self.username = username
         self.password = password
-        login_message = LoginMessage(username, password, captcha_result)
+        login_message = LoginRequest(username, password, captcha_result)
         return self._send(login_message)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         self.username = username
         self.password = password
-        register_message = RegisterMessage(email, username, password, first_name, last_name, birthday, captcha_result)
+        register_message = RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result)
         return self._send(register_message)
 
     def check_unique(self, username):
-        return self._send(CheckUniqueMessage(username))
+        return self._send(CheckUsernameUniquenessRequest(username))
 
     def request_roster(self):
-        return self._send(RosterMessage())
+        return self._send(FetchRoasterRequest())
 
     def send(self, peer_jid: str, message: str):
         if self.is_group_jid(peer_jid):
-            return self._send(GroupChatMessage(peer_jid, message))
+            return self._send(OutgoingGroupChatMessage(peer_jid, message))
         else:
-            return self._send(ChatMessage(peer_jid, message))
+            return self._send(OutgoingChatMessage(peer_jid, message))
 
     @staticmethod
     def is_group_jid(jid):
@@ -93,37 +93,37 @@ class KikApi:
             raise KikApiException('Not a valid jid')
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str):
-        return self._send(ReadReceiptMessage(peer_jid, receipt_message_id))
+        return self._send(OutgoingReadReceipt(peer_jid, receipt_message_id))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
-        return self._send(DeliveredReceiptMessage(peer_jid, receipt_message_id))
+        return self._send(OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
         if self.is_group_jid(peer_jid):
-            return self._send(GroupIsTypingMessage(peer_jid, is_typing))
+            return self._send(OutgoingGroupIsTypingEvent(peer_jid, is_typing))
         else:
-            return self._send(IsTypingMessage(peer_jid, is_typing))
+            return self._send(OutgoingIsTypingEvent(peer_jid, is_typing))
 
     def request_info_from_jid(self, peer_jid: str):
-        return self._send(BatchFriendMesssage(peer_jid))
+        return self._send(BatchFriendRequest(peer_jid))
 
     def request_info_from_username(self, username: str):
-        return self._send(FriendMesssage(username))
+        return self._send(FriendRequest(username))
 
     def add_friend(self, peer_jid):
-        return self._send(AddFriendMessage(peer_jid))
+        return self._send(AddFriendRequest(peer_jid))
 
     def add_to_group(self, group_jid, peer_jid):
-        return self._send(AddToGroupMessage(group_jid, peer_jid))
+        return self._send(AddToGroupRequest(group_jid, peer_jid))
 
     def remove_from_group(self, group_jid, peer_jid):
-        return self._send(RemoveFromGroupMessage(group_jid, peer_jid))
+        return self._send(RemoveFromGroupRequest(group_jid, peer_jid))
 
     def ban(self, group_jid, peer_jid):
-        return self._send(BanMessage(group_jid, peer_jid))
+        return self._send(BanMemberRequest(group_jid, peer_jid))
 
     def unban(self, group_jid, peer_jid):
-        return self._send(UnbanMessage(group_jid, peer_jid))
+        return self._send(UnbanRequest(group_jid, peer_jid))
 
     def _establish_auth_connection(self):
         self.connect_auth = True
@@ -143,7 +143,7 @@ class KikApi:
         logging.debug("New connection made")
         self.loop.run_forever()
 
-    def _send(self, message: Message):
+    def _send(self, message: XMPPElement):
         while not self.connected:
             logging.debug("Waiting for connection.")
             time.sleep(0.1)
@@ -181,7 +181,7 @@ class KikApi:
         if 'xmlns' in message.attrs:
             self._handle(message['xmlns'], message)
         elif message['type'] == 'receipt':
-            self.callback.on_group_receipt(GroupReceiptResponse(message))
+            self.callback.on_group_receipts_received(IncomingGroupReceiptsEvent(message))
 
     def _handle(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.handlers:
@@ -193,13 +193,13 @@ class KikApi:
 
     def connection_made(self):
         if self.node:
-            message = EstablishAuthConnectionMessage(self.node, self.username, self.password)
+            message = EstablishAuthConnectionRequest(self.node, self.username, self.password)
             self.initial_connection_payload = message.serialize()
         self.connection.send(self.initial_connection_payload)
 
 
 class KikConnection(Protocol):
-    def __init__(self, loop, api: KikApi):
+    def __init__(self, loop, api: KikClient):
         self.api = api
         self.loop = loop
         self.transport = None  # type: Transport

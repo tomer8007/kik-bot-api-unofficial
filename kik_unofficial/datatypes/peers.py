@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-from kik_unofficial.kik_exceptions import KikApiException
+
+from kik_unofficial.datatypes.exceptions import KikApiException
 
 
 class Peer:

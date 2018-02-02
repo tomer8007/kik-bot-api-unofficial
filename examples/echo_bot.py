@@ -1,11 +1,16 @@
+"""
+The echo bot sends back whatever messages he gets.
+"""
+
 import sys
 import time
+import logging
 
-from kik_unofficial.kikclient import KikClient
+from kik_unofficial.client_legacy import KikClient
 
 
 def main():
-    username, password = "your_kik_username", "your_kik_password"
+    username, password = "shlomo991", "123456"
     kik_client = KikClient(username, password)
 
     print("[+] Listening for incoming events.")

@@ -1,7 +1,7 @@
 import base64
 
 
-class Utilities:
+class ParsingUtilities:
     def __init__(self):
         pass
 

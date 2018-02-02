@@ -4,6 +4,7 @@ import time
 from asyncio import Transport, Protocol
 from threading import Thread
 
+import sys
 from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.callbacks import KikClientCallback
@@ -31,9 +32,9 @@ class KikClient:
         :param password: password.
         :param log_level: logging level.
         """
-        logging_format = '%(asctime)-15s %(levelname)-6s %(threadName)-10s %(message)s'
-        logging.basicConfig(format=logging_format, level=log_level, datefmt='%Y-%m-%d %H:%M:%S', filename='kik.log',
-                            filemode='w')
+
+        self._set_up_logging(log_level)
+
         self.callback = callback
         self.handlers = {
             'kik:iq:check-unique': CheckUniqueHandler(callback, self),
@@ -56,7 +57,7 @@ class KikClient:
         self._connect()
 
     def _connect(self):
-        self.kik_connection_thread = Thread(target=self._kik_connection_thread_function)
+        self.kik_connection_thread = Thread(target=self._kik_connection_thread_function, name="KikConnection")
         self.kik_connection_thread.start()
 
     def login(self, username, password, captcha_result=None):
@@ -127,7 +128,7 @@ class KikClient:
 
     def _establish_auth_connection(self):
         self.connect_auth = True
-        logging.debug("Establishing authenticated connection on node {}".format(self.node))
+        logging.debug("[+] Establishing authenticated connection on node {}".format(self.node))
         self._connect()
 
     def _kik_connection_thread_function(self):
@@ -136,16 +137,16 @@ class KikClient:
             self.loop.call_soon_threadsafe(self.connection.close)
             while self.loop.is_running():
                 time.sleep(0.1)
-                logging.debug("Waiting for loop to stop.")
+                logging.debug("[!] Waiting for loop to stop.")
         self.connection = KikConnection(self.loop, self)
         coro = self.loop.create_connection(lambda: self.connection, HOST, PORT, ssl=True)
         self.loop.run_until_complete(coro)
-        logging.debug("New connection made")
+        logging.debug("[!] New connection made")
         self.loop.run_forever()
 
     def _send(self, message: XMPPElement):
         while not self.connected:
-            logging.debug("Waiting for connection.")
+            logging.debug("[!] Waiting for connection.")
             time.sleep(0.1)
         self.loop.call_soon_threadsafe(self.connection.send, (message.serialize()))
         return message.message_id
@@ -197,6 +198,21 @@ class KikClient:
             self.initial_connection_payload = message.serialize()
         self.connection.send(self.initial_connection_payload)
 
+    def _set_up_logging(self, log_level):
+        log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+
+        file_handler = logging.FileHandler("kik-debug.log")
+        file_handler.setFormatter(log_formatter)
+        file_handler.setLevel(logging.DEBUG)
+        root_logger.addHandler(file_handler)
+
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(log_level)
+        console_handler.setFormatter(log_formatter)
+        root_logger.addHandler(console_handler)
+
 
 class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):
@@ -206,23 +222,23 @@ class KikConnection(Protocol):
 
     def connection_made(self, transport: Transport):
         self.transport = transport
-        logging.debug("Connection made")
+        logging.debug("[!] Connected to kik server.")
         self.api.connection_made()
 
     def data_received(self, data: bytes):
-        logging.debug("Received %s", data)
+        logging.debug("[+] Received raw data: %s", data)
         self.loop.call_soon_threadsafe(self.api.data_received, data)
 
     def connection_lost(self, exc):
-        logging.debug('Connection lost')
+        logging.debug('[-] Connection lost')
         self.loop.call_soon_threadsafe(self.api.connection_lost)
         self.loop.stop()
 
     def send(self, data: bytes):
-        logging.debug("Sending %s", data)
+        logging.debug("[+] Sending raw data: %s", data)
         self.transport.write(data)
 
     def close(self):
         if self.transport:
             self.transport.write(b'</k>')
-        logging.debug("Transport closed")
+        logging.debug("[!] Transport closed")

@@ -76,4 +76,4 @@ class PrintCallback(KikClientCallback):
 
 if __name__ == '__main__':
     callback = PrintCallback()
-    client = KikClient(callback, username, password, log_level=logging.DEBUG)
+    client = KikClient(callback, username, password)

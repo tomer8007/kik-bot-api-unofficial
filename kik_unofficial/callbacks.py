@@ -1,4 +1,4 @@
-from kik_unofficial.datatypes.errors import LoginError, SignUpError
+from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingGroupReceiptsEvent, IncomingStatusResponse

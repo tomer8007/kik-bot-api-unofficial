@@ -1,11 +1,12 @@
 from bs4 import BeautifulSoup
 
 from kik_unofficial.client import KikClientCallback
+from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingStatusResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse
-from kik_unofficial.datatypes.xmpp.sign_up import RegisterError, RegisterResponse, LoginResponse, UsernameUniquenessResponse
+from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, UsernameUniquenessResponse
 
 
 class Handler:
@@ -25,11 +26,12 @@ class CheckUniqueHandler(Handler):
 class RegisterHandler(Handler):
     def handle(self, data: BeautifulSoup):
         message_type = data['type']
+
         if message_type == "error":
             if data.find('email'):
-                self.callback.on_register_error(RegisterError(data))
+                self.callback.on_register_error(SignUpError(data))
             else:
-                self.callback.on_login_error(RegisterError(data))
+                self.callback.on_login_error(LoginError(data))
         elif message_type == "result":
             if data.find('node'):
                 self.api.node = data.find('node').text

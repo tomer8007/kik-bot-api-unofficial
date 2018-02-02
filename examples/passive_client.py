@@ -1,11 +1,11 @@
 from kik_unofficial.client import KikClient
 from kik_unofficial.datatypes.callbacks import KikClientCallback
+from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingStatusResponse, IncomingGroupReceiptsEvent, IncomingGroupIsTypingEvent, IncomingIsTypingEvent, \
     IncomingGroupStatus, IncomingFriendAttribution, IncomingGroupChatMessage, IncomingChatMessage, IncomingMessageReadEvent, \
     IncomingMessageDeliveredEvent
 from kik_unofficial.datatypes.xmpp.roster import FriendResponse, FetchRosterResponse
-from kik_unofficial.datatypes.xmpp.sign_up import ConnectionFailedResponse, LoginResponse, RegisterResponse, UsernameUniquenessResponse, \
-    RegisterError
+from kik_unofficial.datatypes.xmpp.sign_up import ConnectionFailedResponse, LoginResponse, RegisterResponse, UsernameUniquenessResponse
 
 import logging
 
@@ -17,10 +17,10 @@ class PrintCallback(KikClientCallback):
     def on_username_uniqueness_received(self, response: UsernameUniquenessResponse):
         print("Is {} a unique username? {}".format(response.username, response.unique))
 
-    def on_register_error(self, response: RegisterError):
+    def on_register_error(self, response: SignUpError):
         print("Register error: {}".format(response.message))
 
-    def on_login_error(self, response: RegisterError):
+    def on_login_error(self, response: LoginError):
         print("Login error: {}".format(response.message))
 
     def on_sign_up_ended(self, response: RegisterResponse):

@@ -34,3 +34,7 @@ class KikInvalidAckException(KikErrorException):
 
 class KikEmptyResponseException(KikErrorException):
     pass
+
+
+class InvalidAckException(Exception):
+    pass

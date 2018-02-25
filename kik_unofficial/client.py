@@ -1,23 +1,22 @@
 import asyncio
 import logging
+import sys
 import time
 from asyncio import Transport, Protocol
 from threading import Thread
 
-import sys
 from bs4 import BeautifulSoup
-
 from kik_unofficial.datatypes.callbacks import KikClientCallback
 from kik_unofficial.datatypes.exceptions import KikApiException
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
     OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
 from kik_unofficial.datatypes.xmpp.group_adminship import AddToGroupRequest, RemoveFromGroupRequest, BanMemberRequest, UnbanRequest
-from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchFriendRequest, FriendRequest, AddFriendRequest
+from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchFriendRequest, FriendRequest, AddFriendRequest, GroupSearchRequest
 from kik_unofficial.datatypes.xmpp.sign_up import LoginRequest, RegisterRequest, EstablishAuthConnectionRequest, \
     ConnectionFailedResponse, CheckUsernameUniquenessRequest
 from kik_unofficial.handlers import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
-    GroupMessageHandler, FriendMessageHandler
+    GroupMessageHandler, FriendMessageHandler, GroupSearchHandler
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -43,6 +42,7 @@ class KikClient:
             'jabber:client': MessageHandler(callback, self),
             'kik:groups': GroupMessageHandler(callback, self),
             'kik:iq:friend': FriendMessageHandler(callback, self),
+            'kik:iq:xiphias:bridge': GroupSearchHandler(callback, self),
         }
         self.connected = False
         self.authenticated = False
@@ -215,6 +215,9 @@ class KikClient:
     def disconnect(self):
         self.connection.close()
         self.loop.call_later(200, self.loop.stop)
+
+    def search_group(self, search_query):
+        return self._send(GroupSearchRequest(search_query))
 
 
 class KikConnection(Protocol):

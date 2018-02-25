@@ -25,7 +25,7 @@ class SignUpError(KikError):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         if data.find('captcha-url'):
-                self.captcha_url = data.find('captcha-url').text + "&callback_url=https://kik.com/captcha-url"
+            self.captcha_url = data.find('captcha-url').text + "&callback_url=https://kik.com/captcha-url"
 
         if self.code in self.errors:
             self.message = self.error_messages[self.code]

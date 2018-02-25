@@ -2,8 +2,9 @@ import logging
 
 from kik_unofficial.client import KikClient
 from kik_unofficial.datatypes.callbacks import KikClientCallback
+from kik_unofficial.datatypes.errors import SignUpError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
-from kik_unofficial.datatypes.xmpp.sign_up import RegisterError, LoginResponse, RegisterResponse
+from kik_unofficial.datatypes.xmpp.sign_up import LoginResponse, RegisterResponse
 
 
 class RegisterClient(KikClientCallback):
@@ -17,7 +18,7 @@ class RegisterClient(KikClientCallback):
     def on_login_ended(self, response: LoginResponse):
         print("Logged in as {}.".format(response.username))
 
-    def on_register_error(self, response: RegisterError):
+    def on_register_error(self, response: SignUpError):
         if "captcha_url" in dir(response):
             print(response.captcha_url)
             result = input("Captcha result:")

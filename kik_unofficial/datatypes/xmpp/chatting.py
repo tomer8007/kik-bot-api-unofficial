@@ -1,7 +1,6 @@
 import time
 
 from bs4 import BeautifulSoup
-
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.parsing import ParsingUtilities
 
@@ -209,3 +208,32 @@ class IncomingStatusResponse(XMPPResponse):
         self.status = status.text
         self.special_visibility = status['special-visibility'] == 'true'
         self.status_jid = status['jid']
+
+
+class IncomingGroupSticker(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        content = data.content
+        extras_map = self.parse_extras(content.extras)
+        self.from_jid = data['from']
+        self.group_jid = data.g['jid']
+        self.sticker_pack_id = extras_map['sticker_pack_id'] if 'sticker_pack_id' in extras_map else None
+        self.sticker_url = extras_map['sticker_url'] if 'sticker_url' in extras_map else None
+        self.sticker_id = extras_map['sticker_id'] if 'sticker_id' in extras_map else None
+        self.sticker_source = extras_map['sticker_source'] if 'sticker_source' in extras_map else None
+        self.png_preview = content.images.find('png-preview').text if content.images.find('png-preview') else None
+        self.uris = []
+        for uri in content.uris:
+            self.uris.append(self.Uri(uri))
+
+    class Uri:
+        def __init__(self, uri):
+            self.platform = uri['platform']
+            self.url = uri.text
+
+    @staticmethod
+    def parse_extras(extras):
+        extras_map = {}
+        for item in extras.findAll('item'):
+            extras_map[item.key.string] = item.val.text
+        return extras_map

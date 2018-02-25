@@ -52,8 +52,7 @@ class KikClient:
         self.initial_connection_payload = '<k anon="">'.encode()
         self.username = username
         self.password = password
-        if username and password:
-            self.authenticate_on_connection = True
+        self.authenticate_on_connection = username and password
         self._connect()
 
     def _connect(self):
@@ -213,11 +212,16 @@ class KikClient:
         console_handler.setFormatter(log_formatter)
         root_logger.addHandler(console_handler)
 
+    def disconnect(self):
+        self.connection.close()
+        self.loop.call_later(200, self.loop.stop)
+
 
 class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):
         self.api = api
         self.loop = loop
+        self.partial_data = None  # type: bytes
         self.transport = None  # type: Transport
 
     def connection_made(self, transport: Transport):
@@ -227,7 +231,19 @@ class KikConnection(Protocol):
 
     def data_received(self, data: bytes):
         logging.debug("[+] Received raw data: %s", data)
-        self.loop.call_soon_threadsafe(self.api.data_received, data)
+        if self.partial_data is None:
+            if data.endswith(b'>'):
+                self.loop.call_soon_threadsafe(self.api.data_received, data)
+            else:
+                logging.debug("Multi-packet data, waiting for next packet.")
+                self.partial_data = data
+        else:
+            if data.endswith(b'>'):
+                self.loop.call_soon_threadsafe(self.api.data_received, self.partial_data + data)
+                self.partial_data = None
+            else:
+                logging.debug("Waiting for another packet, size={}".format(len(self.partial_data)))
+                self.partial_data += data
 
     def connection_lost(self, exc):
         logging.debug('[-] Connection lost')

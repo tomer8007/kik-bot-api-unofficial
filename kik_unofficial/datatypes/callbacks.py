@@ -2,7 +2,7 @@ from kik_unofficial.datatypes.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, \
     ConnectionFailedResponse, UsernameUniquenessResponse
 
@@ -66,4 +66,7 @@ class KikClientCallback:
         pass
 
     def on_group_sticker(self, response: IncomingGroupSticker):
+        pass
+
+    def on_group_search_response(self, response: GroupSearchResponse):
         pass

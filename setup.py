@@ -14,10 +14,10 @@ setup(
     version='0.2.1',
 
     description='Python API for writing unoffical kik bots that act like humans',
-	long_description=long_description,
+    long_description=long_description,
 
     url='https://github.com/tomer8007/kik-bot-api-unofficial',
-	download_url="https://github.com/tomer8007/kik-bot-api-unofficial/tarball/master",
+    download_url="https://github.com/tomer8007/kik-bot-api-unofficial/tarball/master",
 
     author='Tomer',
     author_email='tomer8007@gmail.com',
@@ -35,7 +35,7 @@ setup(
 
     packages=find_packages(exclude=['docs', 'test']),
 
-    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4'],
+    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf'],
 
     extras_require={
         'dev': [],

@@ -14,6 +14,8 @@ from kik_unofficial.datatypes.exceptions import *
 from kik_unofficial.utilities import Utilities
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
+from kik_unofficial.protobuf import group_search_service_pb2
+
 HOST, PORT = "talk1110an.kik.com", 5223
 
 
@@ -21,10 +23,6 @@ class DebugLevel(IntEnum):
     VERBOSE = 0,
     WARNING = 1,
     ERROR = 2,
-
-
-class InvalidAckException(Exception):
-    pass
 
 
 class KikClient:
@@ -237,9 +235,9 @@ class KikClient:
 
         return jid_info
 
-    def get_info_for_group(self, group_hashtag, add_hashtag_symbol=True):
+    def get_info_for_group(self, group_hashtag):
         # essentially doing a group search
-        if add_hashtag_symbol and not group_hashtag.startswith("#"):
+        if not group_hashtag.startswith("#"):
             group_hashtag = "#" + group_hashtag
 
         self._log("[+] Getting info for group (code: " + str(group_hashtag) + ")...")
@@ -268,6 +266,98 @@ class KikClient:
         self._log("[+] Okay")
 
         return groups_info
+
+    def find_groups_suggestions(self, search_query):
+        if search_query.startswith("#"):
+            search_query = search_query[1:]
+        self._log("[+] Searching groups with query '{}'...".format(search_query))
+
+        encoded_search_query = base64.b64encode(("\x0a" + chr(len(search_query)) + search_query).encode(), b"-_").decode()
+        if encoded_search_query.endswith("="):
+            encoded_search_query = encoded_search_query[:encoded_search_query.index("=")]
+
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:iq:xiphias:bridge" service="mobile.groups.v1.GroupSearch" method="FindGroups">'
+                '<body>{}</body></query></iq>') \
+            .format(KikCryptographicUtils.make_kik_uuid(), encoded_search_query)
+        self._make_request(data)
+
+        response = self._get_response()
+        if response.error:
+            self._log("[-] Error when trying to get groups suggestions:", DebugLevel.ERROR)
+            self._log(response.error.prettify(), DebugLevel.ERROR)
+            raise KikErrorException(response.error, "Unable to get group suggestions. query: " + str(search_query))
+
+        if response.find("body") is None:
+            self._log("[-] Can't find results")
+            return None
+
+        encoded_results = base64.b64decode(response.find("body").text.encode(), b"-_")
+        results = group_search_service_pb2.FindGroupsResponse()
+        results.ParseFromString(encoded_results)
+
+        if len(results.match) == 0:
+            self._log("[!] Found no matching groups")
+        else:
+            self._log("[+] Okay")
+
+        return results
+
+    # -- IMPORTANT NOTE --
+    # This method was found to always produce
+    # <error type="modify" code="400">
+    #    <bad-request xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+    # </error>
+    # for an unknown reason
+    # -- IMPORTANT NOTE --
+    def join_group(self, group_hashtag):
+        if not group_hashtag.startswith("#"):
+            group_hashtag = "#" + group_hashtag
+
+        groups_suggestions = self.find_groups_suggestions(group_hashtag)
+        if groups_suggestions is None or len(groups_suggestions.match) == 0:
+            return None
+
+        group_to_join = groups_suggestions.match[0]
+        group_to_join_name = group_to_join.display_data.hashtag
+
+        if group_to_join_name.lower() != group_hashtag.lower():
+            self._log("[!] The group '{}' does not match exactly to the requested group '{}', so not joining."
+                      .format(group_to_join_name, group_hashtag))
+            return None
+
+        self._log("[+] Joining group '{}' with {} members...".format(group_to_join_name, group_to_join.member_count))
+
+        join_token = group_to_join.group_join_token.token
+        join_token = base64.b64encode(join_token, b"-_").decode()
+        if join_token.endswith("="):
+            join_token = join_token[:join_token.index("=")]
+
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}" action="join">'
+                '<code>{}</code>'
+                '<token>{}</token>'
+                '</g></query></iq>') \
+            .format(KikCryptographicUtils.make_kik_uuid(),
+                    self._resolve_group(group_to_join.jid.local_part),
+                    group_hashtag,
+                    join_token)
+        self._make_request(data)
+
+        response = self._get_response()
+        if response.error:
+            self._log("[-] Error when trying to join group:", DebugLevel.ERROR)
+            self._log(response.error.prettify(), DebugLevel.ERROR)
+            raise KikErrorException(response.error, "Unable to join group '{}'".format(group_hashtag))
+
+        if response.find("type") is None:
+            self._log("[-] Can't find results")
+            return None
+
+        self._log("[+] Joined to group '{}'".format(group_hashtag))
+
+        return group_to_join
 
     def send_message(self, username, body, groupchat=False):
         self._log('[+] Sending message "{}" to {}...'.format(body, username))
@@ -727,6 +817,14 @@ class KikClient:
         jid = jid_info["jid"]
         self.jid_cache_list.append(jid)
         return jid
+
+    def _resolve_group(self, group_jid):
+        jid_domain = "groups.kik.com"
+
+        if group_jid.endswith(jid_domain):
+            return group_jid
+
+        return group_jid + "@" + jid_domain
 
     def _log(self, message, message_level=DebugLevel.VERBOSE):
         if self.debug_level == DebugLevel.VERBOSE:

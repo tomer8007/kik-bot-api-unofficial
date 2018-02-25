@@ -4,7 +4,7 @@ from kik_unofficial.client import KikClientCallback
 from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse
+    IncomingStatusResponse, IncomingGroupSticker
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, UsernameUniquenessResponse
 
@@ -80,6 +80,11 @@ class GroupMessageHandler(Handler):
             self.callback.on_group_message_received(IncomingGroupChatMessage(data))
         elif data.find('is-typing'):
             self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
+        elif data.content and 'app-id' in data.content.attrs:
+            app_id = data.content['app-id']
+            if app_id == 'com.kik.ext.stickers':
+                self.callback.on_group_sticker(IncomingGroupSticker(data))
+
         else:
             raise NotImplementedError
 

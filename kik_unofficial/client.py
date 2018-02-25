@@ -52,8 +52,7 @@ class KikClient:
         self.initial_connection_payload = '<k anon="">'.encode()
         self.username = username
         self.password = password
-        if username and password:
-            self.authenticate_on_connection = True
+        self.authenticate_on_connection = username and password
         self._connect()
 
     def _connect(self):
@@ -212,6 +211,10 @@ class KikClient:
         console_handler.setLevel(log_level)
         console_handler.setFormatter(log_formatter)
         root_logger.addHandler(console_handler)
+
+    def disconnect(self):
+        self.connection.close()
+        self.loop.call_later(200, self.loop.stop)
 
 
 class KikConnection(Protocol):

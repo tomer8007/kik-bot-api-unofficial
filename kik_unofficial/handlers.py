@@ -5,7 +5,7 @@ from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingStatusResponse, IncomingGroupSticker
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse, GroupSearchResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, UsernameUniquenessResponse
 
 
@@ -91,7 +91,7 @@ class GroupMessageHandler(Handler):
 
 class FriendMessageHandler(Handler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_peer_info_received(FriendResponse(data))
+        self.callback.on_peer_info_received(PeerInfoResponse(data))
 
 
 class GroupSearchHandler(Handler):

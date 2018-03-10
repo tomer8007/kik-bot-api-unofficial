@@ -2,7 +2,7 @@ from kik_unofficial.datatypes.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingGroupReceiptsEvent, IncomingStatusResponse
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, \
     ConnectionFailedResponse, UsernameUniquenessResponse
 
@@ -23,7 +23,7 @@ class KikClientCallback:
     def on_authorized(self):
         pass
 
-    def on_peer_info_received(self, response: FriendResponse):
+    def on_peer_info_received(self, response: PeerInfoResponse):
         pass
 
     def on_friend_attribution(self, response: IncomingFriendAttribution):

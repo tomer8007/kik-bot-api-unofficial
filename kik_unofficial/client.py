@@ -12,11 +12,13 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
     OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
 from kik_unofficial.datatypes.xmpp.group_adminship import AddToGroupRequest, RemoveFromGroupRequest, BanMemberRequest, UnbanRequest
-from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchFriendRequest, FriendRequest, AddFriendRequest, GroupSearchRequest
+from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchPeerInfoRequest, FriendRequest, AddFriendRequest, GroupSearchRequest, \
+    GroupJoinRequest
 from kik_unofficial.datatypes.xmpp.sign_up import LoginRequest, RegisterRequest, EstablishAuthConnectionRequest, \
     ConnectionFailedResponse, CheckUsernameUniquenessRequest
 from kik_unofficial.handlers import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
     GroupMessageHandler, FriendMessageHandler, GroupSearchHandler
+from typing import Union, List
 
 HOST, PORT = "talk1110an.kik.com", 5223
 
@@ -42,6 +44,7 @@ class KikClient:
             'jabber:client': MessageHandler(callback, self),
             'kik:groups': GroupMessageHandler(callback, self),
             'kik:iq:friend': FriendMessageHandler(callback, self),
+            'kik:iq:friend:batch': FriendMessageHandler(callback, self),
             'kik:iq:xiphias:bridge': GroupSearchHandler(callback, self),
         }
         self.connected = False
@@ -104,8 +107,8 @@ class KikClient:
         else:
             return self._send(OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    def request_info_from_jid(self, peer_jid: str):
-        return self._send(BatchFriendRequest(peer_jid))
+    def request_info_from_jid(self, peer_jids: Union[str, List[str]]):
+        return self._send(BatchPeerInfoRequest(peer_jids))
 
     def request_info_from_username(self, username: str):
         return self._send(FriendRequest(username))
@@ -219,6 +222,8 @@ class KikClient:
     def search_group(self, search_query):
         return self._send(GroupSearchRequest(search_query))
 
+    def join_group_with_token(self, group_hashtag, group_jid, join_token):
+        return self._send(GroupJoinRequest(group_hashtag, join_token, group_jid))
 
 class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):

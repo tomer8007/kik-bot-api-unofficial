@@ -786,9 +786,10 @@ class KikClient:
             return username
 
         if self.user_info is not None:
-            for node in self.user_info["chat_list"]:
-                if node[:node.rfind('_')] == username:
-                    return node + jid_domain
+            if "chat_list" in self.user_info:
+                for node in self.user_info["chat_list"]:
+                    if node[:node.rfind('_')] == username:
+                        return node + jid_domain
 
         for jid in self.jid_cache_list:
             if jid[:jid.rfind('_')] == username:

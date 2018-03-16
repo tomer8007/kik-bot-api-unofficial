@@ -1,4 +1,5 @@
 import base64
+from typing import List, Union
 
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group, User
@@ -44,23 +45,28 @@ class FriendRequest(XMPPElement):
         return data.encode()
 
 
-class FriendResponse(XMPPResponse):
+class PeerInfoResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.user = User(data.query.item)
+        items = data.query.find_all('item')
+        self.users = [User(item) for item in items]
 
 
-class BatchFriendRequest(XMPPElement):
-    def __init__(self, peer_jid):
+class BatchPeerInfoRequest(XMPPElement):
+    def __init__(self, peer_jids: Union[str, List[str]]):
         super().__init__()
-        self.peer_jid = peer_jid
+        if isinstance(peer_jids, List):
+            self.peer_jids = peer_jids
+        else:
+            self.peer_jids = [peer_jids]
 
     def serialize(self) -> bytes:
+        items = ''.join(['<item jid="{}" />'.format(jid) for jid in self.peer_jids])
         data = ('<iq type="get" id="{}">'
                 '<query xmlns="kik:iq:friend:batch">'
-                '<item jid="{}" />'
+                '{}'
                 '</query>'
-                '</iq>').format(self.message_id, self.peer_jid)
+                '</iq>').format(self.message_id, items)
         return data.encode()
 
 
@@ -105,7 +111,7 @@ class GroupSearchResponse(XMPPResponse):
         encoded_results = base64.b64decode(data.find("body").text.encode(), b"-_")
         results = group_search_service_pb2.FindGroupsResponse()
         results.ParseFromString(encoded_results)
-        self.groups = []
+        self.groups = []  # type: List[self.GroupSearchEntry]
         for result in results.match:
             self.groups.append(self.GroupSearchEntry(result))
 
@@ -120,3 +126,24 @@ class GroupSearchResponse(XMPPResponse):
 
         def __repr__(self):
             return "GroupSearchEntry(jid={}, hashtag={}, name={}, members={})".format(self.jid, self.hashtag, self.display_name, self.member_count)
+
+
+class GroupJoinRequest(XMPPElement):
+    def __init__(self, group_hashtag, join_token, group_jid):
+        super().__init__()
+        self.group_hashtag = group_hashtag
+        self.join_token = join_token
+        self.group_jid = group_jid
+
+    def serialize(self) -> bytes:
+        join_token = base64.b64encode(self.join_token, b"-_").decode()
+        if join_token.endswith("="):
+            join_token = join_token[:join_token.index("=")]
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}" action="join">'
+                '<code>{}</code>'
+                '<token>{}</token>'
+                '</g></query></iq>') \
+            .format(self.message_id, self.group_jid, self.group_hashtag, join_token)
+        return data.encode()

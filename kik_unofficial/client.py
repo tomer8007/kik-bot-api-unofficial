@@ -4,6 +4,7 @@ import sys
 import time
 from asyncio import Transport, Protocol
 from threading import Thread
+from typing import Union, List
 
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.callbacks import KikClientCallback
@@ -12,7 +13,8 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
     OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
 from kik_unofficial.datatypes.xmpp.group_adminship import AddToGroupRequest, RemoveFromGroupRequest, BanMemberRequest, UnbanRequest
-from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchFriendRequest, FriendRequest, AddFriendRequest, GroupSearchRequest
+from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchPeerInfoRequest, FriendRequest, AddFriendRequest, GroupSearchRequest, \
+    GroupJoinRequest
 from kik_unofficial.datatypes.xmpp.sign_up import LoginRequest, RegisterRequest, EstablishAuthConnectionRequest, \
     ConnectionFailedResponse, CheckUsernameUniquenessRequest
 from kik_unofficial.handlers import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
@@ -22,7 +24,7 @@ HOST, PORT = "talk1110an.kik.com", 5223
 
 
 class KikClient:
-    def __init__(self, callback: KikClientCallback, username=None, password=None, log_level=logging.INFO):
+    def __init__(self, callback: KikClientCallback, username=None, password=None, node=None, log_level=logging.INFO):
         """
         Initializes a connection to Kik servers. Use username and password for logging in.
 
@@ -42,6 +44,7 @@ class KikClient:
             'jabber:client': MessageHandler(callback, self),
             'kik:groups': GroupMessageHandler(callback, self),
             'kik:iq:friend': FriendMessageHandler(callback, self),
+            'kik:iq:friend:batch': FriendMessageHandler(callback, self),
             'kik:iq:xiphias:bridge': GroupSearchHandler(callback, self),
         }
         self.connected = False
@@ -49,9 +52,14 @@ class KikClient:
         self.connection = None
         self.loop = asyncio.get_event_loop()
         self.node = None
-        self.initial_connection_payload = '<k anon="">'.encode()
         self.username = username
         self.password = password
+        self.node = node
+        if node:
+            message = EstablishAuthConnectionRequest(self.node, self.username, self.password)
+            self.initial_connection_payload = message.serialize()
+        else:
+            self.initial_connection_payload = '<k anon="">'.encode()
         self.authenticate_on_connection = username and password
         self._connect()
 
@@ -104,8 +112,8 @@ class KikClient:
         else:
             return self._send(OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    def request_info_from_jid(self, peer_jid: str):
-        return self._send(BatchFriendRequest(peer_jid))
+    def request_info_from_jid(self, peer_jids: Union[str, List[str]]):
+        return self._send(BatchPeerInfoRequest(peer_jids))
 
     def request_info_from_username(self, username: str):
         return self._send(FriendRequest(username))
@@ -218,6 +226,9 @@ class KikClient:
 
     def search_group(self, search_query):
         return self._send(GroupSearchRequest(search_query))
+
+    def join_group_with_token(self, group_hashtag, group_jid, join_token):
+        return self._send(GroupJoinRequest(group_hashtag, join_token, group_jid))
 
 
 class KikConnection(Protocol):

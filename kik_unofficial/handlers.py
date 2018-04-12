@@ -69,7 +69,14 @@ class MessageHandler(Handler):
         elif data['type'] == 'is-typing':
             self.callback.on_is_typing_event_received(IncomingIsTypingEvent(data))
         elif data['type'] == 'groupchat':
-            self.callback.on_group_status_received(IncomingGroupStatus(data))
+            if data.body:
+                self.callback.on_group_message_received(IncomingGroupChatMessage(data))
+            elif data.find('is-typing'):
+                self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
+            elif data.find('status'):
+                self.callback.on_group_status_received(IncomingGroupStatus(data))
+            else:
+                raise NotImplementedError
         else:
             raise NotImplementedError
 

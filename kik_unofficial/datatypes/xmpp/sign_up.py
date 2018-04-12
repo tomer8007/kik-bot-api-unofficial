@@ -9,9 +9,9 @@ from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
-device_id = "167da12427ee4dc4a36b40e8debafc25"
+device_id = ''.join(random.choice('0123456789abcdef') for _ in range(32))
 kik_version = "11.1.1.12218"
-android_id = "c10d47ba7ee17193"
+android_id = ''.join(random.choice('0123456789abcdef') for _ in range(16))
 captcha_element = '<challenge><response>{}</response></challenge>'
 
 
@@ -41,11 +41,11 @@ class LoginRequest(XMPPElement):
                 '<android-sdk>19</android-sdk>'
                 '<registrations-since-install>0</registrations-since-install>'
                 '<prefix>CAN</prefix>'
-                '<android-id>c10d47ba7ee17193</android-id>'
+                '<android-id>{}</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '{}'
                 '</query>'
-                '</iq>').format(self.message_id, self.username, password_key, device_id, kik_version, captcha)
+                '</iq>').format(self.message_id, self.username, password_key, device_id, kik_version, android_id, captcha)
         return data.encode()
 
 

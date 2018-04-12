@@ -45,7 +45,7 @@ class UnbanRequest(XMPPElement):
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="kik:groups:admin">'
                 '<g jid="{}">'
-                '<b r="1">{}</m>'
+                '<b r="1">{}</b>'
                 '</g>'
                 '</query>'
                 '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
@@ -62,7 +62,7 @@ class BanMemberRequest(XMPPElement):
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="kik:groups:admin">'
                 '<g jid="{}">'
-                '<b>{}</m>'
+                '<b>{}</b>'
                 '</g>'
                 '</query>'
                 '</iq>').format(self.message_id, self.group_jid, self.peer_jid)

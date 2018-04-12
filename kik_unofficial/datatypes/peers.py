@@ -43,5 +43,5 @@ class Group(Peer):
 class GroupMember(Peer):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data.text)
-        self.is_admin = 'a' in data and data['a'] == '1'
-        self.is_owner = 's' in data and data['s'] == '1'
+        self.is_admin = data.get('a') == '1'
+        self.is_owner = data.get('s') == '1'

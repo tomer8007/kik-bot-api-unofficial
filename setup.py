@@ -35,7 +35,7 @@ setup(
 
     packages=find_packages(exclude=['docs', 'test']),
 
-    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf'],
+    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests'],
 
     extras_require={
         'dev': [],

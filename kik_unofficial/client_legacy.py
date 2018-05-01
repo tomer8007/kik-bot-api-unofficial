@@ -53,7 +53,7 @@ class KikClient:
 
         self._log("[+] Connecting to kik server...")
         self.wrappedSocket.connect((HOST, PORT))
-        self.wrappedSocket.send(initial_connection_payload)
+        self.wrappedSocket.send_chat_message(initial_connection_payload)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
             raise KikErrorException(response, "[-] Could not connect to kik server: " + response)
@@ -140,7 +140,7 @@ class KikClient:
     def establish_session(self, username, node, password):
         self._log("[+] Establishing session...")
         # reset the socket
-        self.wrappedSocket.send("</k>".encode('UTF-8'))
+        self.wrappedSocket.send_chat_message("</k>".encode('UTF-8'))
         self.wrappedSocket.close()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(10)
@@ -176,7 +176,7 @@ class KikClient:
             'UTF-8')
 
         # send session request
-        self.wrappedSocket.send(packet)
+        self.wrappedSocket.send_chat_message(packet)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
             raise KikErrorException(response, "Could not init session: " + response)
@@ -761,7 +761,7 @@ class KikClient:
         return jid.replace('@talk.kik.com', '')
 
     def _send_packet(self, packet):
-        self.wrappedSocket.send(packet)
+        self.wrappedSocket.send_chat_message(packet)
 
     def _make_request(self, data, uuid=None):
         packet = data.encode('UTF-8')

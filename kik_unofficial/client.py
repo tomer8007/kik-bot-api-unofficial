@@ -1,7 +1,7 @@
-import asyncio
-import logging
 import sys
 import time
+import asyncio
+import logging
 from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List
@@ -9,7 +9,7 @@ from typing import Union, List
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.callbacks import KikClientCallback
 from kik_unofficial.datatypes.exceptions import KikApiException
-from kik_unofficial.datatypes.http import profilepics
+from kik_unofficial.http import profilepics
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
     OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
@@ -72,67 +72,134 @@ class KikClient:
         self.username = username
         self.password = password
         login_message = LoginRequest(username, password, captcha_result)
-        return self._send(login_message)
+        return self.send_xmpp_element(login_message)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         self.username = username
         self.password = password
         register_message = RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result)
-        return self._send(register_message)
+        return self.send_xmpp_element(register_message)
 
-    def check_unique(self, username):
-        return self._send(CheckUsernameUniquenessRequest(username))
+    def check_username_uniqueness(self, username):
+        return self.send_xmpp_element(CheckUsernameUniquenessRequest(username))
 
     def request_roster(self):
-        return self._send(FetchRoasterRequest())
+        return self.send_xmpp_element(FetchRoasterRequest())
 
-    def send(self, peer_jid: str, message: str):
+    def send_chat_message(self, peer_jid: str, message: str):
         if self.is_group_jid(peer_jid):
-            return self._send(OutgoingGroupChatMessage(peer_jid, message))
+            return self.send_xmpp_element(OutgoingGroupChatMessage(peer_jid, message))
         else:
-            return self._send(OutgoingChatMessage(peer_jid, message))
-
-    @staticmethod
-    def is_group_jid(jid):
-        if '@talk.kik.com' in jid:
-            return False
-        elif '@groups.kik.com' in jid:
-            return True
-        else:
-            raise KikApiException('Not a valid jid')
+            return self.send_xmpp_element(OutgoingChatMessage(peer_jid, message))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str):
-        return self._send(OutgoingReadReceipt(peer_jid, receipt_message_id))
+        return self.send_xmpp_element(OutgoingReadReceipt(peer_jid, receipt_message_id))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
-        return self._send(OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
+        return self.send_xmpp_element(OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
         if self.is_group_jid(peer_jid):
-            return self._send(OutgoingGroupIsTypingEvent(peer_jid, is_typing))
+            return self.send_xmpp_element(OutgoingGroupIsTypingEvent(peer_jid, is_typing))
         else:
-            return self._send(OutgoingIsTypingEvent(peer_jid, is_typing))
+            return self.send_xmpp_element(OutgoingIsTypingEvent(peer_jid, is_typing))
 
     def request_info_from_jid(self, peer_jids: Union[str, List[str]]):
-        return self._send(BatchPeerInfoRequest(peer_jids))
+        return self.send_xmpp_element(BatchPeerInfoRequest(peer_jids))
 
     def request_info_from_username(self, username: str):
-        return self._send(FriendRequest(username))
+        return self.send_xmpp_element(FriendRequest(username))
 
     def add_friend(self, peer_jid):
-        return self._send(AddFriendRequest(peer_jid))
+        return self.send_xmpp_element(AddFriendRequest(peer_jid))
 
-    def add_to_group(self, group_jid, peer_jid):
-        return self._send(AddToGroupRequest(group_jid, peer_jid))
+    def add_peer_to_group(self, group_jid, peer_jid):
+        return self.send_xmpp_element(AddToGroupRequest(group_jid, peer_jid))
 
-    def remove_from_group(self, group_jid, peer_jid):
-        return self._send(RemoveFromGroupRequest(group_jid, peer_jid))
+    def remove_peer_from_group(self, group_jid, peer_jid):
+        return self.send_xmpp_element(RemoveFromGroupRequest(group_jid, peer_jid))
 
-    def ban(self, group_jid, peer_jid):
-        return self._send(BanMemberRequest(group_jid, peer_jid))
+    def ban_member_from_group(self, group_jid, peer_jid):
+        return self.send_xmpp_element(BanMemberRequest(group_jid, peer_jid))
 
-    def unban(self, group_jid, peer_jid):
-        return self._send(UnbanRequest(group_jid, peer_jid))
+    def unban_member_from_group(self, group_jid, peer_jid):
+        return self.send_xmpp_element(UnbanRequest(group_jid, peer_jid))
+
+    def disconnect(self):
+        self.connection.close()
+        self.loop.call_later(200, self.loop.stop)
+
+    def search_group(self, search_query):
+        return self.send_xmpp_element(GroupSearchRequest(search_query))
+
+    def join_group_with_token(self, group_hashtag, group_jid, join_token):
+        return self.send_xmpp_element(GroupJoinRequest(group_hashtag, join_token, group_jid))
+
+    def set_profile_picture(self, filename):
+        profilepics.set_profile_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
+
+    def set_background_picture(self, filename):
+        profilepics.set_background_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
+
+    def send_xmpp_element(self, message: XMPPElement):
+        while not self.connected:
+            logging.debug("[!] Waiting for connection.")
+            time.sleep(0.1)
+        self.loop.call_soon_threadsafe(self.connection.send_raw_data, (message.serialize()))
+        return message.message_id
+
+    def on_new_data_received(self, data: bytes):
+        """
+        Gets called whenever we get a whole new XML element from kik's servers.
+        :param data: The data received (bytes)
+        """
+        if data == b' ':
+            # Happens every half hour. Disconnect after 10th time. Some kind of keep-alive? Let's send it back.
+            self.loop.call_soon_threadsafe(self.connection.send_chat_message, b' ')
+            return
+
+        xml_element = BeautifulSoup(data.decode(), features='xml')
+        if len(xml_element) > 0:
+            xml_element = next(iter(xml_element))
+
+        if xml_element.name == "iq":
+            self._handle_iq(xml_element)
+        elif xml_element.name == "message":
+            self._handle_xmpp_message(xml_element)
+        elif xml_element.name == "k":
+            if xml_element['ok'] == "1":
+                self.connected = True
+                if 'ts' in xml_element.attrs:
+                    self.authenticated = True
+                    self.callback.on_authorized()
+                elif self.authenticate_on_connection:
+                    self.authenticate_on_connection = False
+                    self.login(self.username, self.password)
+            else:
+                self.callback.on_connection_failed(ConnectionFailedResponse(xml_element))
+
+    def on_connection_lost(self):
+        self.connected = False
+
+    def on_connection_made(self):
+        if self.node:
+            message = EstablishAuthConnectionRequest(self.node, self.username, self.password)
+            self.initial_connection_payload = message.serialize()
+        self.connection.send_raw_data(self.initial_connection_payload)
+
+    def _handle_iq(self, message: BeautifulSoup):
+        self._handle(message.query['xmlns'], message)
+
+    def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
+        if 'xmlns' in xmpp_message.attrs:
+            self._handle(xmpp_message['xmlns'], xmpp_message)
+        elif xmpp_message['type'] == 'receipt':
+            self.callback.on_group_receipts_received(IncomingGroupReceiptsEvent(xmpp_message))
+
+    def _handle(self, xmlns: str, message: BeautifulSoup):
+        if xmlns not in self.handlers:
+            raise NotImplementedError
+        self.handlers[xmlns].handle(message)
 
     def _establish_auth_connection(self):
         self.connect_auth = True
@@ -141,70 +208,18 @@ class KikClient:
 
     def _kik_connection_thread_function(self):
         """ Runs in Kik connection thread """
+        # If there is already a connection going, than wait for it to stop
         if self.loop and self.loop.is_running():
             self.loop.call_soon_threadsafe(self.connection.close)
             while self.loop.is_running():
                 time.sleep(0.1)
                 logging.debug("[!] Waiting for loop to stop.")
+
         self.connection = KikConnection(self.loop, self)
         coro = self.loop.create_connection(lambda: self.connection, HOST, PORT, ssl=True)
         self.loop.run_until_complete(coro)
         logging.debug("[!] New connection made")
         self.loop.run_forever()
-
-    def _send(self, message: XMPPElement):
-        while not self.connected:
-            logging.debug("[!] Waiting for connection.")
-            time.sleep(0.1)
-        self.loop.call_soon_threadsafe(self.connection.send, (message.serialize()))
-        return message.message_id
-
-    def data_received(self, data: bytes):
-        if data == b' ':
-            # Happens every half hour. Disconnect after 10th time. Some kind of keep-alive? Let's send it back.
-            self.loop.call_soon_threadsafe(self.connection.send, b' ')
-        message = BeautifulSoup(data.decode(), features='xml')
-        if len(message) > 0:
-            message = next(iter(message))
-
-        if message.name == "iq":
-            self._handle_iq(message)
-        elif message.name == "message":
-            self._handle_message(message)
-        elif message.name == "k":
-            if message['ok'] == "1":
-                self.connected = True
-                if 'ts' in message.attrs:
-                    self.authenticated = True
-                    self.callback.on_authorized()
-                elif self.authenticate_on_connection:
-                    self.authenticate_on_connection = False
-                    self.login(self.username, self.password)
-            else:
-                self.callback.on_connection_failed(ConnectionFailedResponse(message))
-
-    def _handle_iq(self, message: BeautifulSoup):
-        self._handle(message.query['xmlns'], message)
-
-    def _handle_message(self, message: BeautifulSoup):
-        if 'xmlns' in message.attrs:
-            self._handle(message['xmlns'], message)
-        elif message['type'] == 'receipt':
-            self.callback.on_group_receipts_received(IncomingGroupReceiptsEvent(message))
-
-    def _handle(self, xmlns: str, message: BeautifulSoup):
-        if xmlns not in self.handlers:
-            raise NotImplementedError
-        self.handlers[xmlns].handle(message)
-
-    def connection_lost(self):
-        self.connected = False
-
-    def connection_made(self):
-        if self.node:
-            message = EstablishAuthConnectionRequest(self.node, self.username, self.password)
-            self.initial_connection_payload = message.serialize()
-        self.connection.send(self.initial_connection_payload)
 
     def _set_up_logging(self, log_level):
         log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')
@@ -221,21 +236,15 @@ class KikClient:
         console_handler.setFormatter(log_formatter)
         root_logger.addHandler(console_handler)
 
-    def disconnect(self):
-        self.connection.close()
-        self.loop.call_later(200, self.loop.stop)
+    @staticmethod
+    def is_group_jid(jid):
+        if '@talk.kik.com' in jid:
+            return False
+        elif '@groups.kik.com' in jid:
+            return True
+        else:
+            raise KikApiException('Not a valid jid')
 
-    def search_group(self, search_query):
-        return self._send(GroupSearchRequest(search_query))
-
-    def join_group_with_token(self, group_hashtag, group_jid, join_token):
-        return self._send(GroupJoinRequest(group_hashtag, join_token, group_jid))
-
-    def set_profile_picture(self, filename):
-        profilepics.set_profile_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
-
-    def set_background_picture(self, filename):
-        profilepics.set_background_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
 
 
 class KikConnection(Protocol):
@@ -248,19 +257,19 @@ class KikConnection(Protocol):
     def connection_made(self, transport: Transport):
         self.transport = transport
         logging.debug("[!] Connected to kik server.")
-        self.api.connection_made()
+        self.api.on_connection_made()
 
     def data_received(self, data: bytes):
         logging.debug("[+] Received raw data: %s", data)
         if self.partial_data is None:
             if data.endswith(b'>'):
-                self.loop.call_soon_threadsafe(self.api.data_received, data)
+                self.loop.call_soon_threadsafe(self.api.on_new_data_received, data)
             else:
                 logging.debug("Multi-packet data, waiting for next packet.")
                 self.partial_data = data
         else:
             if data.endswith(b'>'):
-                self.loop.call_soon_threadsafe(self.api.data_received, self.partial_data + data)
+                self.loop.call_soon_threadsafe(self.api.on_new_data_received, self.partial_data + data)
                 self.partial_data = None
             else:
                 logging.debug("Waiting for another packet, size={}".format(len(self.partial_data)))
@@ -268,10 +277,10 @@ class KikConnection(Protocol):
 
     def connection_lost(self, exc):
         logging.debug('[-] Connection lost')
-        self.loop.call_soon_threadsafe(self.api.connection_lost)
+        self.loop.call_soon_threadsafe(self.api.on_connection_lost)
         self.loop.stop()
 
-    def send(self, data: bytes):
+    def send_raw_data(self, data: bytes):
         logging.debug("[+] Sending raw data: %s", data)
         self.transport.write(data)
 

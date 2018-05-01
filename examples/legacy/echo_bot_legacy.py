@@ -6,7 +6,7 @@ import sys
 import time
 import logging
 
-from kik_unofficial.client_legacy import KikClient
+from kik_unofficial.client import KikClient
 
 
 def main():

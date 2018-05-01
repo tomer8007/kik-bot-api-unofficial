@@ -26,7 +26,7 @@ class InteractiveChatClient(KikClientCallback):
         print("{}: {}".format(jid_to_username(response.from_jid), response.body))
         if response.from_jid not in friends:
             print("New friend: {}".format(jid_to_username(response.from_jid)))
-            client.send(response.from_jid, "Hi!")
+            client.send_chat_message(response.from_jid, "Hi!")
             time.sleep(1)
             client.add_friend(response.from_jid)
             client.request_roster()
@@ -70,7 +70,7 @@ def chat():
                 client.request_roster()
         else:
             if peer_jid and message:
-                client.send(peer_jid, message)
+                client.send_chat_message(peer_jid, message)
 
 
 if __name__ == '__main__':

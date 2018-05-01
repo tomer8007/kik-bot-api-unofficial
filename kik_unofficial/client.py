@@ -9,6 +9,7 @@ from typing import Union, List
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.callbacks import KikClientCallback
 from kik_unofficial.datatypes.exceptions import KikApiException
+from kik_unofficial.datatypes.http import profilepics
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, OutgoingChatMessage, OutgoingReadReceipt, OutgoingDeliveredReceipt, \
     OutgoingIsTypingEvent, OutgoingGroupIsTypingEvent, IncomingGroupReceiptsEvent
@@ -229,6 +230,12 @@ class KikClient:
 
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
         return self._send(GroupJoinRequest(group_hashtag, join_token, group_jid))
+
+    def set_profile_picture(self, filename):
+        profilepics.set_profile_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
+
+    def set_background_picture(self, filename):
+        profilepics.set_background_picture(filename, self.node + '@talk.kik.com', self.username, self.password)
 
 
 class KikConnection(Protocol):

@@ -10,7 +10,8 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingStatusResponse, Incom
     IncomingGroupStatus, IncomingFriendAttribution, IncomingGroupChatMessage, IncomingChatMessage, IncomingMessageReadEvent, \
     IncomingMessageDeliveredEvent
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
-from kik_unofficial.datatypes.xmpp.sign_up import ConnectionFailedResponse, LoginResponse, RegisterResponse, UsernameUniquenessResponse
+from kik_unofficial.datatypes.xmpp.sign_up import ConnectionFailedResponse, RegisterResponse, UsernameUniquenessResponse
+from kik_unofficial.datatypes.xmpp.login import LoginResponse
 
 username = 'your_kik_username'
 password = 'your_kik_password'

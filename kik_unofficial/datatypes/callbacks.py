@@ -3,8 +3,9 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
-from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, LoginResponse, \
+from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, \
     ConnectionFailedResponse, UsernameUniquenessResponse
+from kik_unofficial.datatypes.xmpp.login import LoginResponse
 
 
 class KikClientCallback:

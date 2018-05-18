@@ -16,8 +16,9 @@ from kik_unofficial.datatypes.xmpp.chatting import OutgoingGroupChatMessage, Out
 from kik_unofficial.datatypes.xmpp.group_adminship import AddToGroupRequest, RemoveFromGroupRequest, BanMemberRequest, UnbanRequest
 from kik_unofficial.datatypes.xmpp.roster import FetchRoasterRequest, BatchPeerInfoRequest, FriendRequest, AddFriendRequest, GroupSearchRequest, \
     GroupJoinRequest
-from kik_unofficial.datatypes.xmpp.sign_up import LoginRequest, RegisterRequest, EstablishAuthConnectionRequest, \
+from kik_unofficial.datatypes.xmpp.sign_up import RegisterRequest, EstablishAuthConnectionRequest, \
     ConnectionFailedResponse, CheckUsernameUniquenessRequest
+from kik_unofficial.datatypes.xmpp.login import LoginRequest
 from kik_unofficial.handlers import CheckUniqueHandler, RegisterHandler, RosterHandler, MessageHandler, \
     GroupMessageHandler, FriendMessageHandler, GroupSearchHandler
 

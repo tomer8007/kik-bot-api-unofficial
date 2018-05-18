@@ -6,14 +6,13 @@ import socket
 import ssl
 import time
 from enum import IntEnum
-
+import random
 import rsa
 from bs4 import BeautifulSoup
 
 from kik_unofficial.cryptographic_utils import KikCryptographicUtils
 from kik_unofficial.utilities import Utilities
 from kik_unofficial.kik_exceptions import *
-
 from kik_unofficial.protobuf import group_search_service_pb2
 
 HOST, PORT = "talk1110an.kik.com", 5223
@@ -31,9 +30,9 @@ class KikClient:
     jid_cache_list = [] # shared for all instances
 
     # hardcoded by default
-    device_id = "167da12427ee4dc4a36b40e8debafc25"
+    device_id = ''.join(random.choice('0123456789abcdef') for _ in range(32))
     kik_version = "11.1.1.12218"
-    android_id = "c10d47ba7ee17193"
+    android_id = ''.join(random.choice('0123456789abcdef') for _ in range(16))
 
     def __init__(self, username=None, password=None, debug_level=DebugLevel.VERBOSE):
         self.user_info = None
@@ -81,11 +80,11 @@ class KikClient:
                 '<android-sdk>19</android-sdk>'
                 '<registrations-since-install>0</registrations-since-install>'
                 '<prefix>CAN</prefix>'
-                '<android-id>c10d47ba7ee17193</android-id>'
+                '<android-id>{}</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '</query>'
                 '</iq>').format(KikCryptographicUtils.make_kik_uuid(), username, password_key, device_id,
-                                self.kik_version)
+                                self.kik_version, self.android_id)
         self._make_request(data)
         response = self._get_response()
 

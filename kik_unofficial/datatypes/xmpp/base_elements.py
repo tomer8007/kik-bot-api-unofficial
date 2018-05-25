@@ -16,6 +16,7 @@ class XMPPResponse:
         self.message_id = data['id']
         if data.kik:
             self.metadata = XMPPResponseMetadata(data.kik)
+        self.raw_element = data
 
 
 class XMPPResponseMetadata:

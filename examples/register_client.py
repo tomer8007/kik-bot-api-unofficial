@@ -1,17 +1,18 @@
 import logging
 
 from kik_unofficial.client import KikClient
-from kik_unofficial.datatypes.callbacks import KikClientCallback
-from kik_unofficial.datatypes.errors import SignUpError
+from kik_unofficial.callbacks import KikClientCallback
+from kik_unofficial.datatypes.xmpp.errors import SignUpError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
-from kik_unofficial.datatypes.xmpp.sign_up import LoginResponse, RegisterResponse
+from kik_unofficial.datatypes.xmpp.login import LoginResponse
+from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse
 
 
 class RegisterClient(KikClientCallback):
     def on_sign_up_ended(self, response: RegisterResponse):
-        print("Registered on node {}.".format(response.node))
+        print("Registered on node {}.".format(response.kik_node))
 
-    def on_authorized(self):
+    def on_authenticated(self):
         print("Authorized connection initiated.")
         client.request_roster()
 

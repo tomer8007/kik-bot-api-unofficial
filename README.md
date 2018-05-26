@@ -2,14 +2,12 @@
 Use this library to develop bots for [Kik Messenger](https://www.kik.com) that are essentially automated humans.
 
 It basically lets you do the same things as the offical Kik app by pretending to be a real smartphone client: It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
+
+This is the new branch of this project and is recommended.
 ## Installation and dependencies ##
-First, make sure you are using **Python 3.4**, not python 2.7. Second, just install it with `pip` (from PyPi):
+First, make sure you are using **Python 3.6**, not python 2.7. Second, just install it directly from GitHub:
 ```
-pip3 install kik-unofficial
-```
-Or, directly from GitHub:
-```
-git clone https://github.com/tomer8007/kik-bot-api-unofficial
+git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-unofficial-api
 ```
 ## Usage ##
@@ -17,10 +15,17 @@ An example is worth a thoursand words. a good place to start is the `examples/` 
 
 It is as simple as:
 ```python
-from kik_unofficial.kikclient import KikClient
-username, password = "your_kik_username", "your_kik_password"
-kik = KikClient(username, password)
-kik.send_message("other_kik_username", "Hello from bot!")
+from kik_unofficial.client import KikClient
+
+class EchoBot(KikClientCallback):
+    def __init__(self):
+        self.client = KikClient(self, "your_kik_username", "your_kik_password")
+
+    def on_authenticated(self):
+        self.client.request_roster()
+
+    def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
+        self.client.send_chat_message(chat_message.from_jid, "You said \"" + chat_message.body + "\"!")
 ```
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).

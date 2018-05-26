@@ -32,6 +32,8 @@ Currently Supported Operations:
 - Fetch group information (name, participants, etc.)
 - Receive media content: camera, gallery, stickets
 - Add a kik user as a friend
+- Search for groups
+- Join a group \[Experimental\]
 
 Sending multimedia (images, videos) is not suported yet.
 

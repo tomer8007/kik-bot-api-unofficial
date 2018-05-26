@@ -3,15 +3,16 @@ Use this library to develop bots for [Kik Messenger](https://www.kik.com) that a
 
 It basically lets you do the same things as the offical Kik app by pretending to be a real smartphone client: It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
 ## Installation and dependencies ##
-First, make sure you are using **Python 3.4**, not python 2.7. Second, just install it with `pip` (from PyPi):
-```
-pip3 install kik-unofficial
-```
-Or, directly from GitHub:
+First, make sure you are using **Python 3**, not python 2.7. Second, install it directly from GitHub:
 ```
 git clone https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-unofficial-api
 ```
+Or, try to install with `pip` (from PyPi, could be unupdated):
+```
+pip3 install kik-unofficial
+```
+Looking for the newest features? Check out the `new` branch.
 ## Usage ##
 An example is worth a thoursand words. a good place to start is the `examples/` directory. 
 

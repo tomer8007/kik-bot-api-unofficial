@@ -79,7 +79,6 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
         jid_with_resource = jid + "/CAN" + device_id
         timestamp = "1496333389122"
         sid = CryptographicUtils.make_kik_uuid()
-        version = "11.1.1.12218"
 
         # some super secret cryptographic stuff
         private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
@@ -89,7 +88,7 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
                           "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
                           "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
         private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
-        signature = rsa.sign("{}:{}:{}:{}".format(jid, version, timestamp, sid).encode(), private_key, 'SHA-256')
+        signature = rsa.sign("{}:{}:{}:{}".format(jid, kik_version, timestamp, sid).encode(), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode()[:-2]
         hmac_data = timestamp + ":" + jid
         hmac_secret_key = CryptographicUtils.build_hmac_key()
@@ -97,7 +96,7 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
 
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
 
-        the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': version,
+        the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': kik_version,
                    'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
         packet = CryptographicUtils.make_connection_payload(CryptographicUtils.sort_kik_map(the_map)).encode()
         return packet

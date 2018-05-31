@@ -49,7 +49,6 @@ class KikClient:
         self.connection = None
         self.loop = asyncio.get_event_loop()
 
-        self.initial_connection_payload = '<k anon="">'.encode()
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
 
@@ -69,7 +68,7 @@ class KikClient:
         Runs the kik connection thread, which creates an encrypted (SSL based) TCP connection
         to the kik servers.
         """
-        logging.info("[+] Initiating the Kik Connection thread and connecting...")
+        logging.info("[+] Initiating the Kik Connection thread and connecting to kik server...")
         self.kik_connection_thread = Thread(target=self._kik_connection_thread_function, name="Kik Connection")
         self.kik_connection_thread.start()
 
@@ -78,13 +77,29 @@ class KikClient:
         Gets called when the TCP connection to kik's servers is done and we are connected.
         Now we might initiate a login request or an auth request.
         """
-        if self.kik_node is not None:
+        if self.username is not None and self.password is not None and self.kik_node is not None:
+            # we have all required credentials, we can authenticate
             logging.info("[+] Establishing authenticated connection using kik node '{}'...".format(self.kik_node))
 
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password)
             self.initial_connection_payload = message.serialize()
+        else:
+            self.initial_connection_payload = '<k anon="">'.encode()
 
         self.connection.send_raw_data(self.initial_connection_payload)
+
+    def _establish_authenticated_session(self, kik_node):
+        """
+        Updates the kik node and creates a new connection to kik servers.
+        This new connection will be initiated with another payload which proves
+        we have the credentials for a specific user. This is how authentication is done.
+        :param kik_node: The user's kik node (everything before '@' in JID).
+        """
+        self.kik_node = kik_node
+        logging.info("[+] Closing current connection and creating a new authenticated one.")
+
+        self.disconnect()
+        self._connect()
 
     def login(self, username, password, captcha_result=None):
         """
@@ -276,19 +291,12 @@ class KikClient:
         :return:
         """
         self.connected = False
-        logging.debug("[-] The connection was lost")
+        logging.info("[-] The connection was lost")
 
     def _handle_xmlns(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.xml_namespace_handlers:
             raise NotImplementedError
         self.xml_namespace_handlers[xmlns].handle(message)
-
-    def _establish_authenticated_session(self, kik_node):
-        self.kik_node = kik_node
-        logging.info("[+] Closing current connection and creating a new authenticated one.")
-
-        self.disconnect()
-        self._connect()
 
     def _kik_connection_thread_function(self):
         """
@@ -346,7 +354,7 @@ class KikConnection(Protocol):
 
     def connection_made(self, transport: Transport):
         self.transport = transport
-        logging.info("[!] Connected to kik server.")
+        logging.info("[!] Connected.")
         self.api._on_connection_made()
 
     def data_received(self, data: bytes):

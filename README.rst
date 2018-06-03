@@ -23,7 +23,7 @@ And install with ``pip``:
 
 ::
 
-    pip3 install ./kik-bot-unofficial-api
+    cd kik-bot-api-unofficial; pip3 install kik_unofficial
 
 Usage
 -----

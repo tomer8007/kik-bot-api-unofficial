@@ -361,11 +361,11 @@ class KikConnection(Protocol):
     def data_received(self, data: bytes):
         logging.debug("[+] Received raw data: %s", data)
         if self.partial_data is None:
-            start_tag, is_closing = self.parse_start_tag(data)
-            if len(data) != 16384 or self.ends_with_tag(start_tag, data) or is_closing:
+            if len(data) < 16384:
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             else:
                 logging.debug("Multi-packet data, waiting for next packet.")
+                start_tag, is_closing = self.parse_start_tag(data)
                 self.partial_data_start_tag = start_tag
                 self.partial_data = data
         else:
@@ -381,6 +381,7 @@ class KikConnection(Protocol):
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
         tag = data.lstrip(b'<')
         tag = tag.split(b'>')[0]
+        tag = tag.split(b' ')[0]
         is_closing = tag.endswith(b'/')
         if is_closing:
             tag = tag[:-1]

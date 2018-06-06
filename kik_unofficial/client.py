@@ -4,7 +4,7 @@ import asyncio
 import logging
 from asyncio import Transport, Protocol
 from threading import Thread
-from typing import Union, List
+from typing import Union, List, Tuple
 from bs4 import BeautifulSoup
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -143,10 +143,10 @@ class KikClient:
         :param message: The actual message body
         """
         if self.is_group_jid(peer_jid):
-            logging.info("[+] Sending chat message '{}' to group '{}'...", message, peer_jid)
+            logging.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
         else:
-            logging.info("[+] Sending chat message '{}' to user '{}'...", message, peer_jid)
+            logging.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str):
@@ -350,6 +350,7 @@ class KikConnection(Protocol):
         self.api = api
         self.loop = loop
         self.partial_data = None  # type: bytes
+        self.partial_data_start_tag = None  # type: str
         self.transport = None  # type: Transport
 
     def connection_made(self, transport: Transport):
@@ -360,18 +361,35 @@ class KikConnection(Protocol):
     def data_received(self, data: bytes):
         logging.debug("[+] Received raw data: %s", data)
         if self.partial_data is None:
-            if data.endswith(b'>'):
+            if len(data) < 16384:
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             else:
-                logging.debug("[!] Multi-packet data, waiting for next packet.")
+                logging.debug("Multi-packet data, waiting for next packet.")
+                start_tag, is_closing = self.parse_start_tag(data)
+                self.partial_data_start_tag = start_tag
                 self.partial_data = data
         else:
-            if data.endswith(b'>'):
+            if self.ends_with_tag(self.partial_data_start_tag, data):
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, self.partial_data + data)
                 self.partial_data = None
+                self.partial_data_start_tag = None
             else:
                 logging.debug("[!] Waiting for another packet, size={}".format(len(self.partial_data)))
                 self.partial_data += data
+
+    @staticmethod
+    def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
+        tag = data.lstrip(b'<')
+        tag = tag.split(b'>')[0]
+        tag = tag.split(b' ')[0]
+        is_closing = tag.endswith(b'/')
+        if is_closing:
+            tag = tag[:-1]
+        return tag, is_closing
+
+    @staticmethod
+    def ends_with_tag(expected_end_tag: bytes, data: bytes):
+        return data.endswith(b'</' + expected_end_tag + b'>')
 
     def connection_lost(self, exc):
         self.loop.call_soon_threadsafe(self.api._on_connection_lost)

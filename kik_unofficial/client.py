@@ -143,10 +143,10 @@ class KikClient:
         :param message: The actual message body
         """
         if self.is_group_jid(peer_jid):
-            logging.info("[+] Sending chat message '{}' to group '{}'...", message, peer_jid)
+            logging.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
         else:
-            logging.info("[+] Sending chat message '{}' to user '{}'...", message, peer_jid)
+            logging.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str):

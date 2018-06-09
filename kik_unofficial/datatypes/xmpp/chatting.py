@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.parsing import ParsingUtilities
 
+# TODO: OutgoingChatMessage and OutgoingGroupChatMessage should be merged, there is too much code duplication
+
 
 class OutgoingChatMessage(XMPPElement):
     def __init__(self, peer_jid, body):
@@ -74,18 +76,24 @@ class IncomingGroupChatMessage(XMPPResponse):
 
 
 class OutgoingReadReceipt(XMPPElement):
-    def __init__(self, peer_jid, receipt_message_id):
+    """
+    Represents an outgoing read receipt to a specific user, for one or more messages
+    """
+    def __init__(self, peer_jid, receipt_message_id, group_jid=None):
         super().__init__()
         self.peer_jid = peer_jid
         self.receipt_message_id = receipt_message_id
+        self.group_jid = group_jid
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
+        group_line = "<g jid=\"{}\" />".format(self.group_jid)
         data = ('<message type="receipt" id="{}" to="{}" cts="{}">'
                 '<kik push="false" qos="true" timestamp="{}" />'
                 '<receipt xmlns="kik:message:receipt" type="read">'
                 '<msgid id="{}" />'
                 '</receipt>'
+                + group_line if group_line is not None else '' +
                 '</message>').format(self.message_id, self.peer_jid, timestamp, timestamp, self.receipt_message_id)
         return data.encode()
 

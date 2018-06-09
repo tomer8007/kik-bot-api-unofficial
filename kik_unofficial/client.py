@@ -149,9 +149,16 @@ class KikClient:
             logging.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
 
-    def send_read_receipt(self, peer_jid: str, receipt_message_id: str):
+    def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
+        """
+        Sends a read receipt for a sent message to a specific user, optionally as part of a group.
+        :param peer_jid: The JID of the user to which to send the receipt.
+        :param receipt_message_id: The message ID that the receipt is sent for
+        :param group_jid If the receipt is sent for a message that was sent in a group,
+                         this parameter should contain the group's JID
+        """
         logging.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
-        return self.send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id))
+        return self.send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
         return self.send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id))

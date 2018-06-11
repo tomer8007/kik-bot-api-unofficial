@@ -196,8 +196,7 @@ class IncomingGroupSysmsg(XMPPResponse):
         self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
         self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
         self.group_jid = data['from']
-        sysmsg = data.find('sysmsg')
-        self.sysmsg_xmlns = sysmsg['xmlns']
+        self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
         self.sysmsg = data.sysmsg.text if data.sysmsg else None
 
 

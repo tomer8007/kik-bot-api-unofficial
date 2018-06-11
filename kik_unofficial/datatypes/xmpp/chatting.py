@@ -184,9 +184,20 @@ class IncomingGroupStatus(XMPPResponse):
         self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
         self.group_jid = data['from']
         self.to_jid = data['to']
-        self.sysmsg = data.sysmsg.text if data.sysmsg else None
         self.status = data.status.text if data.status else None
         self.status_jid = data.status['jid'] if data.status and 'jid' in data.status.attrs else None
+
+
+class IncomingGroupSysmsg(XMPPResponse):
+    """ xmlns=jabber:client type=groupchat """
+
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.group_jid = data['from']
+        self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
+        self.sysmsg = data.sysmsg.text if data.sysmsg else None
 
 
 class IncomingGroupReceiptsEvent(XMPPResponse):

@@ -5,7 +5,7 @@ from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse, IncomingGroupSticker
+    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
@@ -71,7 +71,7 @@ class MessageHandler(XmlnsHandler):
             elif data.find('friend-attribution'):
                 self.callback.on_friend_attribution(IncomingFriendAttribution(data))
             elif data.find('status'):
-                self.callback.on_status_message(IncomingStatusResponse(data))
+                self.callback.on_status_message_received(IncomingStatusResponse(data))
             else:
                 raise NotImplementedError
         elif data['type'] == 'receipt':
@@ -88,6 +88,8 @@ class MessageHandler(XmlnsHandler):
                 self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
             elif data.find('status'):
                 self.callback.on_group_status_received(IncomingGroupStatus(data))
+            elif data.find('sysmsg'):
+                self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
             else:
                 raise NotImplementedError
         else:

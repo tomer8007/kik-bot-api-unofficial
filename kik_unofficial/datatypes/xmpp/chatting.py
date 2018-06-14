@@ -92,9 +92,11 @@ class OutgoingReadReceipt(XMPPElement):
                 '<kik push="false" qos="true" timestamp="{}" />'
                 '<receipt xmlns="kik:message:receipt" type="read">'
                 '<msgid id="{}" />'
-                '</receipt>'
-                + group_line if group_line is not None else '' +
-                '</message>').format(self.message_id, self.peer_jid, timestamp, timestamp, self.receipt_message_id)
+                '</receipt>').format(self.message_id, self.peer_jid, timestamp, timestamp, self.receipt_message_id)
+        if 'groups' in group_line:
+            data = data + group_line + '</message>'
+        else:
+            data = data + '</message>'
         return data.encode()
 
 

@@ -27,7 +27,7 @@ class CryptographicUtils:
         # classes1\kik\android\c.java
         # classes2\kik\core\net\l.java
         # classes2\kik\android\net\communicator\c.java
-        kik_version = "11.1.1.12218".encode('UTF-8')
+        kik_version = "13.4.0.9614".encode('UTF-8')
         apk_signature_hex = "308203843082026CA00302010202044C23D625300D06092A864886F70D0101050500308183310B3009060355" \
                             "0406130243413110300E060355040813074F6E746172696F3111300F0603550407130857617465726C6F6F31" \
                             "1D301B060355040A13144B696B20496E74657261637469766520496E632E311B3019060355040B13124D6F62" \
@@ -50,7 +50,7 @@ class CryptographicUtils:
                             "340755E4305698A7067F696F4ECFCEEAFBD720787537199BCAC674DAB54643359BAD3E229D588E324941941E" \
                             "0270C355DC38F9560469B452C36560AD5AB9619B6EB33705"
 
-        classes_dex_sha1_digest = "aCDhFLsmALSyhwi007tvowZkUd0=".encode('UTF-8')
+        classes_dex_sha1_digest = "ETo70PFW30/jeFMKKY+CNanX2Fg=".encode('UTF-8')
         source_bytes = "hello".encode('UTF-8') + binascii.unhexlify(
             apk_signature_hex) + kik_version + classes_dex_sha1_digest + "bar".encode('UTF-8')
         return base64.b64encode(hashlib.sha1(source_bytes).digest())

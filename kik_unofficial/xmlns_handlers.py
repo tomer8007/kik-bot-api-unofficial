@@ -66,12 +66,16 @@ class RosterHandler(XmlnsHandler):
 class MessageHandler(XmlnsHandler):
     def handle(self, data: BeautifulSoup):
         if data['type'] == 'chat':
-            if data.body:
+            if data.body and data.body.text:
                 self.callback.on_chat_message_received(IncomingChatMessage(data))
             elif data.find('friend-attribution'):
                 self.callback.on_friend_attribution(IncomingFriendAttribution(data))
             elif data.find('status'):
                 self.callback.on_status_message_received(IncomingStatusResponse(data))
+            elif data.find('xiphias-mobileremote-call'):
+                mobile_remote_call = data.find('xiphias-mobileremote-call')
+                logging.debug("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
+                                mobile_remote_call['method'], mobile_remote_call['service']))
             else:
                 raise NotImplementedError
         elif data['type'] == 'receipt':

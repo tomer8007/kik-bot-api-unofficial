@@ -16,6 +16,8 @@ An example is worth a thoursand words. a good place to start is the `examples/` 
 It is as simple as:
 ```python
 from kik_unofficial.client import KikClient
+from kik_unofficial.callbacks import KikClientCallback
+import kik_unofficial.datatypes.xmpp.chatting as chatting
 
 class EchoBot(KikClientCallback):
     def __init__(self):

@@ -229,7 +229,16 @@ class IncomingStatusResponse(XMPPResponse):
         self.status = status.text
         self.special_visibility = status['special-visibility'] == 'true'
         self.status_jid = status['jid']
-
+        
+class IncomingImageMessage(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true'
+        self.requets_read_receipt = data.request['r'] == 'true'
+        self.image_url = data.find('file-url').get_text()
+        self.status = data.status.text if data.status else None
+        self.from_jid = data['from']
+        self.to_jid = data['to']
 
 class IncomingGroupSticker(XMPPResponse):
     def __init__(self, data: BeautifulSoup):

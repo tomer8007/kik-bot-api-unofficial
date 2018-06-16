@@ -73,6 +73,9 @@ class KikClientCallback:
 
     def on_group_search_response(self, response: GroupSearchResponse):
         pass
+        
+    def on_image_received(self, response: IncomingImageMessage):
+        pass
 
     # --- errors ---
 

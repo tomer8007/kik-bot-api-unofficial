@@ -5,7 +5,7 @@ from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg
+    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
@@ -76,6 +76,8 @@ class MessageHandler(XmlnsHandler):
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
                 logging.debug("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
                                 mobile_remote_call['method'], mobile_remote_call['service']))
+            elif data.find('images'):
+                self.callback.on_image_received(IncomingImageMessage(data))
             else:
                 raise NotImplementedError
         elif data['type'] == 'receipt':
@@ -110,6 +112,10 @@ class GroupMessageHandler(XmlnsHandler):
             app_id = data.content['app-id']
             if app_id == 'com.kik.ext.stickers':
                 self.callback.on_group_sticker(IncomingGroupSticker(data))
+            elif app_id == 'com.kik.ext.gallery':
+                self.callback.on_image_received(IncomingImageMessage(data))
+            elif app_id == 'com.kik.ext.camera':
+                self.callback.on_image_received(IncomingImageMessage(data))
 
         else:
             raise NotImplementedError

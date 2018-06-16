@@ -58,6 +58,9 @@ class EchoBot(KikClientCallback):
     def on_friend_attribution(self, response: chatting.IncomingFriendAttribution):
         print("[+] Friend attribution request from " + response.referrer_jid)
 
+    def on_image_received(self, image_message: chatting.IncomingImageMessage):
+        print("[+] Image message was received from {}".format(image_message.from_jid))
+    
     def on_peer_info_received(self, response: PeerInfoResponse):
         print("[+] Peer info: " + str(response.users))
 

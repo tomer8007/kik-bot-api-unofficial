@@ -290,6 +290,10 @@ class KikClient:
             self._handle_xmlns(xmpp_message['xmlns'], xmpp_message)
         elif xmpp_message['type'] == 'receipt':
             self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_message))
+        elif xmpp_message['type'] == 'groupchat':
+            self.xml_namespace_handlers['jabber:client'].handle(xmpp_message)
+        else:
+            logging.debug('[!] Unknown message without xmlns: {}'.format(xmpp_message))
 
     def _on_connection_lost(self):
         """

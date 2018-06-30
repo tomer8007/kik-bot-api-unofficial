@@ -290,6 +290,9 @@ class KikClient:
             self._handle_xmlns(xmpp_message['xmlns'], xmpp_message)
         elif xmpp_message['type'] == 'receipt':
             self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_message))
+        else:
+            # iPads send messages without xmlns, try to handle it as jabber:client
+            self.xml_namespace_handlers['jabber:client'].handle(xmpp_message)
 
     def _on_connection_lost(self):
         """

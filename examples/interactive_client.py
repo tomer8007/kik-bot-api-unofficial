@@ -15,7 +15,7 @@ friends = {}
 
 class InteractiveChatClient(KikClientCallback):
     def on_authenticated(self):
-        client.request_roster()
+        chat()
 
     def on_roster_received(self, response: FetchRosterResponse):
         for m in response.members:
@@ -76,4 +76,3 @@ def chat():
 if __name__ == '__main__':
     callback = InteractiveChatClient()
     client = KikClient(callback=callback, kik_username=username, kik_password=password, log_level=logging.DEBUG)
-    chat()

@@ -7,9 +7,10 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
-from kik_unofficial.device_configuration import device_id, kik_version, android_id
+from kik_unofficial.device_configuration import device_id, kik_version_info, android_id
 
 captcha_element = '<challenge><response>{}</response></challenge>'
+kik_version = kik_version_info["kik_version"]
 
 
 class LoginRequest(XMPPElement):

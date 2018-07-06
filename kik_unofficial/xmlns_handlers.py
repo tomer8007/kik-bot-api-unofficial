@@ -74,7 +74,7 @@ class MessageHandler(XmlnsHandler):
                 self.callback.on_status_message_received(IncomingStatusResponse(data))
             elif data.find('xiphias-mobileremote-call'):
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
-                logging.debug("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
+                logging.warning("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
                                 mobile_remote_call['method'], mobile_remote_call['service']))
             elif data.find('images'):
                 self.callback.on_image_received(IncomingImageMessage(data))

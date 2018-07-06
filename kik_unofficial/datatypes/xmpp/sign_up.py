@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
-from kik_unofficial.device_configuration import device_id, android_id, kik_version
+from kik_unofficial.device_configuration import device_id, android_id, kik_version_info
 
 captcha_element = '<challenge><response>{}</response></challenge>'
 
@@ -49,7 +49,8 @@ class RegisterRequest(XMPPElement):
                 '<android-id>{}</android-id>'
                 '</query>'
                 '</iq>').format(self.message_id, self.email, passkey_e, passkey_u, device_id, self.username,
-                                self.first_name, self.last_name, self.birthday, captcha, kik_version, android_id)
+                                self.first_name, self.last_name, self.birthday, captcha,
+                                kik_version_info["kik_version"], android_id)
 
         return data.encode()
 

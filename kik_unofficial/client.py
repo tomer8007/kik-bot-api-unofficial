@@ -231,7 +231,7 @@ class KikClient:
         """
         if data == b' ':
             # Happens every half hour. Disconnect after 10th time. Some kind of keep-alive? Let's send it back.
-            self.loop.call_soon_threadsafe(self.connection.send_chat_message, b' ')
+            self.loop.call_soon_threadsafe(self.connection.send_raw_data, b' ')
             return
 
         xml_element = BeautifulSoup(data.decode(), features='xml')

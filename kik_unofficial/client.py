@@ -68,7 +68,6 @@ class KikClient:
         Runs the kik connection thread, which creates an encrypted (SSL based) TCP connection
         to the kik servers.
         """
-        logging.info("[+] Initiating the Kik Connection thread and connecting to kik server...")
         self.kik_connection_thread = Thread(target=self._kik_connection_thread_function, name="Kik Connection")
         self.kik_connection_thread.start()
 
@@ -216,7 +215,7 @@ class KikClient:
     def disconnect(self):
         logging.info("[!] Disconnecting.")
         self.connection.close()
-        self.loop.call_later(20, self.loop.stop)
+        # self.loop.call_soon(self.loop.stop)
 
     def send_xmpp_element(self, message: XMPPElement):
         while not self.connected:
@@ -319,7 +318,9 @@ class KikClient:
             logging.debug("[!] Waiting for the previous connection to stop.")
             while self.loop.is_running():
                 logging.debug("[!] Still Waiting for the previous connection to stop.")
-                time.sleep(0.5)
+                time.sleep(1)
+
+        logging.info("[+] Initiating the Kik Connection thread and connecting to kik server...")
 
         # create the connection and launch the asyncio loop
         self.connection = KikConnection(self.loop, self)
@@ -327,6 +328,7 @@ class KikClient:
         self.loop.run_until_complete(coro)
         logging.debug("[!] Running main loop")
         self.loop.run_forever()
+        logging.debug("[!] Main loop ended.")
 
     def _set_up_logging(self, log_level):
         log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')
@@ -401,7 +403,7 @@ class KikConnection(Protocol):
     def ends_with_tag(expected_end_tag: bytes, data: bytes):
         return data.endswith(b'</' + expected_end_tag + b'>')
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exception):
         self.loop.call_soon_threadsafe(self.api._on_connection_lost)
         self.loop.stop()
 

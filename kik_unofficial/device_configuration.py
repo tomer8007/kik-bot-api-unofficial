@@ -8,6 +8,6 @@ kik_version_14_info = {"kik_version": "14.0.0.11130",  "classes_dex_sha1_digest"
 
 
 device_id = "62030843678b7376a707ca3d11e87837"  # random 16 bytes. you can set it to anything, but stick with it
-kik_version_info = kik_version_11_info          # upgrading to later versions might trigger SafetyNet problems
+kik_version_info = kik_version_14_info          # upgrading to later versions might trigger SafetyNet problems
 android_id = "849d4ffb0c020de7"                 # random 8 bytes. you can set it to anything, but stick with it
 

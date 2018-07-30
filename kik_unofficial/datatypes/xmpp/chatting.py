@@ -212,6 +212,7 @@ class IncomingGroupReceiptsEvent(XMPPResponse):
         self.to_jid = data['to']
         self.group_jid = data.g['jid']
         self.receipt_ids = [msgid['id'] for msgid in data.receipt.findAll('msgid')]
+        self.type = data.receipt['type']
 
 
 class IncomingFriendAttribution(XMPPResponse):

@@ -154,6 +154,7 @@ class IncomingMessageReadEvent(XMPPResponse):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
         self.from_jid = data['from']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingMessageDeliveredEvent(XMPPResponse):
@@ -161,6 +162,7 @@ class IncomingMessageDeliveredEvent(XMPPResponse):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
         self.from_jid = data['from']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingIsTypingEvent(XMPPResponse):

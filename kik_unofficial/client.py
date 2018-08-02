@@ -245,6 +245,8 @@ class KikClient:
             self._handle_received_iq_element(xml_element)
         elif xml_element.name == "message":
             self._handle_xmpp_message(xml_element)
+        elif xml_element.name == 'stc':
+            self.callback.on_captcha_received(login.CaptchaElement(xml_element))
 
     def _handle_received_k_element(self, k_element: BeautifulSoup):
         """

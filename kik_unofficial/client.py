@@ -194,6 +194,9 @@ class KikClient:
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
         return self.send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
+    def leave_group(self, group_jid):
+        return self.send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
+
     # --- other operations ---
 
     def search_group(self, search_query):

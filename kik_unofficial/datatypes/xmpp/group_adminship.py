@@ -67,3 +67,19 @@ class BanMemberRequest(XMPPElement):
                 '</query>'
                 '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
         return data.encode()
+
+
+class LeaveGroupRequest(XMPPElement):
+    def __init__(self, group_jid):
+        super().__init__()
+        self.group_jid = group_jid
+
+    def serialize(self) -> bytes:
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}">'
+                '<l />'
+                '</g>'
+                '</query>'
+                '</iq>').format(self.message_id, self.group_jid)
+        return data.encode()

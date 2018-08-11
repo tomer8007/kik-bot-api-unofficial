@@ -304,7 +304,8 @@ class KikClient:
 
     def _handle_xmlns(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.xml_namespace_handlers:
-            raise NotImplementedError
+            logging.warning("[-] Received unknown xml namespace: '{}', ignoring (to see full data, enable debug logs)".format(xmlns))
+            return
         self.xml_namespace_handlers[xmlns].handle(message)
 
     def _kik_connection_thread_function(self):

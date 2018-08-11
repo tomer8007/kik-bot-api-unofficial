@@ -1,5 +1,6 @@
 import logging
 import time
+import threading
 
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
@@ -15,7 +16,8 @@ friends = {}
 
 class InteractiveChatClient(KikClientCallback):
     def on_authenticated(self):
-        chat()
+        cli_thread = threading.Thread(target=chat)
+        cli_thread.start()
 
     def on_roster_received(self, response: FetchRosterResponse):
         for m in response.members:

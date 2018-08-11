@@ -1,6 +1,7 @@
 import time
 
 from bs4 import BeautifulSoup
+from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.parsing import ParsingUtilities
 
@@ -153,6 +154,7 @@ class IncomingMessageReadEvent(XMPPResponse):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
         self.from_jid = data['from']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingMessageDeliveredEvent(XMPPResponse):
@@ -160,6 +162,7 @@ class IncomingMessageDeliveredEvent(XMPPResponse):
         super().__init__(data)
         self.receipt_message_id = data.receipt.msgid['id']
         self.from_jid = data['from']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingIsTypingEvent(XMPPResponse):
@@ -188,6 +191,7 @@ class IncomingGroupStatus(XMPPResponse):
         self.to_jid = data['to']
         self.status = data.status.text if data.status else None
         self.status_jid = data.status['jid'] if data.status and 'jid' in data.status.attrs else None
+        self.group = Group(data.g) if data.g and len(data.g.contents) > 0 else None
 
 
 class IncomingGroupSysmsg(XMPPResponse):
@@ -200,6 +204,7 @@ class IncomingGroupSysmsg(XMPPResponse):
         self.group_jid = data['from']
         self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
         self.sysmsg = data.sysmsg.text if data.sysmsg else None
+        self.group = Group(data.g) if data.g and len(data.g.contents) > 0 else None
 
 
 class IncomingGroupReceiptsEvent(XMPPResponse):
@@ -209,6 +214,7 @@ class IncomingGroupReceiptsEvent(XMPPResponse):
         self.to_jid = data['to']
         self.group_jid = data.g['jid']
         self.receipt_ids = [msgid['id'] for msgid in data.receipt.findAll('msgid')]
+        self.type = data.receipt['type']
 
 
 class IncomingFriendAttribution(XMPPResponse):
@@ -229,7 +235,8 @@ class IncomingStatusResponse(XMPPResponse):
         self.status = status.text
         self.special_visibility = status['special-visibility'] == 'true'
         self.status_jid = status['jid']
-        
+
+
 class IncomingImageMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
@@ -239,6 +246,7 @@ class IncomingImageMessage(XMPPResponse):
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
+
 
 class IncomingGroupSticker(XMPPResponse):
     def __init__(self, data: BeautifulSoup):

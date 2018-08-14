@@ -83,3 +83,37 @@ class LeaveGroupRequest(XMPPElement):
                 '</query>'
                 '</iq>').format(self.message_id, self.group_jid)
         return data.encode()
+
+
+class PromoteToAdminRequest(XMPPElement):
+    def __init__(self, group_jid, peer_jid):
+        super().__init__()
+        self.group_jid = group_jid
+        self.peer_jid = peer_jid
+
+    def serialize(self) -> bytes:
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}">'
+                '<m a="1">{}</m>'
+                '</g>'
+                '</query>'
+                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+        return data.encode()
+
+
+class DemoteAdminRequest(XMPPElement):
+    def __init__(self, group_jid, peer_jid):
+        super().__init__()
+        self.group_jid = group_jid
+        self.peer_jid = peer_jid
+
+    def serialize(self) -> bytes:
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}">'
+                '<m a="0">{}</m>'
+                '</g>'
+                '</query>'
+                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+        return data.encode()

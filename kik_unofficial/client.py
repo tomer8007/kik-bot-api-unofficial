@@ -197,6 +197,12 @@ class KikClient:
     def leave_group(self, group_jid):
         return self.send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
+    def promote_to_admin(self, group_jid, peer_jid):
+        return self.send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
+
+    def demote_admin(self, group_jid, peer_jid):
+        return self.send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
+
     # --- other operations ---
 
     def search_group(self, search_query):

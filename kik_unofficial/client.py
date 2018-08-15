@@ -203,6 +203,9 @@ class KikClient:
     def demote_admin(self, group_jid, peer_jid):
         return self.send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
+    def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
+        return self.send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
+
     # --- other operations ---
 
     def search_group(self, search_query):

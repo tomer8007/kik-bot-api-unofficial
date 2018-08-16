@@ -66,19 +66,27 @@ class RosterHandler(XmlnsHandler):
 class MessageHandler(XmlnsHandler):
     def handle(self, data: BeautifulSoup):
         if data['type'] == 'chat':
+            # what kind of chat message is it?
             if data.body and data.body.text:
+                # regular text message
                 self.callback.on_chat_message_received(IncomingChatMessage(data))
             elif data.find('friend-attribution'):
+                # friend attribution
                 self.callback.on_friend_attribution(IncomingFriendAttribution(data))
             elif data.find('status'):
+                # status
                 self.callback.on_status_message_received(IncomingStatusResponse(data))
             elif data.find('xiphias-mobileremote-call'):
+                # usually SafetyNet-related (?)
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
                 logging.warning("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
                                 mobile_remote_call['method'], mobile_remote_call['service']))
             elif data.find('images'):
+                # images
                 self.callback.on_image_received(IncomingImageMessage(data))
             else:
+                # what else? GIFs?
+                logging.debug("[-] Received unknown chat message. Please enable DEBUG logs to see what was received")
                 raise NotImplementedError
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':

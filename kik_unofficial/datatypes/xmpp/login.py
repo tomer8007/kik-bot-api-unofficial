@@ -106,3 +106,15 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
 class ConnectionFailedResponse:
     def __init__(self, data: BeautifulSoup):
         self.message = data.find('msg').text
+
+
+class CaptchaElement:
+    """
+    The 'stc' element occurs when Kik requires a captcha to be filled in, it's followed up by a 'hold' element after which the connection is
+    paused.
+
+    TODO: Find out how to resume the connection.
+    """
+    def __init__(self, data: BeautifulSoup):
+        self.type = data.stp['type']
+        self.captcha_url = data.stp.text + "&callback_url=https://kik.com/captcha-url"

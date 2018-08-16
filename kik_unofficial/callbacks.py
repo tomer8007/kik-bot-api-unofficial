@@ -4,7 +4,7 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent
     IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
-from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
+from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
 
 
 class KikClientCallback:
@@ -89,5 +89,8 @@ class KikClientCallback:
         pass
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
+        pass
+
+    def on_captcha_received(self, response: CaptchaElement):
         pass
 

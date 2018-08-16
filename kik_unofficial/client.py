@@ -194,6 +194,18 @@ class KikClient:
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
         return self.send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
+    def leave_group(self, group_jid):
+        return self.send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
+
+    def promote_to_admin(self, group_jid, peer_jid):
+        return self.send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
+
+    def demote_admin(self, group_jid, peer_jid):
+        return self.send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
+
+    def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
+        return self.send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
+
     # --- other operations ---
 
     def search_group(self, search_query):
@@ -245,6 +257,8 @@ class KikClient:
             self._handle_received_iq_element(xml_element)
         elif xml_element.name == "message":
             self._handle_xmpp_message(xml_element)
+        elif xml_element.name == 'stc':
+            self.callback.on_captcha_received(login.CaptchaElement(xml_element))
 
     def _handle_received_k_element(self, k_element: BeautifulSoup):
         """

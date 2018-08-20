@@ -6,7 +6,7 @@ import requests
 from kik_unofficial.datatypes.exceptions import KikApiException
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
-logging = logging.getLogger()
+log = logging.getLogger('kik_unofficial')
 
 
 def set_profile_picture(file, jid, username, password):
@@ -34,7 +34,7 @@ def send(url, filename, jid, username, password):
 def picture_upload_thread(url, filename, headers):
     with open(filename, 'rb') as picture:
         picture_data = picture.read()
-    logging.debug('Uploading picture')
+    log.debug('Uploading picture')
     r = requests.post(url, data=picture_data, headers=headers)
     if r.status_code != 200:
         raise KikApiException(r.status_code)

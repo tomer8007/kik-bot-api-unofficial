@@ -1,13 +1,13 @@
-import hashlib
-import hmac
-import rsa
 import base64
 import binascii
-from bs4 import BeautifulSoup
+import hashlib
+import hmac
 
+import rsa
+from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
 from kik_unofficial.device_configuration import device_id, kik_version_info, android_id
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 captcha_element = '<challenge><response>{}</response></challenge>'
 kik_version = kik_version_info["kik_version"]
@@ -17,6 +17,7 @@ class LoginRequest(XMPPElement):
     """
     Represents a Kik Login request.
     """
+
     def __init__(self, username, password, captcha_result=None, device_id_override=None, android_id_override=None):
         super().__init__()
         self.username = username
@@ -57,6 +58,7 @@ class LoginResponse:
     """
     Represents a Kik Login response.
     """
+
     def __init__(self, data: BeautifulSoup):
         self.kik_node = data.query.node.text
         self.email = data.query.email.text
@@ -71,6 +73,7 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
     a request sent on the begging of the connection to establish
     an authenticated session. That is, on the behalf of a specific kik user, with his credentials.
     """
+
     def __init__(self, node, username, password, device_id_override=None):
         super().__init__()
         self.node = node
@@ -115,9 +118,26 @@ class CaptchaElement:
     """
     The 'stc' element occurs when Kik requires a captcha to be filled in, it's followed up by a 'hold' element after which the connection is
     paused.
-
-    TODO: Find out how to resume the connection.
     """
+
     def __init__(self, data: BeautifulSoup):
         self.type = data.stp['type']
         self.captcha_url = data.stp.text + "&callback_url=https://kik.com/captcha-url"
+
+
+class CaptchaSolveRequest(XMPPElement):
+    """
+    Response to the 'stc' element. Given the result of the captcha, the connection will resume.
+    """
+
+    def __init__(self, captcha_result: str):
+        super().__init__()
+        self.captcha_result = captcha_result
+
+    def serialize(self) -> bytes:
+        data = (
+            '<stc id="{}">'
+            '<sts>{}</sts>'
+            '</stc>'
+        ).format(self.message_id, self.captcha_result)
+        return data.encode()

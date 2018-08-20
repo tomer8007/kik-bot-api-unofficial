@@ -1,22 +1,22 @@
-import sys
-import time
 import asyncio
 import logging
+import sys
+import time
 from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
-from bs4 import BeautifulSoup
 
-import kik_unofficial.datatypes.xmpp.chatting as chatting
-import kik_unofficial.datatypes.xmpp.group_adminship as group_adminship
-import kik_unofficial.datatypes.xmpp.roster as roster
-import kik_unofficial.datatypes.xmpp.sign_up as sign_up
-import kik_unofficial.datatypes.xmpp.login as login
-import kik_unofficial.xmlns_handlers as xmlns_handlers
 import kik_unofficial.callbacks as callbacks
 import kik_unofficial.datatypes.exceptions as exceptions
-from kik_unofficial.http import profilepics
+import kik_unofficial.datatypes.xmpp.chatting as chatting
+import kik_unofficial.datatypes.xmpp.group_adminship as group_adminship
+import kik_unofficial.datatypes.xmpp.login as login
+import kik_unofficial.datatypes.xmpp.roster as roster
+import kik_unofficial.datatypes.xmpp.sign_up as sign_up
+import kik_unofficial.xmlns_handlers as xmlns_handlers
+from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
+from kik_unofficial.http import profilepics
 
 HOST, PORT = "talk1110an.kik.com", 5223
 log = logging.getLogger('kik_unofficial')
@@ -227,6 +227,9 @@ class KikClient:
 
     def set_background_picture(self, filename):
         profilepics.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
+
+    def send_captcha_result(self, captcha_result):
+        return self.send_xmpp_element(login.CaptchaSolveRequest(captcha_result))
 
     def disconnect(self):
         log.info("[!] Disconnecting.")

@@ -123,6 +123,7 @@ class CaptchaElement:
     def __init__(self, data: BeautifulSoup):
         self.type = data.stp['type']
         self.captcha_url = data.stp.text + "&callback_url=https://kik.com/captcha-url"
+        self.stc_id = data['id']
 
 
 class CaptchaSolveRequest(XMPPElement):
@@ -130,14 +131,15 @@ class CaptchaSolveRequest(XMPPElement):
     Response to the 'stc' element. Given the result of the captcha, the connection will resume.
     """
 
-    def __init__(self, captcha_result: str):
+    def __init__(self, stc_id: str, captcha_result: str):
         super().__init__()
         self.captcha_result = captcha_result
+        self.stc_id = stc_id
 
     def serialize(self) -> bytes:
         data = (
             '<stc id="{}">'
             '<sts>{}</sts>'
             '</stc>'
-        ).format(self.message_id, self.captcha_result)
+        ).format(self.stc_id, self.captcha_result)
         return data.encode()

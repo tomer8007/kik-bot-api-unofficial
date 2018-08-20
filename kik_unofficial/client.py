@@ -228,8 +228,8 @@ class KikClient:
     def set_background_picture(self, filename):
         profilepics.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
-    def send_captcha_result(self, captcha_result):
-        return self.send_xmpp_element(login.CaptchaSolveRequest(captcha_result))
+    def send_captcha_result(self, stc_id, captcha_result):
+        return self.send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
 
     def disconnect(self):
         log.info("[!] Disconnecting.")

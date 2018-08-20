@@ -10,12 +10,12 @@ log = logging.getLogger('kik_unofficial')
 
 
 def set_profile_picture(file, jid, username, password):
-    url = 'http://profilepicsup.kik.com/profilepics'
+    url = 'https://profilepicsup.kik.com/profilepics'
     send(url, file, jid, username, password)
 
 
 def set_background_picture(file, jid, username, password):
-    url = 'http://profilepicsup.kik.com/profilepics?extension_type=BACKGROUND'
+    url = 'https://profilepicsup.kik.com/profilepics?extension_type=BACKGROUND'
     send(url, file, jid, username, password)
 
 

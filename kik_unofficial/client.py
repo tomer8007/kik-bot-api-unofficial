@@ -23,7 +23,7 @@ HOST, PORT = "talk1110an.kik.com", 5223
 
 class KikClient:
     def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
-                 kik_node=None, log_level=logging.INFO):
+                 kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -41,6 +41,8 @@ class KikClient:
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
+        self.device_id_override = device_id_override
+        self.android_id_override = andoid_id_override
 
         self.callback = callback
 
@@ -80,7 +82,7 @@ class KikClient:
             # we have all required credentials, we can authenticate
             logging.info("[+] Establishing authenticated connection using kik node '{}'...".format(self.kik_node))
 
-            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password)
+            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
             self.initial_connection_payload = message.serialize()
         else:
             self.initial_connection_payload = '<k anon="">'.encode()
@@ -110,7 +112,7 @@ class KikClient:
         """
         self.username = username
         self.password = password
-        login_request = login.LoginRequest(username, password, captcha_result)
+        login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
         logging.info("[+] Logging in with username '{}' and a given password..."
                      .format(username, '*' * len(password)))
         return self.send_xmpp_element(login_request)
@@ -121,7 +123,8 @@ class KikClient:
         """
         self.username = username
         self.password = password
-        register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result)
+        register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
+                                                   self.device_id_override, self.android_id_override)
         logging.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
         return self.send_xmpp_element(register_message)
 

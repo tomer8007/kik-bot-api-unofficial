@@ -17,11 +17,13 @@ class LoginRequest(XMPPElement):
     """
     Represents a Kik Login request.
     """
-    def __init__(self, username, password, captcha_result=None):
+    def __init__(self, username, password, captcha_result=None, device_id_override=None, android_id_override=None):
         super().__init__()
         self.username = username
         self.password = password
         self.captcha_result = captcha_result
+        self.device_id_override = device_id_override
+        self.android_id_override = android_id_override
 
     def serialize(self) -> bytes:
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
@@ -46,8 +48,8 @@ class LoginRequest(XMPPElement):
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '{}'
                 '</query>'
-                '</iq>').format(self.message_id, self.username, password_key,
-                                device_id, kik_version, android_id, captcha)
+                '</iq>').format(self.message_id, self.username, password_key, self.device_id_override if self.device_id_override else device_id,
+                                kik_version, self.android_id_override if self.android_id_override else android_id, captcha)
         return data.encode()
 
 
@@ -69,15 +71,16 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
     a request sent on the begging of the connection to establish
     an authenticated session. That is, on the behalf of a specific kik user, with his credentials.
     """
-    def __init__(self, node, username, password):
+    def __init__(self, node, username, password, device_id_override=None):
         super().__init__()
         self.node = node
         self.username = username
         self.password = password
+        self.device_id_override = device_id_override
 
     def serialize(self):
         jid = self.node + "@talk.kik.com"
-        jid_with_resource = jid + "/CAN" + device_id
+        jid_with_resource = jid + "/CAN" + self.device_id_override if self.device_id_override else device_id
         timestamp = "1496333389122"
         sid = CryptographicUtils.make_kik_uuid()
 

@@ -1,8 +1,7 @@
 from bs4 import BeautifulSoup
-
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
 from kik_unofficial.device_configuration import device_id, android_id, kik_version_info
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 captcha_element = '<challenge><response>{}</response></challenge>'
 
@@ -11,7 +10,9 @@ class RegisterRequest(XMPPElement):
     """
     Represents a Kik sign up request
     """
-    def __init__(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
+
+    def __init__(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None, device_id_override=None,
+                 android_id_override=None):
         super().__init__()
         self.email = email
         self.username = username
@@ -20,6 +21,8 @@ class RegisterRequest(XMPPElement):
         self.last_name = last_name
         self.birthday = birthday
         self.captcha_result = captcha_result
+        self.device_id_override = device_id_override
+        self.android_id_override = android_id_override
 
     def serialize(self):
         passkey_e = CryptographicUtils.key_from_password(self.email, self.password)
@@ -48,9 +51,9 @@ class RegisterRequest(XMPPElement):
                 '<brand>google</brand>'
                 '<android-id>{}</android-id>'
                 '</query>'
-                '</iq>').format(self.message_id, self.email, passkey_e, passkey_u, device_id, self.username,
-                                self.first_name, self.last_name, self.birthday, captcha,
-                                kik_version_info["kik_version"], android_id)
+                '</iq>').format(self.message_id, self.email, passkey_e, passkey_u, self.device_id_override if self.device_id_override else device_id,
+                                self.username, self.first_name, self.last_name, self.birthday, captcha, kik_version_info["kik_version"],
+                                self.android_id_override if self.android_id_override else android_id)
 
         return data.encode()
 

@@ -1,29 +1,30 @@
-import sys
-import time
 import asyncio
 import logging
+import sys
+import time
 from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
-from bs4 import BeautifulSoup
 
-import kik_unofficial.datatypes.xmpp.chatting as chatting
-import kik_unofficial.datatypes.xmpp.group_adminship as group_adminship
-import kik_unofficial.datatypes.xmpp.roster as roster
-import kik_unofficial.datatypes.xmpp.sign_up as sign_up
-import kik_unofficial.datatypes.xmpp.login as login
-import kik_unofficial.xmlns_handlers as xmlns_handlers
 import kik_unofficial.callbacks as callbacks
 import kik_unofficial.datatypes.exceptions as exceptions
-from kik_unofficial.http import profilepics
+import kik_unofficial.datatypes.xmpp.chatting as chatting
+import kik_unofficial.datatypes.xmpp.group_adminship as group_adminship
+import kik_unofficial.datatypes.xmpp.login as login
+import kik_unofficial.datatypes.xmpp.roster as roster
+import kik_unofficial.datatypes.xmpp.sign_up as sign_up
+import kik_unofficial.xmlns_handlers as xmlns_handlers
+from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
+from kik_unofficial.http import profilepics
 
 HOST, PORT = "talk1110an.kik.com", 5223
+log = logging.getLogger('kik_unofficial')
 
 
 class KikClient:
     def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
-                 kik_node=None, log_level=logging.INFO):
+                 kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -41,6 +42,8 @@ class KikClient:
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
+        self.device_id_override = device_id_override
+        self.android_id_override = andoid_id_override
 
         self.callback = callback
 
@@ -78,9 +81,9 @@ class KikClient:
         """
         if self.username is not None and self.password is not None and self.kik_node is not None:
             # we have all required credentials, we can authenticate
-            logging.info("[+] Establishing authenticated connection using kik node '{}'...".format(self.kik_node))
+            log.info("[+] Establishing authenticated connection using kik node '{}'...".format(self.kik_node))
 
-            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password)
+            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
             self.initial_connection_payload = message.serialize()
         else:
             self.initial_connection_payload = '<k anon="">'.encode()
@@ -95,7 +98,7 @@ class KikClient:
         :param kik_node: The user's kik node (everything before '@' in JID).
         """
         self.kik_node = kik_node
-        logging.info("[+] Closing current connection and creating a new authenticated one.")
+        log.info("[+] Closing current connection and creating a new authenticated one.")
 
         self.disconnect()
         self._connect()
@@ -110,9 +113,9 @@ class KikClient:
         """
         self.username = username
         self.password = password
-        login_request = login.LoginRequest(username, password, captcha_result)
-        logging.info("[+] Logging in with username '{}' and a given password..."
-                     .format(username, '*' * len(password)))
+        login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
+        log.info("[+] Logging in with username '{}' and a given password..."
+                 .format(username, '*' * len(password)))
         return self.send_xmpp_element(login_request)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
@@ -121,15 +124,16 @@ class KikClient:
         """
         self.username = username
         self.password = password
-        register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result)
-        logging.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
+        register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
+                                                   self.device_id_override, self.android_id_override)
+        log.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
         return self.send_xmpp_element(register_message)
 
     def request_roster(self):
         """
         Request the list of chat partners (people and groups). This is called roster on XMPP terms.
         """
-        logging.info("[+] Requesting roster (list of chat partners)...")
+        log.info("[+] Requesting roster (list of chat partners)...")
         return self.send_xmpp_element(roster.FetchRoasterRequest())
 
     # --- common messaging operations ---
@@ -142,10 +146,10 @@ class KikClient:
         :param message: The actual message body
         """
         if self.is_group_jid(peer_jid):
-            logging.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
+            log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
         else:
-            logging.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
+            log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
@@ -156,7 +160,7 @@ class KikClient:
         :param group_jid If the receipt is sent for a message that was sent in a group,
                          this parameter should contain the group's JID
         """
-        logging.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
+        log.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
         return self.send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
@@ -224,14 +228,17 @@ class KikClient:
     def set_background_picture(self, filename):
         profilepics.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
+    def send_captcha_result(self, stc_id, captcha_result):
+        return self.send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
+
     def disconnect(self):
-        logging.info("[!] Disconnecting.")
+        log.info("[!] Disconnecting.")
         self.connection.close()
         # self.loop.call_soon(self.loop.stop)
 
     def send_xmpp_element(self, message: XMPPElement):
         while not self.connected:
-            logging.debug("[!] Waiting for connection.")
+            log.debug("[!] Waiting for connection.")
             time.sleep(0.1)
         self.loop.call_soon_threadsafe(self.connection.send_raw_data, (message.serialize()))
         return message.message_id
@@ -272,7 +279,7 @@ class KikClient:
 
             if 'ts' in k_element.attrs:
                 # authenticated!
-                logging.info("[+] Authenticated successfully.")
+                log.info("[+] Authenticated successfully.")
                 self.authenticated = True
                 self.callback.on_authenticated()
             elif self.should_login_on_connection:
@@ -314,11 +321,11 @@ class KikClient:
         :return:
         """
         self.connected = False
-        logging.info("[-] The connection was lost")
+        log.info("[-] The connection was lost")
 
     def _handle_xmlns(self, xmlns: str, message: BeautifulSoup):
         if xmlns not in self.xml_namespace_handlers:
-            logging.warning("[-] Received unknown xml namespace: '{}', ignoring (to see full data, enable debug logs)".format(xmlns))
+            log.warning("[-] Received unknown xml namespace: '{}', ignoring (to see full data, enable debug logs)".format(xmlns))
             return
         self.xml_namespace_handlers[xmlns].handle(message)
 
@@ -330,35 +337,38 @@ class KikClient:
         # If there is already a connection going, than wait for it to stop
         if self.loop and self.loop.is_running():
             self.loop.call_soon_threadsafe(self.connection.close)
-            logging.debug("[!] Waiting for the previous connection to stop.")
+            log.debug("[!] Waiting for the previous connection to stop.")
             while self.loop.is_running():
-                logging.debug("[!] Still Waiting for the previous connection to stop.")
+                log.debug("[!] Still Waiting for the previous connection to stop.")
                 time.sleep(1)
 
-        logging.info("[+] Initiating the Kik Connection thread and connecting to kik server...")
+        log.info("[+] Initiating the Kik Connection thread and connecting to kik server...")
 
         # create the connection and launch the asyncio loop
         self.connection = KikConnection(self.loop, self)
         coro = self.loop.create_connection(lambda: self.connection, HOST, PORT, ssl=True)
         self.loop.run_until_complete(coro)
-        logging.debug("[!] Running main loop")
+        log.debug("[!] Running main loop")
         self.loop.run_forever()
-        logging.debug("[!] Main loop ended.")
+        log.debug("[!] Main loop ended.")
 
     def _set_up_logging(self, log_level):
         log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
 
-        file_handler = logging.FileHandler("kik-debug.log")
-        file_handler.setFormatter(log_formatter)
-        file_handler.setLevel(logging.DEBUG)
-        root_logger.addHandler(file_handler)
+        kik_logger = logging.getLogger('kik_unofficial')
 
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(log_level)
-        console_handler.setFormatter(log_formatter)
-        root_logger.addHandler(console_handler)
+        if len(kik_logger.handlers) == 0:
+            file_handler = logging.FileHandler("kik-debug.log")
+            file_handler.setFormatter(log_formatter)
+            file_handler.setLevel(logging.DEBUG)
+            kik_logger.addHandler(file_handler)
+
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setLevel(log_level)
+            console_handler.setFormatter(log_formatter)
+            kik_logger.addHandler(console_handler)
 
         logging.getLogger('asyncio').setLevel(logging.WARNING)
 
@@ -382,16 +392,16 @@ class KikConnection(Protocol):
 
     def connection_made(self, transport: Transport):
         self.transport = transport
-        logging.info("[!] Connected.")
+        log.info("[!] Connected.")
         self.api._on_connection_made()
 
     def data_received(self, data: bytes):
-        logging.debug("[+] Received raw data: %s", data)
+        log.debug("[+] Received raw data: %s", data)
         if self.partial_data is None:
             if len(data) < 16384:
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             else:
-                logging.debug("Multi-packet data, waiting for next packet.")
+                log.debug("Multi-packet data, waiting for next packet.")
                 start_tag, is_closing = self.parse_start_tag(data)
                 self.partial_data_start_tag = start_tag
                 self.partial_data = data
@@ -401,7 +411,7 @@ class KikConnection(Protocol):
                 self.partial_data = None
                 self.partial_data_start_tag = None
             else:
-                logging.debug("[!] Waiting for another packet, size={}".format(len(self.partial_data)))
+                log.debug("[!] Waiting for another packet, size={}".format(len(self.partial_data)))
                 self.partial_data += data
 
     @staticmethod
@@ -423,7 +433,7 @@ class KikConnection(Protocol):
         self.loop.stop()
 
     def send_raw_data(self, data: bytes):
-        logging.debug("[+] Sending raw data: %s", data)
+        log.debug("[+] Sending raw data: %s", data)
         self.transport.write(data)
 
     def close(self):

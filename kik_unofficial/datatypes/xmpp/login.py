@@ -1,13 +1,13 @@
-import hashlib
-import hmac
-import rsa
 import base64
 import binascii
-from bs4 import BeautifulSoup
+import hashlib
+import hmac
 
+import rsa
+from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
 from kik_unofficial.device_configuration import device_id, kik_version_info, android_id
+from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 captcha_element = '<challenge><response>{}</response></challenge>'
 kik_version = kik_version_info["kik_version"]
@@ -17,11 +17,14 @@ class LoginRequest(XMPPElement):
     """
     Represents a Kik Login request.
     """
-    def __init__(self, username, password, captcha_result=None):
+
+    def __init__(self, username, password, captcha_result=None, device_id_override=None, android_id_override=None):
         super().__init__()
         self.username = username
         self.password = password
         self.captcha_result = captcha_result
+        self.device_id_override = device_id_override
+        self.android_id_override = android_id_override
 
     def serialize(self) -> bytes:
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
@@ -46,8 +49,8 @@ class LoginRequest(XMPPElement):
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '{}'
                 '</query>'
-                '</iq>').format(self.message_id, self.username, password_key,
-                                device_id, kik_version, android_id, captcha)
+                '</iq>').format(self.message_id, self.username, password_key, self.device_id_override if self.device_id_override else device_id,
+                                kik_version, self.android_id_override if self.android_id_override else android_id, captcha)
         return data.encode()
 
 
@@ -55,6 +58,7 @@ class LoginResponse:
     """
     Represents a Kik Login response.
     """
+
     def __init__(self, data: BeautifulSoup):
         self.kik_node = data.query.node.text
         self.email = data.query.email.text
@@ -69,15 +73,17 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
     a request sent on the begging of the connection to establish
     an authenticated session. That is, on the behalf of a specific kik user, with his credentials.
     """
-    def __init__(self, node, username, password):
+
+    def __init__(self, node, username, password, device_id_override=None):
         super().__init__()
         self.node = node
         self.username = username
         self.password = password
+        self.device_id_override = device_id_override
 
     def serialize(self):
         jid = self.node + "@talk.kik.com"
-        jid_with_resource = jid + "/CAN" + device_id
+        jid_with_resource = jid + "/CAN" + (self.device_id_override if self.device_id_override else device_id)
         timestamp = "1496333389122"
         sid = CryptographicUtils.make_kik_uuid()
 
@@ -112,9 +118,28 @@ class CaptchaElement:
     """
     The 'stc' element occurs when Kik requires a captcha to be filled in, it's followed up by a 'hold' element after which the connection is
     paused.
-
-    TODO: Find out how to resume the connection.
     """
+
     def __init__(self, data: BeautifulSoup):
         self.type = data.stp['type']
         self.captcha_url = data.stp.text + "&callback_url=https://kik.com/captcha-url"
+        self.stc_id = data['id']
+
+
+class CaptchaSolveRequest(XMPPElement):
+    """
+    Response to the 'stc' element. Given the result of the captcha, the connection will resume.
+    """
+
+    def __init__(self, stc_id: str, captcha_result: str):
+        super().__init__()
+        self.captcha_result = captcha_result
+        self.stc_id = stc_id
+
+    def serialize(self) -> bytes:
+        data = (
+            '<stc id="{}">'
+            '<sts>{}</sts>'
+            '</stc>'
+        ).format(self.stc_id, self.captcha_result)
+        return data.encode()

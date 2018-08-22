@@ -10,6 +10,8 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoRe
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
 
+log = logging.getLogger('kik_unofficial')
+
 
 class XmlnsHandler:
     def __init__(self, callback: KikClientCallback, api):
@@ -33,12 +35,12 @@ class RegisterHandler(XmlnsHandler):
             if data.find('email'):
                 # sign up
                 sign_up_error = SignUpError(data)
-                logging.info("[-] Register error: {}".format(sign_up_error))
+                log.info("[-] Register error: {}".format(sign_up_error))
                 self.callback.on_register_error(sign_up_error)
 
             else:
                 login_error = LoginError(data)
-                logging.info("[-] Login error: {}".format(login_error))
+                log.info("[-] Login error: {}".format(login_error))
                 self.callback.on_login_error(login_error)
 
         elif message_type == "result":
@@ -47,13 +49,13 @@ class RegisterHandler(XmlnsHandler):
             if data.find('email'):
                 # login successful
                 response = LoginResponse(data)
-                logging.info("[+] Logged in as {}".format(response.username))
+                log.info("[+] Logged in as {}".format(response.username))
                 self.callback.on_login_ended(response)
                 self.api._establish_authenticated_session(response.kik_node)
             else:
                 # sign up successful
                 response = RegisterResponse(data)
-                logging.info("[+] Registered.")
+                log.info("[+] Registered.")
                 self.callback.on_sign_up_ended(response)
                 self.api._establish_authenticated_session(response.kik_node)
 
@@ -79,14 +81,14 @@ class MessageHandler(XmlnsHandler):
             elif data.find('xiphias-mobileremote-call'):
                 # usually SafetyNet-related (?)
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
-                logging.warning("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
+                log.warning("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
                                 mobile_remote_call['method'], mobile_remote_call['service']))
             elif data.find('images'):
                 # images
                 self.callback.on_image_received(IncomingImageMessage(data))
             else:
                 # what else? GIFs?
-                logging.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
+                log.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(IncomingMessageDeliveredEvent(data))

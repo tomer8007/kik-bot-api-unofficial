@@ -88,7 +88,7 @@ class MessageHandler(XmlnsHandler):
                 self.callback.on_image_received(IncomingImageMessage(data))
             else:
                 # what else? GIFs?
-                logging.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
+                log.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
         elif data['type'] == 'receipt':
             if data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(IncomingMessageDeliveredEvent(data))

@@ -106,9 +106,9 @@ class MessageHandler(XmlnsHandler):
             elif data.find('sysmsg'):
                 self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
             else:
-                raise NotImplementedError
+                log.debug("[-] Received unknown groupchat message. contents: {}".format(str(data)))
         else:
-            raise NotImplementedError
+            log.debug("[-] Received unknown message type. contents: {}".format(str(data)))
 
 
 class GroupMessageHandler(XmlnsHandler):
@@ -127,7 +127,7 @@ class GroupMessageHandler(XmlnsHandler):
                 self.callback.on_image_received(IncomingImageMessage(data))
 
         else:
-            raise NotImplementedError
+            log.debug("[-] Received unknown group message. contents: {}".format(str(data)))
 
 
 class FriendMessageHandler(XmlnsHandler):

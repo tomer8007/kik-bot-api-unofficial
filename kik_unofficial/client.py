@@ -144,14 +144,15 @@ class KikClient:
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param message: The actual message body
+        :param message_type: The type of chat you are sending to, checked by is_group_jid
         """
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
+            return self.send_xmpp_element(chatting.OutgoingMessage(peer_jid, message, message_type='groupchat'))
         else:
             log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
-
+            return self.send_xmpp_element(chatting.OutgoingMessage(peer_jid, message, message_type='chat'))
+            
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
         Sends a read receipt for a sent message to a specific user, optionally as part of a group.

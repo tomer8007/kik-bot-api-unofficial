@@ -11,7 +11,7 @@ git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-unofficial-api
 ```
 ## Usage ##
-An example is worth a thoursand words. a good place to start is the `examples/` directory. 
+An example is worth a thousand words. A good place to start is the `examples/` directory. 
 
 It is as simple as:
 ```python
@@ -32,13 +32,13 @@ class EchoBot(KikClientCallback):
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).
 - Fetch chat partners information
-- Send text messages to users\groups and listen for incoming messages
+- Send text messages to users/groups and listen for incoming messages
 - Send and receive 'is-typing' status
 - Send and receive read receipts
 - Fetch group information (name, participants, etc.)
 - Admin groups (add, remove or ban members, etc)
 - Search for groups and join them [Experimental]
-- Receive media content: camera, gallery, stickets
+- Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
 
 Sending multimedia (images, videos) is not suported yet.

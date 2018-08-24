@@ -11,7 +11,7 @@ git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-unofficial-api
 ```
 ## Usage ##
-An example is worth a thousand words. A good place to start is the `examples/` directory. 
+Examples are a great way to understand things. A good place to start is the `examples/` directory. 
 
 It is as simple as:
 ```python

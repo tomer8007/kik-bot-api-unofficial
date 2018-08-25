@@ -5,49 +5,25 @@ from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.parsing import ParsingUtilities
 
-# TODO: OutgoingChatMessage and OutgoingGroupChatMessage should be merged, there is too much code duplication
-
-
-class OutgoingChatMessage(XMPPElement):
-    def __init__(self, peer_jid, body):
+class OutgoingMessage(XMPPElement):
+    def __init__(self, peer_jid, body, message_type):
         super().__init__()
         self.peer_jid = peer_jid
         self.body = body
+        self.message_type = message_type
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="chat" to="{}" id="{}" cts="{}">'
+        data = ('<message type="{}" to="{}" id="{}" cts="{}">'
                 '<body>{}</body>'
                 '<preview>{}</preview>'
                 '<kik push="true" qos="true" timestamp="{}" />'
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.peer_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
+                ).format(self.message_type, self.peer_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
                          ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
         return data.encode()
-
-
-class OutgoingGroupChatMessage(XMPPElement):
-    def __init__(self, group_jid, body):
-        super().__init__()
-        self.group_jid = group_jid
-        self.body = body
-
-    def serialize(self):
-        timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="groupchat" to="{}" id="{}" cts="{}">'
-                '<body>{}</body>'
-                '<pb></pb>'
-                '<preview>{}</preview>'
-                '<kik push="true" qos="true" timestamp="{}" />'
-                '<request xmlns="kik:message:receipt" r="true" d="true" />'
-                '<ri></ri>'
-                '</message>'
-                ).format(self.group_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
-                         ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
-        return data.encode()
-
 
 class IncomingChatMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):

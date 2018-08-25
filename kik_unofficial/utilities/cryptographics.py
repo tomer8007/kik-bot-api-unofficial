@@ -65,6 +65,8 @@ class CryptographicUtils:
         # a manually converted code from classes2/kik/core/net/f.java
         # used to make UUIDs for messages
         random_uuid = uuid.uuid4().int
+        while random_uuid.bit_length() < 121:
+            random_uuid = uuid.uuid4().int
 
         bytes_array = random_uuid.to_bytes((random_uuid.bit_length() + 7) // 8, 'big')
         most_significant_bits = int.from_bytes(bytes_array[:8], byteorder='big')

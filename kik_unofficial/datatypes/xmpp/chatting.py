@@ -1,3 +1,7 @@
+"""
+Defines classes for dealing with generic chatting (text messaging, read receipts, etc)
+"""
+
 import time
 
 from bs4 import BeautifulSoup
@@ -5,75 +9,66 @@ from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.utilities.parsing import ParsingUtilities
 
-# TODO: OutgoingChatMessage and OutgoingGroupChatMessage should be merged, there is too much code duplication
-
 
 class OutgoingChatMessage(XMPPElement):
-    def __init__(self, peer_jid, body):
+    """
+    Represents an outgoing text chat message to another kik entity (member or group)
+    """
+    def __init__(self, peer_jid, body, is_group=False):
         super().__init__()
         self.peer_jid = peer_jid
         self.body = body
+        self.is_group = is_group
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="chat" to="{}" id="{}" cts="{}">'
+        message_type = "chat" if not self.is_group else "groupchat"
+        data = ('<message type="{}" to="{}" id="{}" cts="{}">'
                 '<body>{}</body>'
                 '<preview>{}</preview>'
                 '<kik push="true" qos="true" timestamp="{}" />'
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
-                ).format(self.peer_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
-                         ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
+                ).format(message_type, self.peer_jid, self.message_id, timestamp,
+                         ParsingUtilities.escape_xml(self.body), ParsingUtilities.escape_xml(self.body[0:20]),
+                         timestamp)
         return data.encode()
 
 
-class OutgoingGroupChatMessage(XMPPElement):
+class OutgoingGroupChatMessage(OutgoingChatMessage):
+    """
+    Represents an outgoing text chat message to a group
+    """
     def __init__(self, group_jid, body):
-        super().__init__()
-        self.group_jid = group_jid
-        self.body = body
-
-    def serialize(self):
-        timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="groupchat" to="{}" id="{}" cts="{}">'
-                '<body>{}</body>'
-                '<pb></pb>'
-                '<preview>{}</preview>'
-                '<kik push="true" qos="true" timestamp="{}" />'
-                '<request xmlns="kik:message:receipt" r="true" d="true" />'
-                '<ri></ri>'
-                '</message>'
-                ).format(self.group_jid, self.message_id, timestamp, ParsingUtilities.escape_xml(self.body),
-                         ParsingUtilities.escape_xml(self.body[0:20]), timestamp)
-        return data.encode()
+        super().__init__(group_jid, body, is_group=True)
 
 
 class IncomingChatMessage(XMPPResponse):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.requets_read_receipt = data.request['r'] == 'true'
-        self.body = data.body.text
-        self.status = data.status.text if data.status else None
-        self.from_jid = data['from']
-        self.to_jid = data['to']
-
-
-class IncomingGroupChatMessage(XMPPResponse):
-    """ xmlns=kik:groups type=groupchat """
-
+    """
+    Represents an incoming text chat message
+    """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
         self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
-        self.body = data.body.text if data.body else None
+        self.status = data.status.text if data.status else None
         self.preview = data.preview.text if data.preview else None
+
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.body = data.body.text if data.body else None
         self.is_typing = data.find('is-typing')
         self.is_typing = self.is_typing['val'] == 'true' if self.is_typing else None
+
+
+class IncomingGroupChatMessage(IncomingChatMessage):
+    """
+    Represents an incoming text chat message from a group
+    """
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.group_jid = data.g['jid']
 
 
 class OutgoingReadReceipt(XMPPElement):

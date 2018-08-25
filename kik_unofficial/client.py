@@ -23,16 +23,20 @@ log = logging.getLogger('kik_unofficial')
 
 
 class KikClient:
+    """
+    The main kik class with which you're managing a kik connection and sending commands
+    """
     def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
                  kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
 
-        :param callback: KikCallback containing your callback implementation.
-                        This way we'll notify you when certain event happen. Look at KikClientCallback class to see.
-        :param kik_username: kik username.
-        :param kik_password: kik password.
+        :param callback: a callback instance containing your callbacks implementation.
+                         This way you'll get notified whenever certain event happen.
+                         Look at the KikClientCallback class for more details
+        :param kik_username: the kik username to log in with.
+        :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
         :param log_level: logging level.

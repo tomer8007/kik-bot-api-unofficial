@@ -5,7 +5,7 @@ from kik_unofficial.client_legacy import KikClient
 
 
 def main():
-    username, password = "username", "password"
+    username, password = "your_username", "password"
     kik_client = KikClient(username, password)
 
     chat_partners = kik_client.get_chat_partners()

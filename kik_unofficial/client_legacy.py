@@ -11,7 +11,7 @@ import rsa
 from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.exceptions import *
-from kik_unofficial.utilities import Utilities
+from kik_unofficial.utilities.parsing import ParsingUtilities
 from kik_unofficial.utilities.cryptographics import CryptographicUtils
 
 from kik_unofficial.protobuf import group_search_service_pb2
@@ -31,9 +31,9 @@ class KikClient:
     jid_cache_list = []  # shared for all instances
 
     # hardcoded by default
-    device_id = "167da12427ee4dc4a36b40e8debafc25"
+    device_id = "167da12427ee4dc4a36b40e8debafc26"
     kik_version = "11.1.1.12218"
-    android_id = "c10d47ba7ee17193"
+    android_id = "c10d47ba7ee17194"
 
     def __init__(self, username=None, password=None, debug_level=DebugLevel.VERBOSE):
         self.user_info = None
@@ -53,7 +53,7 @@ class KikClient:
 
         self._log("[+] Connecting to kik server...")
         self.wrappedSocket.connect((HOST, PORT))
-        self.wrappedSocket.send_chat_message(initial_connection_payload)
+        self.wrappedSocket.send(initial_connection_payload)
         response = self.wrappedSocket.recv(16384).decode('UTF-8')
         if "ok" not in response:
             raise KikErrorException(response, "[-] Could not connect to kik server: " + response)
@@ -279,7 +279,7 @@ class KikClient:
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="kik:iq:xiphias:bridge" service="mobile.groups.v1.GroupSearch" method="FindGroups">'
                 '<body>{}</body></query></iq>') \
-            .format(KikCryptographicUtils.make_kik_uuid(), encoded_search_query)
+            .format(CryptographicUtils.make_kik_uuid(), encoded_search_query)
         self._make_request(data)
 
         response = self._get_response()
@@ -339,7 +339,7 @@ class KikClient:
                 '<code>{}</code>'
                 '<token>{}</token>'
                 '</g></query></iq>') \
-            .format(KikCryptographicUtils.make_kik_uuid(),
+            .format(CryptographicUtils.make_kik_uuid(),
                     self._resolve_group(group_to_join.jid.local_part),
                     group_hashtag,
                     join_token)
@@ -761,7 +761,7 @@ class KikClient:
         return jid.replace('@talk.kik.com', '')
 
     def _send_packet(self, packet):
-        self.wrappedSocket.send_chat_message(packet)
+        self.wrappedSocket.send(packet)
 
     def _make_request(self, data, uuid=None):
         packet = data.encode('UTF-8')

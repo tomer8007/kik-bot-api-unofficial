@@ -124,7 +124,7 @@ class OutgoingIsTypingEvent(XMPPElement):
         data = ('<message type="chat" to="{}" id="{}">'
                 '<kik push="false" qos="false" timestamp="{}" />'
                 '<is-typing val="{}" />'
-                '</message>').format(self.peer_jid, self.message_id, timestamp, self.is_typing)
+                '</message>').format(self.peer_jid, self.message_id, timestamp, str(self.is_typing).lower())
         return data.encode()
 
 
@@ -140,7 +140,7 @@ class OutgoingGroupIsTypingEvent(XMPPElement):
                 '<pb></pb>'
                 '<kik push="false" qos="false" timestamp="{}" />'
                 '<is-typing val="{}" />'
-                '</message>').format(self.peer_jid, self.message_id, timestamp, self.is_typing)
+                '</message>').format(self.peer_jid, self.message_id, timestamp, str(self.is_typing).lower())
         return data.encode()
 
 

@@ -53,7 +53,7 @@ class EchoBot(KikClientCallback):
                                                           response.group_jid))
 
     def on_roster_received(self, response: FetchRosterResponse):
-        print("[+] Roster:\n" + '\n'.join([str(m) for m in response.members]))
+        print("[+] Chat partners:\n" + '\n'.join([str(member) for member in response.peers]))
 
     def on_friend_attribution(self, response: chatting.IncomingFriendAttribution):
         print("[+] Friend attribution request from " + response.referrer_jid)

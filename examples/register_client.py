@@ -28,7 +28,7 @@ class RegisterClient(KikClientCallback):
             print("Unable to register! error information:\r\n{}".format(response))
 
     def on_roster_received(self, response: FetchRosterResponse):
-        print("Friends: {}".format(response.members))
+        print("Friends: {}".format(response.peers))
 
 
 if __name__ == '__main__':

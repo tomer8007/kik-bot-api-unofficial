@@ -20,9 +20,9 @@ class InteractiveChatClient(KikClientCallback):
         cli_thread.start()
 
     def on_roster_received(self, response: FetchRosterResponse):
-        for m in response.members:
+        for m in response.peers:
             friends[m.jid] = m
-        print("-Peers-\n{}".format("\n".join([str(m) for m in response.members])))
+        print("-Peers-\n{}".format("\n".join([str(m) for m in response.peers])))
 
     def on_chat_message_received(self, chat_message: IncomingChatMessage):
         print("{}: {}".format(jid_to_username(chat_message.from_jid), chat_message.body))

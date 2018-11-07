@@ -21,10 +21,10 @@ class FetchRoasterRequest(XMPPElement):
 class FetchRosterResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.members = [self.parse_member(element) for element in iter(data.query)]
+        self.peers = [self.parse_peer(element) for element in iter(data.query)]
 
     @staticmethod
-    def parse_member(element):
+    def parse_peer(element):
         if element.name == "g":
             return Group(element)
         elif element.name == "item":

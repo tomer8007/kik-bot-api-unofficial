@@ -7,7 +7,7 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPRespons
 from kik_unofficial.protobuf import group_search_service_pb2
 
 
-class FetchRoasterRequest(XMPPElement):
+class FetchRosterRequest(XMPPElement):
     def __init__(self):
         super().__init__()
 

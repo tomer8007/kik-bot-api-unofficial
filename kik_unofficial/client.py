@@ -138,7 +138,7 @@ class KikClient:
         Request the list of chat partners (people and groups). This is called roster on XMPP terms.
         """
         log.info("[+] Requesting roster (list of chat partners)...")
-        return self.send_xmpp_element(roster.FetchRoasterRequest())
+        return self.send_xmpp_element(roster.FetchRosterRequest())
 
     # --- common messaging operations ---
 

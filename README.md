@@ -8,7 +8,7 @@ This is the new branch of this project and is recommended.
 First, make sure you are using **Python 3.6**, not python 2.7. Second, just install it directly from GitHub:
 ```
 git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
-pip3 install ./kik-bot-unofficial-api
+pip3 install ./kik-bot-api-unofficial
 ```
 ## Usage ##
 Examples are a great way to understand things. A good place to start is the `examples/` directory. 

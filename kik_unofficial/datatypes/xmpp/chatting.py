@@ -51,7 +51,7 @@ class IncomingChatMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
         self.status = data.status.text if data.status else None
         self.preview = data.preview.text if data.preview else None
 

@@ -144,6 +144,45 @@ class OutgoingGroupIsTypingEvent(XMPPElement):
         return data.encode()
 
 
+class OutgoingLinkShareEvent(XMPPElement):
+    def __init__(self, peer_jid, link, title, text, app_name):
+        super().__init__()
+        self.peer_jid = peer_jid
+        self.link = link
+        self.title = title
+        self.text = text
+        self.app_name = app_name
+
+    def serialize(self):
+        message_type = 'type="groupchat" xmlns="kik:groups"' if 'group' in self.peer_jid else 'type="chat"'
+        timestamp = str(int(round(time.time() * 1000)))
+        data = ('<message {0} to="{1}" id="{2}" cts="{3}">'
+                '<pb></pb>'
+                '<kik push="true" qos="true" timestamp="{3}" />'
+                '<request xmlns="kik:message:receipt" r="true" d="true" />'
+                '<content id="{2}" app-id="com.kik.cards" v="2">'
+                '<strings>'
+                '<app-name>{4}</app-name>'
+                '<layout>article</layout>'
+                '<title>{5}</title>'
+                '<text>{6}</text>'
+                '<allow-forward>true</allow-forward>'
+                '</strings>'
+                '<extras />'
+                '<hashes />'
+                '<images>'
+                '</images>'
+                '<uris>'
+                '<uri platform="cards">{7}</uri>'
+                '<uri></uri>'
+                '<uri>http://cdn.kik.com/cards/unsupported.html</uri>'
+                '</uris>'
+                '</content>'
+                '</message>').format(message_type, self.peer_jid, self.message_id, timestamp, self.app_name, self.title,
+                                     self.text, self.link)
+        return data.encode()
+
+
 class IncomingMessageReadEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)

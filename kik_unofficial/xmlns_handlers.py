@@ -5,7 +5,7 @@ from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage
+    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
@@ -90,7 +90,9 @@ class MessageHandler(XmlnsHandler):
                 # what else? GIFs?
                 log.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
         elif data['type'] == 'receipt':
-            if data.receipt['type'] == 'delivered':
+            if data.g:
+                self.callback.on_group_receipts_received(IncomingGroupReceiptsEvent(data))
+            elif data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(IncomingMessageDeliveredEvent(data))
             else:
                 self.callback.on_message_read(IncomingMessageReadEvent(data))

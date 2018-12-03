@@ -15,6 +15,8 @@ import kik_unofficial.datatypes.xmpp.roster as roster
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
 from bs4 import BeautifulSoup
+
+from kik_unofficial.datatypes.xmpp import account
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profilepics
 
@@ -234,6 +236,15 @@ class KikClient:
 
     def send_captcha_result(self, stc_id, captcha_result):
         return self.send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
+
+    def change_display_name(self, first_name, last_name):
+        return self.send_xmpp_element(account.ChangeNameRequest(first_name, last_name))
+
+    def change_password(self, new_password, email):
+        return self.send_xmpp_element(account.ChangePasswordRequest(self.password, new_password, email, self.username))
+
+    def change_email(self, old_email, new_email):
+        return self.send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
     def disconnect(self):
         log.info("[!] Disconnecting.")

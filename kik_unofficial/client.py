@@ -189,6 +189,9 @@ class KikClient:
 
     # --- group admin operations ---
 
+    def change_group_name(self, group_jid: str, new_name: str):
+        return self.send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
+
     def add_peer_to_group(self, group_jid, peer_jid):
         return self.send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 

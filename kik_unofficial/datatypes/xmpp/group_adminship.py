@@ -19,6 +19,21 @@ class AddToGroupRequest(XMPPElement):
                 '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
         return data.encode()
 
+class ChangeGroupNameRequest(XMPPElement):
+    def __init__(self, group_jid, new_name):
+        super().__init__()
+        self.group_jid = group_jid
+        self.new_name = new_name
+
+    def serialize(self) -> bytes:
+        data = ('<iq type="set" id="{}">'
+                '<query xmlns="kik:groups:admin">'
+                '<g jid="{}">'
+                '<n>{}</n>'
+                '</g>'
+                '</query>'
+                '</iq>').format(self.message_id, self.group_jid, self.new_name)
+        return data.encode()
 
 class RemoveFromGroupRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):

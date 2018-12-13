@@ -187,6 +187,9 @@ class KikClient:
     def add_friend(self, peer_jid):
         return self.send_xmpp_element(roster.AddFriendRequest(peer_jid))
 
+    def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
+        return self.send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
+
     # --- group admin operations ---
 
     def change_group_name(self, group_jid: str, new_name: str):

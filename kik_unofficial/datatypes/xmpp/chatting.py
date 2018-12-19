@@ -14,24 +14,30 @@ class OutgoingChatMessage(XMPPElement):
     """
     Represents an outgoing text chat message to another kik entity (member or group)
     """
-    def __init__(self, peer_jid, body, is_group=False):
+    def __init__(self, peer_jid, body, is_group=False, bot_mention_jid=None):
         super().__init__()
         self.peer_jid = peer_jid
         self.body = body
         self.is_group = is_group
+        self.bot_mention_jid = bot_mention_jid
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
         message_type = "chat" if not self.is_group else "groupchat"
+        bot_mention_data = ('<mention>'
+                            '<bot>{}</bot>'
+                            '</mention>').format(self.bot_mention_jid) if self.bot_mention_jid else ''
         data = ('<message type="{}" to="{}" id="{}" cts="{}">'
                 '<body>{}</body>'
+                '{}'
                 '<preview>{}</preview>'
                 '<kik push="true" qos="true" timestamp="{}" />'
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
                 '</message>'
                 ).format(message_type, self.peer_jid, self.message_id, timestamp,
-                         ParsingUtilities.escape_xml(self.body), ParsingUtilities.escape_xml(self.body[0:20]),
+                         ParsingUtilities.escape_xml(self.body), bot_mention_data,
+                         ParsingUtilities.escape_xml(self.body[0:20]),
                          timestamp)
         return data.encode()
 
@@ -40,8 +46,8 @@ class OutgoingGroupChatMessage(OutgoingChatMessage):
     """
     Represents an outgoing text chat message to a group
     """
-    def __init__(self, group_jid, body):
-        super().__init__(group_jid, body, is_group=True)
+    def __init__(self, group_jid, body, bot_mention_jid):
+        super().__init__(group_jid, body, is_group=True, bot_mention_jid=bot_mention_jid)
 
 
 class IncomingChatMessage(XMPPResponse):

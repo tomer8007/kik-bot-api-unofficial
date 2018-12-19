@@ -144,19 +144,21 @@ class KikClient:
 
     # --- common messaging operations ---
 
-    def send_chat_message(self, peer_jid: str, message: str):
+    def send_chat_message(self, peer_jid: str, message: str, bot_mention_jid=None):
         """
         Sends a text chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param message: The actual message body
+        :param bot_mention_jid: If an official bot is referenced, their jid must be embedded as mention for them
+        to respond.
         """
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
+            return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, bot_mention_jid))
         else:
             log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
+            return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """

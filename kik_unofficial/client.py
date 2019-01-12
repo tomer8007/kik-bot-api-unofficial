@@ -5,6 +5,7 @@ import time
 from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
+import socket
 
 import kik_unofficial.callbacks as callbacks
 import kik_unofficial.datatypes.exceptions as exceptions
@@ -29,7 +30,7 @@ class KikClient:
     The main kik class with which you're managing a kik connection and sending commands
     """
     def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
-                 kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
+                 kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None, proxy_socket=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -57,6 +58,7 @@ class KikClient:
         self.authenticated = False
         self.connection = None
         self.loop = asyncio.get_event_loop()
+        self.rawsocket=proxy_socket or socket.socket(socket.AF_INET, socket.SOCK_STREAM);
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
@@ -372,7 +374,8 @@ class KikClient:
 
         # create the connection and launch the asyncio loop
         self.connection = KikConnection(self.loop, self)
-        coro = self.loop.create_connection(lambda: self.connection, HOST, PORT, ssl=True)
+        self.rawsocket.connect((HOST,PORT));
+        coro = self.loop.create_connection(lambda: self.connection, sock=self.rawsocket, server_hostname=HOST, ssl=True)
         self.loop.run_until_complete(coro)
         log.debug("[!] Running main loop")
         self.loop.run_forever()

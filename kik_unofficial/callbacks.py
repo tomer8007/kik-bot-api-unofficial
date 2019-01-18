@@ -33,6 +33,11 @@ class KikClientCallback:
         pass
 
     def on_username_uniqueness_received(self, response: UsernameUniquenessResponse):
+        """
+        Gets called after a call to check_username_uniqueness(), indicating whether or not a requested username was
+        found available for registration
+        :param response: a UsernameUniquenessResponse instance whose 'unique' member is True or False
+        """
         pass
 
     def on_sign_up_ended(self, response: RegisterResponse):
@@ -72,12 +77,18 @@ class KikClientCallback:
         pass
 
     def on_group_search_response(self, response: GroupSearchResponse):
+        """
+        Gets called when a search for groups is done and we get a response, usually after calling search_group()
+        :param response: Contains the list of groups that were found (see the code of GroupSearchResponse)
+        """
         pass
         
     def on_image_received(self, response: IncomingImageMessage):
         pass
 
-    # --- errors ---
+    # ----------
+    # Errors
+    # ----------
 
     def on_login_error(self, response: LoginError):
         pass
@@ -92,5 +103,10 @@ class KikClientCallback:
         pass
 
     def on_captcha_received(self, response: CaptchaElement):
+        """
+        Gets called when kik servers require us to fill a captcha in order to continue
+        To solve the captcha, follow the steps as shown in solve_captcha_wizard() and then call send_captcha_result()
+        :param response: The CaptchaElement that kik sent, which contains an stc_id and the captcha URL
+        """
         pass
 

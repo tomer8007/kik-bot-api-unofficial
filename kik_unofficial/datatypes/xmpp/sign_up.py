@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.device_configuration import device_id, android_id, kik_version_info
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 captcha_element = '<challenge><response>{}</response></challenge>'
 

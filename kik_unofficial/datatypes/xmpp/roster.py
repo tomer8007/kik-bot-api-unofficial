@@ -8,6 +8,9 @@ from kik_unofficial.protobuf import group_search_service_pb2
 
 
 class FetchRosterRequest(XMPPElement):
+    """
+    Represents a request to get the chat partners list (the roster)
+    """
     def __init__(self):
         super().__init__()
 
@@ -19,6 +22,9 @@ class FetchRosterRequest(XMPPElement):
 
 
 class FetchRosterResponse(XMPPResponse):
+    """
+    Represents the response to a 'get roster' request which contains the peers list
+    """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.peers = [self.parse_peer(element) for element in iter(data.query)]
@@ -71,6 +77,9 @@ class BatchPeerInfoRequest(XMPPElement):
 
 
 class AddFriendRequest(XMPPElement):
+    """
+    Represents a request to add some user (peer) as a friend
+    """
     def __init__(self, peer_jid):
         super().__init__()
         self.peer_jid = peer_jid
@@ -85,6 +94,9 @@ class AddFriendRequest(XMPPElement):
 
 
 class GroupSearchRequest(XMPPElement):
+    """
+    Represents a request to search for groups by name
+    """
     def __init__(self, search_query):
         super().__init__()
         self.search_query = search_query
@@ -105,6 +117,9 @@ class GroupSearchRequest(XMPPElement):
 
 
 class GroupSearchResponse(XMPPResponse):
+    """
+    Represents a response to a groups search, that was previously conducted using a query
+    """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
 
@@ -116,6 +131,9 @@ class GroupSearchResponse(XMPPResponse):
             self.groups.append(self.GroupSearchEntry(result))
 
     class GroupSearchEntry:
+        """
+        Represents a group entry that was found in the search results
+        """
         def __init__(self, result):
             self.jid = result.jid.local_part + "@groups.kik.com"
             self.hashtag = result.display_data.hashtag
@@ -129,6 +147,10 @@ class GroupSearchResponse(XMPPResponse):
 
 
 class GroupJoinRequest(XMPPElement):
+    """
+    Represents a request to join a specific group
+    In order to join a group a special token is needed that is obtained from the search results
+    """
     def __init__(self, group_hashtag, join_token, group_jid):
         super().__init__()
         self.group_hashtag = group_hashtag

@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 
 class XMPPElement:

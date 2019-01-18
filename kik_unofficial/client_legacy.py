@@ -11,8 +11,8 @@ import rsa
 from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.exceptions import *
-from kik_unofficial.utilities.parsing import ParsingUtilities
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 from kik_unofficial.protobuf import group_search_service_pb2
 

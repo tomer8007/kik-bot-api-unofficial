@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.xmpp import account
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.http import profilepics
+from kik_unofficial.http import profile_pictures
 
 HOST, PORT = "talk1110an.kik.com", 5223
 log = logging.getLogger('kik_unofficial')
@@ -101,6 +101,7 @@ class KikClient:
         Updates the kik node and creates a new connection to kik servers.
         This new connection will be initiated with another payload which proves
         we have the credentials for a specific user. This is how authentication is done.
+
         :param kik_node: The user's kik node (everything before '@' in JID).
         """
         self.kik_node = kik_node
@@ -111,7 +112,8 @@ class KikClient:
 
     def login(self, username, password, captcha_result=None):
         """
-        Send a login request with the given kik username and password
+        Sends a login request with the given kik username and password
+
         :param username: Your kik username
         :param password: Your kik password
         :param captcha_result: If this parameter is provided, it is the answer to the captcha given in the previous
@@ -122,7 +124,7 @@ class KikClient:
         login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
         log.info("[+] Logging in with username '{}' and a given password..."
                  .format(username, '*' * len(password)))
-        return self.send_xmpp_element(login_request)
+        return self._send_xmpp_element(login_request)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
         """
@@ -133,133 +135,297 @@ class KikClient:
         register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
                                                    self.device_id_override, self.android_id_override)
         log.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
-        return self.send_xmpp_element(register_message)
+        return self._send_xmpp_element(register_message)
 
     def request_roster(self):
         """
-        Request the list of chat partners (people and groups). This is called roster on XMPP terms.
+        Requests the list of chat partners (people and groups). This is called roster in XMPP terms.
         """
         log.info("[+] Requesting roster (list of chat partners)...")
-        return self.send_xmpp_element(roster.FetchRosterRequest())
+        return self._send_xmpp_element(roster.FetchRosterRequest())
 
     # --- common messaging operations ---
 
     def send_chat_message(self, peer_jid: str, message: str):
         """
         Sends a text chat message to another person or a group with the given JID/username.
+
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param message: The actual message body
         """
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
+            return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message))
         else:
             log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
-            return self.send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
+            return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message))
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
-        Sends a read receipt for a sent message to a specific user, optionally as part of a group.
+        Sends a read receipt for a previously sent message, to a specific user or group.
+
         :param peer_jid: The JID of the user to which to send the receipt.
         :param receipt_message_id: The message ID that the receipt is sent for
         :param group_jid If the receipt is sent for a message that was sent in a group,
                          this parameter should contain the group's JID
         """
         log.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
-        return self.send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
+        return self._send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
-        return self.send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
+        """
+        Sends a receipt indicating that a specific message was received, to another person.
+
+        :param peer_jid: The other peer's JID to send to receipt to
+        :param receipt_message_id: The message ID for which to generate the receipt
+        """
+        log.info("[+] Sending delivered receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
+        return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
+        """
+        Updates the 'is typing' status of the bot during a conversation.
+
+        :param peer_jid: The JID that the notification will be sent to
+        :param is_typing: If true, indicated that we're currently typing, or False otherwise.
+        """
         if self.is_group_jid(peer_jid):
-            return self.send_xmpp_element(chatting.OutgoingGroupIsTypingEvent(peer_jid, is_typing))
+            return self._send_xmpp_element(chatting.OutgoingGroupIsTypingEvent(peer_jid, is_typing))
         else:
-            return self.send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
+            return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
     def request_info_of_jids(self, peer_jids: Union[str, List[str]]):
-        return self.send_xmpp_element(roster.BatchPeerInfoRequest(peer_jids))
+        """
+        Requests basic information (username, display name, picture) of some peer JIDs.
+        When the information arrives, the callback on_peer_info_received() will fire.
+
+        :param peer_jids: The JID(s) for which to request the information. If you want to request information for
+                          more than one JID, supply a list of strings. Otherwise, supply a string
+        """
+        return self._send_xmpp_element(roster.BatchPeerInfoRequest(peer_jids))
 
     def request_info_of_username(self, username: str):
-        return self.send_xmpp_element(roster.FriendRequest(username))
+        return self._send_xmpp_element(roster.FriendRequest(username))
 
     def add_friend(self, peer_jid):
-        return self.send_xmpp_element(roster.AddFriendRequest(peer_jid))
+        return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
 
-    # --- group admin operations ---
+    # --------------------------
+    #  Group Admin Operations
+    # -------------------------
 
     def change_group_name(self, group_jid: str, new_name: str):
-        return self.send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
+        """
+        Changes the a group's name to something new
+
+        :param group_jid: The JID of the group whose name should be changed
+        :param new_name: The new name to give to the group
+        """
+        logging.info("[+] Requesting a group name change for JID {} to '{}'".format(group_jid, new_name))
+        return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
     def add_peer_to_group(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
+        """
+        Adds someone to a group
+
+        :param group_jid: The JID of the group into which to add a user
+        :param peer_jid: The JID of the user to add
+        """
+        logging.info("[+] Requesting to add user {} into the group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 
     def remove_peer_from_group(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
+        """
+        Kicks someone out of a group
+
+        :param group_jid: The group JID from which to remove the user
+        :param peer_jid: The JID of the user to remove
+        """
+        logging.info("[+] Requesting removal of user {} from group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
 
     def ban_member_from_group(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
+        """
+        Bans a member from the group
+
+        :param group_jid: The JID of the relevant group
+        :param peer_jid: The JID of the user to ban
+        """
+        logging.info("[+] Requesting ban of user {} from group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
 
     def unban_member_from_group(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
+        """
+        Undos a ban of someone from a group
+
+        :param group_jid: The JID of the relevant group
+        :param peer_jid: The JID of the user to un-ban from the gorup
+        """
+        logging.info("[+] Requesting un-banning of user {} from the group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
-        return self.send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
+        """
+        Tries to join into a specific group, using a cryptographic token that was received earlier from a search
+
+        :param group_hashtag: The public hashtag of the group into which to join (like '#Music')
+        :param group_jid: The JID of the same group
+        :param join_token: a token that can be extracted in the callback on_group_search_response, after calling
+                           search_group()
+        """
+        logging.info("[+] Trying to join the group '{}' with JID {}".format(group_hashtag, group_jid))
+        return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
     def leave_group(self, group_jid):
-        return self.send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
+        """
+        Leaves a specific group
+
+        :param group_jid: The JID of the group to leave
+        """
+        logging.info("[+] Leaving group {}".format(group_jid))
+        return self._send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
     def promote_to_admin(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
+        """
+        Turns some group member into an admin
+
+        :param group_jid: The group JID for which the member will become an admin
+        :param peer_jid: The JID of user to turn into an admin
+        """
+        logging.info("[+] Promoting user {} to admin in group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
 
     def demote_admin(self, group_jid, peer_jid):
-        return self.send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
+        """
+        Turns an admin of a group into a regular user with no amidships capabilities.
+
+        :param group_jid: The group JID in which the rights apply
+        :param peer_jid: The admin user to demote
+        :return:
+        """
+        logging.info("[+] Demoting user {} to a regular member in group {}".format(peer_jid, group_jid))
+        return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
     def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
-        return self.send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
+        """
+        Adds multiple users to a specific group at once
 
-    # --- other operations ---
+        :param group_jid: The group into which to join the users
+        :param peer_jids: a list (or a single string) of JIDs to add to the group
+        """
+        logging.info("[+] Adding some members to the group {}".format(group_jid))
+        return self._send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
+
+    # ----------------------
+    # Other Operations
+    # ----------------------
 
     def search_group(self, search_query):
-        return self.send_xmpp_element(roster.GroupSearchRequest(search_query))
+        """
+        Searches for public groups using a query
+        Results will be returned using the on_group_search_response() callback
+
+        :param search_query: The query that contains some of the desired groups' name.
+        """
+        logging.info("[+] Initiating a search for groups using the query '{}'".format(search_query))
+        return self._send_xmpp_element(roster.GroupSearchRequest(search_query))
 
     def check_username_uniqueness(self, username):
         """
         Checks if the given username is available for registration.
+        Results are returned in the on_username_uniqueness_received() callback
+
         :param username: The username to check for its existence
         """
-        return self.send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
+        logging.info("[+] Checking for Uniqueness of username '{}'".format(username))
+        return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
     def set_profile_picture(self, filename):
-        profilepics.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
+        """
+        Sets the profile picture
+
+        :param filename: The filename on disk of the image to set
+        """
+        logging.info("[+] Setting the profile picture to file '{}'".format(filename))
+        profile_pictures.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
     def set_background_picture(self, filename):
-        profilepics.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
+        """
+        Sets the background picture
+
+        :param filename: The filename on disk of the image to set
+        """
+        logging.info("[+] Setting the background picture to filename '{}'".format(filename))
+        profile_pictures.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
     def send_captcha_result(self, stc_id, captcha_result):
-        return self.send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
+        """
+        In case a captcha was encountered, solves it using an element ID and a response parameter.
+        The stc_id can be extracted from a CaptchaElement, and the captcha result needs to be extracted manually with
+        a browser. Please see solve_captcha_wizard() for the steps needed to solve the captcha
+
+        :param stc_id: The stc_id from the CaptchaElement that was encountered
+        :param captcha_result: The answer to the captcha (which was generated after solved by a human)
+        """
+        logging.info("[+] Trying to solve a captcha with result: '{}'".format(captcha_result))
+        return self._send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
 
     def change_display_name(self, first_name, last_name):
-        return self.send_xmpp_element(account.ChangeNameRequest(first_name, last_name))
+        """
+        Changes the display name
+
+        :param first_name: The first name
+        :param last_name: The last name
+        """
+        logging.info("[+] Changing the display name to '{} {}'".format(first_name, last_name))
+        return self._send_xmpp_element(account.ChangeNameRequest(first_name, last_name))
 
     def change_password(self, new_password, email):
-        return self.send_xmpp_element(account.ChangePasswordRequest(self.password, new_password, email, self.username))
+        """
+        Changes the login password
+
+        :param new_password: The new login password to set for the account
+        :param email: The current email of the account
+        """
+        logging.info("[+] Changing the password of the account")
+        return self._send_xmpp_element(account.ChangePasswordRequest(self.password, new_password, email, self.username))
 
     def change_email(self, old_email, new_email):
-        return self.send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
+        """
+        Changes the email of the current account
+
+        :param old_email: The current email
+        :param new_email: The new email to set
+        """
+        logging.info("[+] Changing account email to '{}'".format(new_email))
+        return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
     def disconnect(self):
+        """
+        Closes the connection to kik's servers.
+        """
         log.info("[!] Disconnecting.")
         self.connection.close()
         # self.loop.call_soon(self.loop.stop)
 
-    def send_xmpp_element(self, message: XMPPElement):
+    # -----------------
+    # Internal methods
+    # -----------------
+
+    def _send_xmpp_element(self, xmpp_element: XMPPElement):
+        """
+        Serializes and sends the given XMPP element to kik servers
+
+        :param xmpp_element: The XMPP element to send
+        :return: The UUID of the element that was sent
+        """
         while not self.connected:
             log.debug("[!] Waiting for connection.")
             time.sleep(0.1)
-        self.loop.call_soon_threadsafe(self.connection.send_raw_data, (message.serialize()))
-        return message.message_id
+
+        self.loop.call_soon_threadsafe(self.connection.send_raw_data, (xmpp_element.serialize()))
+        return xmpp_element.message_id
 
     def _on_new_data_received(self, data: bytes):
         """

@@ -4,7 +4,7 @@ from threading import Thread
 
 import requests
 from kik_unofficial.datatypes.exceptions import KikApiException
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 log = logging.getLogger('kik_unofficial')
 

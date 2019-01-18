@@ -1,4 +1,4 @@
-from kik_unofficial.utilities.cryptographics import CryptographicUtils
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 

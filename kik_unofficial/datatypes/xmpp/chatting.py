@@ -7,7 +7,7 @@ import time
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.utilities.parsing import ParsingUtilities
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 
 
 class OutgoingChatMessage(XMPPElement):
@@ -46,7 +46,7 @@ class OutgoingGroupChatMessage(OutgoingChatMessage):
 
 class IncomingChatMessage(XMPPResponse):
     """
-    Represents an incoming text chat message
+    Represents an incoming text chat message from another user
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)

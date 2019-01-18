@@ -4,7 +4,7 @@ import binascii
 import pbkdf2
 import base64
 from collections import OrderedDict
-from kik_unofficial.utilities.parsing import ParsingUtilities
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 from kik_unofficial.device_configuration import kik_version_info
 
 

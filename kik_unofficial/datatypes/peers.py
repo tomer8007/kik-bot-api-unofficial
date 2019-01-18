@@ -4,19 +4,26 @@ from kik_unofficial.datatypes.exceptions import KikApiException
 
 
 class Peer:
+    """
+    a base class for representing a kik entity that has a JID (such as a user or a group)
+    """
     def __init__(self, jid):
         self.jid = jid
 
 
 class User(Peer):
-    def __init__(self, data: BeautifulSoup):
-        if 'jid' not in data.attrs:
-            raise KikApiException("No jid in user xml {}".format(data))
-        super().__init__(data['jid'])
-        self.username = data.username.text if data.username else None
-        self.display_name = data.find('display-name').text if data.find('display-name') else None
-        self.pic = data.pic.text if data.pic else None
-        self.verified = True if data.verified else False
+    """"
+    Represents a user (person) in kik messenger.
+    Every user has a username, display name, etc.
+    """
+    def __init__(self, xml_data: BeautifulSoup):
+        if 'jid' not in xml_data.attrs:
+            raise KikApiException("No jid in user xml {}".format(xml_data))
+        super().__init__(xml_data['jid'])
+        self.username = xml_data.username.text if xml_data.username else None
+        self.display_name = xml_data.find('display-name').text if xml_data.find('display-name') else None
+        self.pic = xml_data.pic.text if xml_data.pic else None
+        self.verified = True if xml_data.verified else False
 
     def __str__(self):
         return "{} ({})".format(self.display_name, self.username)
@@ -26,22 +33,30 @@ class User(Peer):
 
 
 class Group(Peer):
-    def __init__(self, data: BeautifulSoup):
-        if 'jid' not in data.attrs:
+    """
+    Represents a group of kik users.
+    Each group has its members, public code (such as #Music), name, etc.
+    """
+    def __init__(self, xml_data: BeautifulSoup):
+        if 'jid' not in xml_data.attrs:
             raise KikApiException("No jid in group xml")
-        super().__init__(data['jid'])
-        self.members = [GroupMember(m) for m in data.findAll('m')]
-        self.code = data.code.text if data.code else None
-        self.pic = data.pic.text if data.pic else None
-        self.name = data.n.text if data.n else None
-        self.is_public = 'is-public' in data and data['is-public'] == "true"
+        super().__init__(xml_data['jid'])
+        self.members = [GroupMember(m) for m in xml_data.findAll('m')]
+        self.code = xml_data.code.text if xml_data.code else None
+        self.pic = xml_data.pic.text if xml_data.pic else None
+        self.name = xml_data.n.text if xml_data.n else None
+        self.is_public = 'is-public' in xml_data and xml_data['is-public'] == "true"
 
     def __repr__(self):
         return "Group(jid={}, name={}, code={}, members={})".format(self.jid, self.name, self.code, len(self.members))
 
 
 class GroupMember(Peer):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data.text)
-        self.is_admin = data.get('a') == '1'
-        self.is_owner = data.get('s') == '1'
+    """
+    Represents a user who is a member of a group.
+    Members may also admin or own the group
+    """
+    def __init__(self, xml_data: BeautifulSoup):
+        super().__init__(xml_data.text)
+        self.is_admin = xml_data.get('a') == '1'
+        self.is_owner = xml_data.get('s') == '1'

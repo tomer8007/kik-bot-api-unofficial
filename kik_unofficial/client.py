@@ -158,7 +158,7 @@ class KikClient:
         """
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
-            return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, True, bot_mention_jid))
+            return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, bot_mention_jid))
         else:
             log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))

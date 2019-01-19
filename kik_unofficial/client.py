@@ -190,7 +190,7 @@ class KikClient:
         Updates the 'is typing' status of the bot during a conversation.
 
         :param peer_jid: The JID that the notification will be sent to
-        :param is_typing: If true, indicated that we're currently typing, or False otherwise.
+        :param is_typing: If true, indicates that we're currently typing, or False otherwise.
         """
         if self.is_group_jid(peer_jid):
             return self._send_xmpp_element(chatting.OutgoingGroupIsTypingEvent(peer_jid, is_typing))

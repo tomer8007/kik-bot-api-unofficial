@@ -227,7 +227,7 @@ class KikClient:
         :param group_jid: The JID of the group whose name should be changed
         :param new_name: The new name to give to the group
         """
-        logging.info("[+] Requesting a group name change for JID {} to '{}'".format(group_jid, new_name))
+        log.info("[+] Requesting a group name change for JID {} to '{}'".format(group_jid, new_name))
         return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
     def add_peer_to_group(self, group_jid, peer_jid):
@@ -237,7 +237,7 @@ class KikClient:
         :param group_jid: The JID of the group into which to add a user
         :param peer_jid: The JID of the user to add
         """
-        logging.info("[+] Requesting to add user {} into the group {}".format(peer_jid, group_jid))
+        log.info("[+] Requesting to add user {} into the group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 
     def remove_peer_from_group(self, group_jid, peer_jid):
@@ -247,7 +247,7 @@ class KikClient:
         :param group_jid: The group JID from which to remove the user
         :param peer_jid: The JID of the user to remove
         """
-        logging.info("[+] Requesting removal of user {} from group {}".format(peer_jid, group_jid))
+        log.info("[+] Requesting removal of user {} from group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
 
     def ban_member_from_group(self, group_jid, peer_jid):
@@ -257,7 +257,7 @@ class KikClient:
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to ban
         """
-        logging.info("[+] Requesting ban of user {} from group {}".format(peer_jid, group_jid))
+        log.info("[+] Requesting ban of user {} from group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
 
     def unban_member_from_group(self, group_jid, peer_jid):
@@ -267,7 +267,7 @@ class KikClient:
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to un-ban from the gorup
         """
-        logging.info("[+] Requesting un-banning of user {} from the group {}".format(peer_jid, group_jid))
+        log.info("[+] Requesting un-banning of user {} from the group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
@@ -279,7 +279,7 @@ class KikClient:
         :param join_token: a token that can be extracted in the callback on_group_search_response, after calling
                            search_group()
         """
-        logging.info("[+] Trying to join the group '{}' with JID {}".format(group_hashtag, group_jid))
+        log.info("[+] Trying to join the group '{}' with JID {}".format(group_hashtag, group_jid))
         return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
     def leave_group(self, group_jid):
@@ -288,7 +288,7 @@ class KikClient:
 
         :param group_jid: The JID of the group to leave
         """
-        logging.info("[+] Leaving group {}".format(group_jid))
+        log.info("[+] Leaving group {}".format(group_jid))
         return self._send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
     def promote_to_admin(self, group_jid, peer_jid):
@@ -298,7 +298,7 @@ class KikClient:
         :param group_jid: The group JID for which the member will become an admin
         :param peer_jid: The JID of user to turn into an admin
         """
-        logging.info("[+] Promoting user {} to admin in group {}".format(peer_jid, group_jid))
+        log.info("[+] Promoting user {} to admin in group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
 
     def demote_admin(self, group_jid, peer_jid):
@@ -309,7 +309,7 @@ class KikClient:
         :param peer_jid: The admin user to demote
         :return:
         """
-        logging.info("[+] Demoting user {} to a regular member in group {}".format(peer_jid, group_jid))
+        log.info("[+] Demoting user {} to a regular member in group {}".format(peer_jid, group_jid))
         return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
     def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
@@ -319,7 +319,7 @@ class KikClient:
         :param group_jid: The group into which to join the users
         :param peer_jids: a list (or a single string) of JIDs to add to the group
         """
-        logging.info("[+] Adding some members to the group {}".format(group_jid))
+        log.info("[+] Adding some members to the group {}".format(group_jid))
         return self._send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
 
     # ----------------------
@@ -333,7 +333,7 @@ class KikClient:
 
         :param search_query: The query that contains some of the desired groups' name.
         """
-        logging.info("[+] Initiating a search for groups using the query '{}'".format(search_query))
+        log.info("[+] Initiating a search for groups using the query '{}'".format(search_query))
         return self._send_xmpp_element(roster.GroupSearchRequest(search_query))
 
     def check_username_uniqueness(self, username):
@@ -343,7 +343,7 @@ class KikClient:
 
         :param username: The username to check for its existence
         """
-        logging.info("[+] Checking for Uniqueness of username '{}'".format(username))
+        log.info("[+] Checking for Uniqueness of username '{}'".format(username))
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
     def set_profile_picture(self, filename):
@@ -352,7 +352,7 @@ class KikClient:
 
         :param filename: The filename on disk of the image to set
         """
-        logging.info("[+] Setting the profile picture to file '{}'".format(filename))
+        log.info("[+] Setting the profile picture to file '{}'".format(filename))
         profile_pictures.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
     def set_background_picture(self, filename):
@@ -361,7 +361,7 @@ class KikClient:
 
         :param filename: The filename on disk of the image to set
         """
-        logging.info("[+] Setting the background picture to filename '{}'".format(filename))
+        log.info("[+] Setting the background picture to filename '{}'".format(filename))
         profile_pictures.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
     def send_captcha_result(self, stc_id, captcha_result):
@@ -373,7 +373,7 @@ class KikClient:
         :param stc_id: The stc_id from the CaptchaElement that was encountered
         :param captcha_result: The answer to the captcha (which was generated after solved by a human)
         """
-        logging.info("[+] Trying to solve a captcha with result: '{}'".format(captcha_result))
+        log.info("[+] Trying to solve a captcha with result: '{}'".format(captcha_result))
         return self._send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
 
     def change_display_name(self, first_name, last_name):
@@ -383,7 +383,7 @@ class KikClient:
         :param first_name: The first name
         :param last_name: The last name
         """
-        logging.info("[+] Changing the display name to '{} {}'".format(first_name, last_name))
+        log.info("[+] Changing the display name to '{} {}'".format(first_name, last_name))
         return self._send_xmpp_element(account.ChangeNameRequest(first_name, last_name))
 
     def change_password(self, new_password, email):
@@ -393,7 +393,7 @@ class KikClient:
         :param new_password: The new login password to set for the account
         :param email: The current email of the account
         """
-        logging.info("[+] Changing the password of the account")
+        log.info("[+] Changing the password of the account")
         return self._send_xmpp_element(account.ChangePasswordRequest(self.password, new_password, email, self.username))
 
     def change_email(self, old_email, new_email):
@@ -403,7 +403,7 @@ class KikClient:
         :param old_email: The current email
         :param new_email: The new email to set
         """
-        logging.info("[+] Changing account email to '{}'".format(new_email))
+        log.info("[+] Changing account email to '{}'".format(new_email))
         return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
     def disconnect(self):

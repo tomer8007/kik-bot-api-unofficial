@@ -1,6 +1,9 @@
+import base64
+
 from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.exceptions import KikApiException
+from kik_unofficial.protobuf.entity.v1.entity_common_pb2 import EntityUser
 
 
 class Peer:
@@ -24,6 +27,22 @@ class User(Peer):
         self.display_name = xml_data.find('display-name').text if xml_data.find('display-name') else None
         self.pic = xml_data.pic.text if xml_data.pic else None
         self.verified = True if xml_data.verified else False
+        if xml_data.entity:
+            self._parse_entity(xml_data.entity.text)
+
+    def _parse_entity(self, entity):
+        decoded_entity = base64.b64decode(entity, b"-_")
+        user = EntityUser()
+        user.ParseFromString(decoded_entity)
+        if user.registration_element:
+            self.creation_date_seconds = user.registration_element.creation_date.seconds
+        if user.background_profile_pic_extension:
+            self.background_pic_full_sized = user.background_profile_pic_extension.extension_detail.pic.full_sized_url
+            self.background_pic_thumbnail = user.background_profile_pic_extension.extension_detail.pic.thumbnail_url
+            self.background_pic_updated_seconds = \
+                user.background_profile_pic_extension.extension_detail.pic.last_updated_timestamp.seconds
+        if user.interests_element:
+            self.interests = [element.localized_verbiage for element in user.interests_element.interests_element]
 
     def __str__(self):
         return "{} ({})".format(self.display_name, self.username)

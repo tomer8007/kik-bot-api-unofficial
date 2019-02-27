@@ -1,3 +1,4 @@
+from kik_unofficial.datatypes.xmpp import xiphias
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
@@ -82,7 +83,7 @@ class KikClientCallback:
         :param response: Contains the list of groups that were found (see the code of GroupSearchResponse)
         """
         pass
-        
+
     def on_image_received(self, response: IncomingImageMessage):
         pass
 
@@ -108,5 +109,8 @@ class KikClientCallback:
         To solve the captcha, follow the steps as shown in solve_captcha_wizard() and then call send_captcha_result()
         :param response: The CaptchaElement that kik sent, which contains an stc_id and the captcha URL
         """
+        pass
+
+    def on_xiphias_get_users_response(self, response: xiphias.UsersResponse):
         pass
 

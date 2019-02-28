@@ -1,4 +1,3 @@
-from kik_unofficial.datatypes.xmpp import xiphias
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
@@ -6,6 +5,7 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
+from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse
 
 
 class KikClientCallback:
@@ -111,6 +111,6 @@ class KikClientCallback:
         """
         pass
 
-    def on_xiphias_get_users_response(self, response: xiphias.UsersResponse):
+    def on_xiphias_get_users_response(self, response: UsersResponse):
         pass
 

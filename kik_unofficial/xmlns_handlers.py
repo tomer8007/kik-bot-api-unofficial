@@ -10,6 +10,7 @@ from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
+from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse
 
 log = logging.getLogger('kik_unofficial')
 
@@ -142,6 +143,6 @@ class XiphiasHandler(XmlnsHandler):
     def handle(self, data: BeautifulSoup):
         method = data.query['method']
         if method == 'GetUsers':
-            self.callback.on_xiphias_get_users_response(xiphias.UsersResponse(data))
+            self.callback.on_xiphias_get_users_response(UsersResponse(data))
         else:  # TODO
             self.callback.on_group_search_response(GroupSearchResponse(data))

@@ -226,13 +226,13 @@ class KikClient:
         """
         return self._send_xmpp_element(xiphias.UsersRequest(peer_jids))
 
-    def xiphias_get_users_by_alias(self, peer_jids: Union[str, List[str]]):
+    def xiphias_get_users_by_alias(self, alias_jids: Union[str, List[str]]):
         """
         Like xiphias_get_users, but for aliases instead of jids.
 
-        :param peer_jids: one jid, or a list of jids
+        :param alias_jids: one jid, or a list of jids
         """
-        return self._send_xmpp_element(xiphias.UsersByAliasRequest(peer_jids))
+        return self._send_xmpp_element(xiphias.UsersByAliasRequest(alias_jids))
 
     # --------------------------
     #  Group Admin Operations

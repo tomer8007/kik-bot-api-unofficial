@@ -8,7 +8,6 @@ from google.protobuf import message
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.protobuf.entity.v1.entity_service_pb2 import GetUsersRequest, GetUsersResponse, GetUsersByAliasRequest, RequestedJid, \
     GetUsersByAliasResponse
-from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 
 
 class XiphiasRequest(XMPPElement):
@@ -62,23 +61,23 @@ class UsersResponseUser:
 class UsersResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        text = ParsingUtilities.decode_base64(data.query.body.text.encode())
+        text = base64.urlsafe_b64decode(data.query.body.text.encode())
         response = GetUsersResponse()
         response.ParseFromString(text)
         self.users = [UsersResponseUser(user) for user in response.users]
 
 
 class UsersByAliasRequest(XiphiasRequest):
-    def __init__(self, peer_jids):
+    def __init__(self, alias_jids):
         super().__init__('GetUsersByAlias')
-        if isinstance(peer_jids, List):
-            self.peer_jids = peer_jids
+        if isinstance(alias_jids, List):
+            self.alias_jids = alias_jids
         else:
-            self.peer_jids = [peer_jids]
+            self.alias_jids = [alias_jids]
 
     def get_protobuf_payload(self):
         request = GetUsersByAliasRequest()
-        for peer_jid in self.peer_jids:
+        for peer_jid in self.alias_jids:
             jid = request.ids.add()  # type: RequestedJid
             jid.alias_jid.local_part = peer_jid.split('@')[0]
         return request
@@ -87,7 +86,7 @@ class UsersByAliasRequest(XiphiasRequest):
 class UsersByAliasResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        text = ParsingUtilities.decode_base64(data.query.body.text.encode())
+        text = base64.urlsafe_b64decode(data.query.body.text.encode())
         response = GetUsersByAliasResponse()
         response.ParseFromString(text)
         self.users = [UsersResponseUser(payload.public_group_member_profile) for payload in response.payloads]

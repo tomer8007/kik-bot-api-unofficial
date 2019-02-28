@@ -6,6 +6,8 @@ from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
 
+from bs4 import BeautifulSoup
+
 import kik_unofficial.callbacks as callbacks
 import kik_unofficial.datatypes.exceptions as exceptions
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -14,8 +16,6 @@ import kik_unofficial.datatypes.xmpp.login as login
 import kik_unofficial.datatypes.xmpp.roster as roster
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
-from bs4 import BeautifulSoup
-
 from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures
@@ -225,6 +225,14 @@ class KikClient:
         :param peer_jids: one jid, or a list of jids
         """
         return self._send_xmpp_element(xiphias.UsersRequest(peer_jids))
+
+    def xiphias_get_users_by_alias(self, peer_jids: Union[str, List[str]]):
+        """
+        Like xiphias_get_users, but for aliases instead of jids.
+
+        :param peer_jids: one jid, or a list of jids
+        """
+        return self._send_xmpp_element(xiphias.UsersByAliasRequest(peer_jids))
 
     # --------------------------
     #  Group Admin Operations

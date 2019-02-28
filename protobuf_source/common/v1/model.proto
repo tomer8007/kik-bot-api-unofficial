@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package common.v1;
+option java_package = "com.kik.common";
+option java_outer_classname = "ModelProto";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "KPB";
+option (.kik.checkstyle) = {
+    ignore_path: true
+};
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/common/v1;common";
+
+import "kik_options.proto";
+import "protobuf_validation.proto";
+import "common_model.proto";
+
+//*************************************************************************************************
+// Alias Jid
+//*************************************************************************************************
+
+// Follows the form <cryptographic hash>_a@talk.kik.com, ex., abcdefCDEF01234567890123456789-_-_-_ghijkGHIJKxyz_a@talk.kik.com
+// You can use an alias jid when you want to hide real jids from users. Consider the case of people spamming members
+// of public groups. The spammer joins the group and would normally get all the real jids of the group members.
+// There's nothing in our system that can prevent the spammer from sending unwanted messaging at that point.
+// By using an alias jid, the spammer won't get the real jids right away but instead would only get an alias jid.
+// We can then use that to control whether or not we want to give over the real jid that is associated with that alias
+// jid. The real jid/s is/are encrypted here as part of the local_part below and it should be difficult for hackers
+// or spammer to reverse that. A reverse look-up table of alias jids to real jids will be maintained elsewhere.
+// Also, and given real jids x, y, and z, they should always map to the same alias jid.
+// Alis Jid Mapper Service: https://github.com/kikinteractive/xiphias-service-alias-jid-mapper
+message XiAliasJid {
+    string local_part = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^[a-z0-9_-]{52}_[a|b]$"}];
+}
+
+message XiBareUserJidOrAliasJid {
+    oneof jid_type {
+        XiBareUserJid bare_user_jid = 1;
+        XiAliasJid alias_user_jid = 2;
+    }
+}
+
+message XiAnyJid {
+    oneof jid_type {
+        XiBareUserJid bare_user_jid = 1;
+        XiAliasJid alias_user_jid = 2;
+        XiGroupJid group_jid = 3;
+    }
+}
+
+//*************************************************************************************************
+// Kin User ID
+//*************************************************************************************************
+
+// For user-to-user in public groups, we rely on JWTs for executing and verifying transactions
+// The user-to-user payment JWT include both the sender and recipient IDs. In order to preserve privacy controls in
+// public groups, these IDs will be a hashed version of the user real JID. It'll be called the Kin User ID
+// Much like alias jids, the sender cannot use the KIN user ID to directly message the recipient in a public group
+// Also, the KIN user ID is used to map clients to their wallet addresses on the blockchain
+// The KIN user ID is included on the user profile. It is 32-bit encoded string
+message XiKinUserId {
+    string id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^[a-z2-7]{52}$"}];
+}
+
+//*************************************************************************************************
+// Convo Identifier
+//*************************************************************************************************
+message XiConvoId {
+    oneof kind {
+        OneToOneConvoId one_to_one = 1;
+        XiGroupJid group = 2;
+    }
+}
+
+//
+// OneToOneConvoId should contain the two convo partners' userjids that are
+// sorted in a consistent way.
+//
+message OneToOneConvoId {
+    repeated XiBareUserJid users = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        ordered: ASC
+        min_repetitions: 2
+        max_repetitions: 2 }];
+}
+
+//*************************************************************************************************
+// JSON WEB TOKEN (JWT)
+// JWTs will be used to verify users, offers (products), and payment confirmation in the Kin marketplace.
+// A JWT that's signed by Kik authentication service is used by marketplace to verify that a communication/transaction
+// is truly originated from a Kik client, and vice versa
+//*************************************************************************************************
+
+message XiJWT {
+    string jwt = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^[a-zA-Z0-9-_]+?.[a-zA-Z0-9-_]+?.[a-zA-Z0-9-_]+?$" }];
+}

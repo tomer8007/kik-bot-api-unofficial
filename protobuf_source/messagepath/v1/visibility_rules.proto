@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+import "protobuf_validation.proto";
+
+// 'Visibility' relates to:
+//      - Where the convo appears (new people/main chat)
+//      - How push is sent
+//      - What content is blurred
+//      - What profile pics are blurred
+//      - If bottom bar shows up
+//
+// This attachment represents a minimal set of overrides to the default rules the client applies.
+message VisibilityRulesAttachment {
+    // The initiator is distinctly different from the sender of the message.
+    // It SHOULD NOT be set to the same value as the sender.
+    // The initiator can be a user or a bot.
+    // This field is OPTIONAL.
+    // TODO: To be removed after switching all consumers to initiator_v2
+    XiBareUserJid initiator = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }, deprecated = true];
+
+    // Version 2 will replace non-versioned.
+    // The initiator can be userJid or an aliased jid
+    common.v1.XiBareUserJidOrAliasJid initiator_v2 = 4;
+
+    // 'Friend' is defined as:   (in roster AND not blocked) OR yourself
+    // Push should NEVER be sent if the initiator is not a friend.
+    // The server WILL NOT filter these messages, it is up to the receiving client to drop, but still ack (if necessary), the message.
+    // If the initiator is a friend, continue processing the other rules defined in this attachment.
+    // The initiator field SHOULD be set, if this field is true. If initiator is not set, this option is ignored.
+    // Initial usecase for this is viral invites for bots (https://docs.google.com/document/d/1v4JtP1fdah5cvgXW2apScf_bemMkrvh_J370X5jJD48).
+    // Message should be dropped by the client, not simply hidden (although acked through QoS as necessary).
+    bool drop_if_initiator_not_friend = 2;
+
+    // If UKNOWN, use the default rule: USE_SENDER_FOR_VISIBILITY (ie: for forwards compatibility).
+    Rule rule = 3;
+    enum Rule {
+        // Use this rule if the current value is UNKNOWN (for forwards compatibility).
+        // Similar to the default client behaviour, use the sender for determining push and convo location.
+        // Respect the blocked status of the sender AND initiator: if either is blocked, DO NOT send push.
+        // Initial usecase for this is viral invites  for bots (https://docs.google.com/document/d/1v4JtP1fdah5cvgXW2apScf_bemMkrvh_J370X5jJD48).
+        // Note that for the viral invites case, the sender should always be a bot.
+        USE_SENDER_FOR_VISIBILITY = 0;
+
+        // Convo location (new pople/main list) and push behavior should be based on the initiator (if present).
+        // Respect the blocked status of the sender AND initiator: if either is blocked, DO NOT send push.
+        // The initiator field SHOULD be set but if the initiator field is not set, use the sender for all visibility rules.
+        // Initial usecase for this is mention replies from bots to users (https://kikinteractive.atlassian.net/browse/SERVER-257)
+        USE_INITIATOR_FOR_VISIBILITY = 1;
+    }
+}

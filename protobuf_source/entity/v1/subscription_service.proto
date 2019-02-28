@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package mobile.entity.v1;
+option java_package = "com.kik.entity.subscription.mobile";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/entity/v1;entity";
+
+import "protobuf_validation.proto";
+
+import "entity/v1/subscription_common.proto";
+
+//----------------------------------------------------------------------------
+// Mobile Facing Service
+//----------------------------------------------------------------------------
+
+service Subscription {
+
+    //======================================================================================
+    // Synchronize my roster's limited profile data (RosterEntry) to client.
+    // This call will return a page of up to 500 roster profile data at a time with indication
+    // more is available.
+    // Oldest roster entry changes will be returned first.
+    //
+    // Client should:
+    //  1. Omit token in request for full roster fetch
+    //  2. Cache reponse.token after each successful call.
+    //  3. while (response.has_more) { continue pull with new token from previous call }.
+    //======================================================================================
+
+    // NOTE: SyncMyRosterData pulls a page at a time, so time fudging should be applied for
+    // the first page call, subsequent pull should use the actual ts in the RosterSyncToken
+    // How to tell if it is subsequent pull? Hide has_more in the token for this.
+    //
+    // NOTE; token should have two ts one for regular subscription and one for mega.
+    rpc SyncMyRosterData(SyncMyRosterDataRequest) returns (SyncMyRosterDataResponse);
+
+}
+
+message SyncMyRosterDataRequest {
+
+    // Encoded information returned by server for every SyncMyRosterData call.
+    // This token contains information for the following purpose:
+    //    - validate the request
+    //    - parameters used in roster change time scanning
+
+    common.entity.v1.RosterSyncToken token = 1;
+
+}
+
+message SyncMyRosterDataResponse {
+
+    Result result   = 1;
+    enum Result {
+        OK          = 0;
+        NOT_ALLOWED = 1;  // Token inconsistent with info on server
+        DELAYED     = 2;  // Roster data is not ready, client should delay for 10 mins and try again.
+    }
+
+    // Roster data returned in batches up to 500 or 100KiB (protobuf serialized)
+    repeated common.entity.v1.RosterEntry roster_data  = 2 [(kik.validation.field_validation) = {
+        max_repetitions: 500  // sanity bound
+    }];
+
+    // New token to be used in subsequent call.
+    common.entity.v1.RosterSyncToken token = 3;
+
+    // Simply indicate the client should continue to pull with token above
+    bool has_more = 4;
+}

@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package common.client.v2;
+
+option java_package = "com.kik.gen.common.client.v2";
+option java_outer_classname = "ClientModelProto";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "KPBCCommonClientV2";
+option (.kik.checkstyle) = {
+    ignore_path: true
+};
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/client/v2;client";
+
+import "kik_options.proto";
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+
+message DeviceDetails {
+    DeviceType device_type = 1;
+    enum DeviceType {
+        // Any android-based device.  Classic used "CAN"
+        ANDROID = 0;
+        // Any iOS-based device.  Classic used "CIP"
+        IOS = 1;
+        // 'Headless' test clients, used for System Tests.  Classic used "CTS"
+        TEST = 2;
+    }
+
+    common.v2.ClientInstanceId client_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+// The kik client version composed of major, minor, bugfix, build, and/or dev_build version numbers.
+// The string representation of release builds is {major}.{minor}.{bugfix}.{build}
+// The string representation of internal (dev) builds is {major}.{minor}.{bugfix}-{dev_build}
+// In rare cases, we can see an internal build with the format {major}.{minor}.{bugfix}.{build}-{dev_build}
+// It is expected that  major and minor versions will be double digit.
+// NOTE: where we validate max_val: 2147483648, this is 2^31 and using this validation allows us to drop
+//       the value directly into a signed java int.
+message ClientVersion {
+    uint32 major = 1 [(kik.validation.field_validation) = {
+        min_val: 1
+        max_val: 2147483648;
+    }];
+    uint32 minor = 2 [(kik.validation.field_validation) = {
+        max_val: 2147483648;
+    }];
+    uint32 bugfix = 3 [(kik.validation.field_validation) = {
+        max_val: 2147483648;
+    }];
+
+    // The maximum of 10 comes from the current limitation in the device database where
+    // the full string representation of the clients version must be less than 16 characters.
+    // and the shortest major.minor.bugfix. string is 6.  (16 - 6 = 10)
+    // This is optional
+    string build = 4 [(kik.validation.field_validation) = { max_byte_length: 10 }];
+
+    // The dev build occurs after the first optional dash ("-") character, and is represented as
+    // everything after, including any subsequent dashes.
+    // The maximum of 10 comes from the current limitation in the device database where
+    // the full string representation of the clients version must be less than 16 characters.
+    // and the shortest major.minor.bugfix- string is 6.  (16 - 6 = 10)
+    // This is optional
+    string dev_build = 5 [(kik.validation.field_validation) = { max_byte_length: 10 }];
+}
+
+message ClientLocale {
+    string locale = 1 [(kik.validation.field_validation) = {
+        // Follows toString() of java.util.Locale with only language and region set
+        // Can be parsed using com.kik.i18n.LangUtils.parseLocale
+        // Example patterns: en, en_CA, en_029
+        // This has been relaxed to allow es_41, which is being sent by some versions of
+        // android
+        regex: "^(?i)[a-z]{2,8}(?:_([a-z]{2}|[0-9]{2,3}))?$"
+    }];
+}

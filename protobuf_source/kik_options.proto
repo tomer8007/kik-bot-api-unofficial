@@ -1,0 +1,32 @@
+syntax = "proto2"; // Need proto2 for custom options
+
+package kik;
+option java_package = "com.kik.options";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/kikoptions;kikoptions";
+
+import "google/protobuf/descriptor.proto";
+
+//
+// TODO: Potentially move all options here (including protobuf validation field options, etc)
+//
+
+extend google.protobuf.FileOptions {
+    optional CheckStyleOptions checkstyle = 86581;
+}
+
+//
+// These options allow files to be exempt from specific checkstyle rules.
+//    They should only be used in extreme circumstances,
+//    when the proto file cannot or should not follow checkstyle conventions
+//
+message CheckStyleOptions {
+    // Exempts file from having a directory path that matches the package name of a proto file
+    optional bool ignore_path = 1 [default = false];
+
+    // Exempts file from having a version for the proto file
+    optional bool ignore_version = 2 [default = false];
+
+    // Exempts file from having the package prefix of its package (such as common, mobile, internal, etc)
+    optional bool ignore_package_prefix = 3 [default = false];
+}
+

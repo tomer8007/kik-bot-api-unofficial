@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package mobile.contactlist.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/contactlist/v2;contactlist";
+option java_package = "com.kik.gen.contactlist.v2";
+option objc_class_prefix = "KPBMobileContactListV2";
+
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "contactlist/v1/contact_list_common.proto";
+import "persona/v2/persona_common.proto";
+
+service ContactList {  
+    // Get the list of the caller's contact list
+    // There is no guarenteed ordering of contacts in the stream.
+    // Page streaming - streaming starting from the page_token if present. 
+    rpc GetContactListStream(GetContactListStreamRequest) returns (stream GetContactListStreamResponse) {}
+
+    // Check if the personas are in the caller's contact list
+    rpc CheckContactStatus(CheckContactStatusRequest) returns (CheckContactStatusResponse) {}
+
+    // Adding a persona to caller's contact list
+    rpc AddContact(AddContactRequest) returns (AddContactResponse) {}
+
+    // Remove a persona from caller's contact list
+    rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse) {}
+
+    // TODO: Block someone
+    // rpc BlockContact(BlockContactRequest) returns (BlockContactResponse) {}
+
+    // TODO: Unblock someone
+    // rpc UnblockContact(UnblockContactRequest) returns (UnblockContactResponse) {}
+
+    // TODO: Suggested friend
+}
+
+message GetContactListStreamRequest {
+    // Should response contain persona ids only or short form of the personas
+    Kind response_kind = 1;
+    enum Kind {
+        PERSONA_ID = 0;
+        PERSONA_SHORT = 1;
+    }
+
+    // If page_token is not present, the streaming will start from the beginning. 
+    // In case the streaming call fails, mobile client should use the page_token 
+    // from the last successful server response to continue the list streaming. 
+    PageToken page_token = 2;
+}
+
+message GetContactListStreamResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    repeated ContactInfo contacts = 2 [(kik.validation.field_validation) = {
+        max_repetitions: 500
+    }];
+    
+    message ContactInfo {
+        oneof persona_kind {
+            common.v2.PersonaId persona_id = 1;
+            common.persona.v2.PersonaShort persona_short = 2;
+        }
+    }
+
+    // If there are more contacts to return, a page token is returned
+    // In case the streaming call fails, mobile client should use the page_token 
+    // from the last successful server response to continue the list streaming. 
+    PageToken page_token = 3;
+}
+
+message CheckContactStatusRequest {
+    repeated common.v2.PersonaId contacts_to_check = 1 [(kik.validation.field_validation) = {
+        min_repetitions: 1
+        max_repetitions: 500
+    }];
+}
+
+message CheckContactStatusResponse {
+    Result result = 1;
+    enum Result { 
+        // OK means all the incoming persona_ids are accounted for in either 
+        // succeeded_ids or failed_ids
+        OK = 0;
+    }
+    // Server successfully check the contact list and answered is-a-contact for these persona ids
+    repeated ContactStatus succeeded_ids = 2;
+    message ContactStatus {
+        common.v2.PersonaId contacts_to_check = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+        }];
+        bool is_a_contact = 2;
+    }
+    // For some reason, server encountered problem checking the contact list for these persona ids
+    repeated common.v2.PersonaId failed_ids = 3;
+}
+
+message AddContactRequest {
+    // Persona to add to the contact list
+    common.v2.PersonaId new_contact = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+    // Friending context details
+    common.contactlist.v1.UserFriendContext friend_context = 2;
+}
+
+message AddContactResponse {
+    Result result = 1;
+    enum Result {
+        // Contact added  
+        OK = 0;
+        // NOT_FOUND may indicate any of the following:
+        // - Caller or New contact does not exist
+        // - Caller's Friending rate limit has been exceeded
+        // - Caller is blocked by new contact.
+        NOT_FOUND = 1;
+        // If contact's direct messaging is turned off 
+        NOT_PERMITTED = 2;
+    }
+
+    // Only if Result is OK
+    // Most times, the added_contact is the same persona as the requesting pesona. 
+    // But if there is a product rule applies, added_contact might be a different 
+    // persona.  (ie, Reachout from public group will have an aliasjid persona in request
+    // and friending reveals the genesis persona)
+    common.v2.PersonaId added_contact = 2;
+}
+
+message PageToken {
+    bytes token = 1;
+}
+
+message RemoveContactRequest {
+    // Persona to remove from contact list of the caller
+    common.v2.PersonaId contact_to_remove = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message RemoveContactResponse {
+    Result result = 1;
+    enum Result {
+        // Contact removed  
+        OK = 0;
+    }
+}

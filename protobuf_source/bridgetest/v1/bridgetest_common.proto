@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package common.bridgetest.v1;
+option java_package = "com.kik.bridgetest";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/bridgetest/v1;bridgetest";
+option (.kik.checkstyle).ignore_package_prefix = true;
+
+import "protobuf_validation.proto";
+import "google/protobuf/duration.proto";
+import "common_model.proto";
+import "common_rpc.proto";
+import "kik_options.proto";
+
+//----------------------------------------------------------------------------
+// Common Bridge Test Request/Response Types
+//----------------------------------------------------------------------------
+
+message EchoRequest {
+    string message = 1 [(kik.validation.field_validation) = { max_byte_length: 100000 }];
+}
+
+message EchoResponse {
+    string message = 1 [(kik.validation.field_validation) = { max_byte_length: 100000 }];
+}
+
+message WorkoutRequest {
+    google.protobuf.Duration duration = 1 [(kik.validation.field_validation) = { mandatory: true }];
+}
+
+message ValidateHeadersRequest {
+    bool is_auth = 1;
+    common.XiBareUserJid jid = 2;
+    common.XiDeviceId device_id = 3;
+    common.XiRequestId request_id = 4;
+}
+
+message ValidateHeadersResponse {
+    bool is_valid = 1;
+}

@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package mobile.groups.v1;
+option java_package = "com.kik.groups";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/groups/v1;groups";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+import "groups/v1/groups_common.proto";
+import "google/protobuf/timestamp.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+
+//
+// Mobile-facing service allowing users to search for public groups.
+// This provides a mechanism for mobile clients to discover existing public groups.
+//
+// This list is filtered in a number of ways with the intention of providing a
+// better search experience for the user. Ideally it should provide groups that:
+// (1) Are relevant to the search string entered
+// (2) Are immediately join-able
+// (3) Are "clean" (i.e. not X-rated or otherwise offensive)
+//
+service GroupSearch {
+    //
+    // Returns a list of groups based on the request parameters provided.
+    // This method is called directly by clients as they are entering text into
+    // the client search field.
+    //
+    // Initial expectations is that this query is doing a simple prefix search
+    // of group hashtags.  Future revisions will search additional fields such
+    // as group name, and potentially allow multiple terms
+    //
+    // Notes:
+    // * Rate Limiting: This method is rate limited per-user.  Initial settings
+    //   will be limited to no more than 100 queries per minute.
+    // * Result Order: If there is an exact match of a hashtag to the provided
+    //   search query, it will always be listed as the first match.  Remaining
+    //   results are in order, and should be displayed to the user in that order.
+    // * Creation Flag: If there is not exact hashtag match, the response will
+    //   indicate if the exact search query could be used as a public group
+    //   hashtag for a new group creation.  It may be false if the term searched
+    //   matches existing blacklist/filtering systems, or if a group with that
+    //   hashtag was previously terminated.
+    //
+    rpc FindGroups(FindGroupsRequest) returns (FindGroupsResponse) {}
+
+    //
+    // Returns a list of groups that have been recommended by Data analysis. 
+    // 
+    // Note:
+    // * Rate limiting rule is in effect: The expectation is no more than 3 calls per minute
+    //   per active client.
+    // * Full groups are not returned
+    // * Randomizer rules applied; Results returned are a random selection of the available post-filtered options
+    //
+    rpc GetGroupSuggestions(GetGroupSuggestionsRequest) returns (GetGroupSuggestionsResponse) {}
+}
+
+//----------------------------------------------------------------------------
+// Token Types
+//----------------------------------------------------------------------------
+
+message PublicGroupJoinToken {
+    bytes token = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 5120 // 5 KiB (sanity bound)
+    }];
+}
+
+//----------------------------------------------------------------------------
+// Request/Response Types
+//----------------------------------------------------------------------------
+
+message GetGroupSuggestionsRequest {
+}
+
+message GetGroupSuggestionsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        RATE_LIMIT_EXCEEDED = 1;
+    }
+
+    // Suggested Groups. Expect upward of 25 group suggestions  
+    repeated LimitedGroupDetails suggestion = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 1024 // sanity bound
+    }];    
+}
+
+//
+// Request for group details, given a simple query string.
+//
+message FindGroupsRequest {
+    // A simple string search containing a potential portion of a group hashtag.
+    // This string does NOT contain special characters to indicate wildcards.
+    // Note that this string is specified WITHOUT a '#' character prefix
+    string query = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^[A-Za-z0-9._]{1,32}$"
+    }];
+}
+
+//
+// Response for a FindGroups request. Provides either an exact match or availability
+// of the search string, as well as a filtered series of other groups that
+// partially match the search string.
+//
+message FindGroupsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        RATE_LIMIT_EXCEEDED = 1;
+    }
+
+    // Groups that match the search request.  If there is an exact match, it
+    // will be the first match record returned.
+    repeated LimitedGroupDetails match = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 25
+    }];
+
+    // Optional flag to indicate if the exact search term is available for use
+    // as the hashtag in a public group creation request.
+    bool is_available_for_creation = 3;
+}
+
+//----------------------------------------------------------------------------
+// Data Types
+//----------------------------------------------------------------------------
+
+//
+// Group details, containing only enough details to provide display details of that group
+//
+message LimitedGroupDetails {
+    // ID of the group.
+    // NOTE: This is being kept as Optional, as the group join token may render
+    //       it obsolete.
+    common.XiGroupJid jid = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // Display data of the group, including hashtag, display name, and display
+    // url components.
+    common.groups.v1.GroupDisplayData display_data = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // Current count of members in the group
+    uint32 member_count = 3;
+
+    // The time of the last group activity. If no last activity time was found the field will be empty
+    // There is no guarantee regarding accuracy of this time - it means that at some point the group search service
+    // was told that this group had activity at this time, but there may have been activity since then
+    google.protobuf.Timestamp last_activity_time = 4 [(kik.validation.field_validation) = { mandatory: false }];
+
+    // Maximum number of members group can contain at the present time.
+    // Expect that this can change over time for a given group as we work towards larger groups
+    // therefore, caching these values for a period of time on the order of minutes should be
+    // ok, but it is not recommended to cache them for hours, and definitely not days
+    // This value wouldn't normally be 0, but if it was, assume that it means there's a problem with
+    // the public groups for which the size is 0 (which would probably be all of them) and that
+    // they should be not shown to users.
+    uint32 max_group_size = 5;
+
+    // The active members in this group. This field is only relevant if this LimitedGroupDetails
+    // is being returned as part of a get trending groups request. If it's not, then its
+    // value will always be 0 and it should be ignored.
+    uint32 active_members = 6;
+
+    // Token which must be provided in order to join this group directly.
+    // The byte contents of this token must be base64-encoded and provided
+    // in the kik-server group join stanza in order to be successful in joining
+    // the group.
+    // * Provides additional tracking capability in analytics to connect searches
+    //   to group joins
+    // * Provides additional security possibilities by limiting the options spammers
+    //   have in harvesting users from groups (token is only useful to the user
+    //   that received it, easier to apply rate limits, etc.)
+    //
+    PublicGroupJoinToken group_join_token = 100;
+}

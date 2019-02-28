@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+import "protobuf_validation.proto";
+
+// For mention replies (from bots to users), this attachment is used to indicate the user who
+// originally mentioned the bot.
+//
+// See https://github.com/kikinteractive/kik-product/wiki/Bot-Mentions
+//
+// This should only be used the client for internal logic specific to mention-reply messages
+// (e.g. on iPhone 10.9 it is used to determine whether to show the "Reply" button)
+// DO NOT use this attachment to determine visibility rules (use the visibility_rules_attachment for that).
+message MentionReplyAttachment {
+    // The original user who mentioned the bot.
+    // Field is OPTIONAL but should be set when the mentioner is known.
+    // TODO: To be removed after switching all consumers to original_mentioner_v2
+    XiBareUserJid original_mentioner = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }, deprecated = true];
+
+    // Version 2 will replace non-versioned.
+    // The original_mentioner_v2 can be userJid or an aliased jid
+    common.v1.XiBareUserJidOrAliasJid original_mentioner_v2 = 2;
+}

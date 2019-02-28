@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package common.matching.v1;
+option java_package = "com.kik.matching.model";
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "MAT";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/matching/v1;matching";
+
+import "protobuf_validation.proto";
+import "common_model.proto";
+import "common/v1/model.proto";
+
+//**************************************************
+//
+// Objects common to anonymous matching service, used by mobile and internal apis
+//
+//**************************************************
+
+message AnonMatchingSessionKey {
+    // A session can be identified by the session id, or either of the ajids in the conversation
+    // session_id is preferred wherever possible because it is less costly than retrieving by alias
+    oneof chat_session_id {
+        common.XiUuid session_id = 1;
+        common.v1.XiAliasJid chat_partner_alias = 2;
+    }
+}
+
+enum ChatSessionState {
+        // Participants can chat, end chat, vote early
+        CHAT_ACTIVE = 0;
+        // Chatting with this session will fail, voting on friending can occur
+        // *** VOTING NOT SUPPORTED YET ***
+        // VOTING = 1;
+        // Chatting and voting is closed, session is considered marked for cleanup at this state
+        // If users end the chat early, chat sessions are transitioned to EXPIRY with no voting period
+        EXPIRED = 2;
+}

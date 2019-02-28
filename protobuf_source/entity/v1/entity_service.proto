@@ -1,0 +1,433 @@
+syntax = "proto3";
+
+package mobile.entity.v1;
+option java_package = "com.kik.entity.mobile";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/entity/v1;entity";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+import "entity/v1/entity_common.proto";
+import "common/v1/model.proto";
+import "entity/v1/element_common.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces - GetXXX methods
+//----------------------------------------------------------------------------
+//
+// Mobile-facing service allowing pulling of entities by batch of up to 20 ids
+// Visibility is not controlled by EntityService, it is assumed if the caller has id, he/she is
+// visible to all elements of the entity.
+//
+// Typically 4 lists might be returned:
+//
+//     1. The list of entities (excluding soft DELETED)
+//
+//     2. retriable_ids: A set of IDs that could not be retrieved for a transient reason.
+//                       Clients should retry right away with this set of IDs in order to get the complete list.
+//                       Result will be set to Result.PARTIAL if this set is non-empty.
+//
+//     3. failed_ids:    A set of IDs of those retrieval failed.
+//                       Clients should _not_ retry with these IDs.
+//                       Result will be set to Result.PARTIAL if this set is non-empty.
+//
+//     4. not_found_ids: Requested but not found on server or has been deleted.
+//                       Not found is not considered failed.
+//                       So if you call GetUsers(id1-3) and all 3 ids are not found, you'd have a response
+//                       with Result.OK; empty entity list and a not_found_ids of id1-3.
+//
+// Error Handling:
+//     1. Always try/catch rpc errors or anything unexpected
+//     2. Response always return a Result tag, you might want to handle error when Result = PARTIAL
+//     3. If retriable_ids is _not_ empty, further requests should be made until a response with
+//        an empty set of retriable_ids is returned.
+//
+//*********************************************************************************
+service Entity {
+
+    rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+
+    rpc GetBots(GetBotsRequest) returns (GetBotsResponse);
+
+    rpc GetGroups(GetGroupsRequest) returns (GetGroupsResponse);
+
+    rpc GetConvos(GetConvosRequest) returns (GetConvosResponse);
+
+    rpc GetUserRosterEntries(GetUserRosterEntriesRequest) returns (GetUserRosterEntriesResponse);
+
+    rpc GetGroupRosterEntries(GetGroupRosterEntriesRequest) returns (GetGroupRosterEntriesResponse);
+
+    rpc GetUsersByAlias(GetUsersByAliasRequest) returns (GetUsersByAliasResponse);
+
+    //****************************************************************************************
+    // Get a list of trusted bots. If the list does not fit in one xiphias call, a page token
+    // is return for the subsequent page.
+    //
+    // GetTrustedBots is designed to be temporary and can be obsolete
+    // once Harmony 3 - Roster subscription is in place.
+    //
+    // To eventually obsolete this rpc, entity_service_get_trusted_bots_enabled in
+    // https://github.com/kikinteractive/xiphias-api-mobile/blob/master/proto/config/v1/feature_config_service.proto
+    // is prepared. The promise is that client will use this boolean to wrap around the GetTrustedBots
+    // call, once it is disabled via this config (client calls feature_config_service daily), call to this rpc
+    // should reach 0 in 24 hours. Then server can obsolete the rpc from API.
+    //****************************************************************************************
+    rpc GetTrustedBots(GetTrustedBotsRequest) returns (GetTrustedBotsResponse);
+}
+
+message GetUsersRequest {
+    repeated common.XiBareUserJid ids  = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetUsersResponse {
+    Result result = 1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityUsers.
+    //
+    // This does _not_ include deleted entities.
+    repeated common.entity.v1.EntityUser users          = 10;
+
+    // The set of XiBareUserJid's that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.XiBareUserJid        retriable_ids  = 11;
+
+    // The set of XiBareUserJid's that could not be retrieved, but should _not_ be retried.
+    repeated common.XiBareUserJid        failed_ids     = 12;
+
+    // The set of XiBareUserJid's that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.XiBareUserJid        not_found_ids  = 13;
+}
+
+message GetBotsRequest {
+    repeated common.XiBareUserJid ids  = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetBotsResponse {
+    Result result = 1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityBot.
+    //
+    // This does _not_ include deleted entities.
+    repeated common.entity.v1.EntityBot bots          = 10;
+
+    // The set of XiBareUserJid's that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.XiBareUserJid        retriable_ids  = 11;
+
+    // The set of XiBareUserJid's that could not be retrieved, but should _not_ be retried.
+    repeated common.XiBareUserJid        failed_ids     = 12;
+
+    // The set of XiBareUserJid's that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.XiBareUserJid        not_found_ids  = 13;
+}
+
+message GetUserRosterEntriesRequest {
+    repeated common.XiBareUserJid ids  = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetUserRosterEntriesResponse {
+    Result result = 1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityUserRosterEntries.
+    //
+    // This does _not_ include deleted entities.
+    repeated common.entity.v1.EntityUserRosterEntry user_roster_entries = 10;
+
+    // The set of XiBareUserJids that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.XiBareUserJid retriable_ids  = 11;
+
+    // The set of XiBareUserJids that could not be retrieved, but should _not_ be retried.
+    repeated common.XiBareUserJid failed_ids     = 12;
+
+    // The set of XiBareUserJids that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.XiBareUserJid not_found_ids  = 13;
+}
+
+message GetGroupsRequest {
+    repeated common.XiGroupJid ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetGroupsResponse {
+    Result result =1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityGroups.
+    //
+    // This does _not_ include deleted/not found entities
+    repeated common.entity.v1.EntityGroup groups        = 10;
+
+    // The set of XiGroupJid's that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.XiGroupJid            retriable_ids = 11;
+
+    // The set of XiGroupJid's that could not be retrieved, but should _not_ be retried.
+    repeated common.XiGroupJid            failed_ids    = 12;
+
+    // The set of XiGroupJid's that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.XiGroupJid            not_found_ids = 13;
+}
+
+message GetConvosRequest {
+    repeated common.v1.XiConvoId ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetConvosResponse {
+    Result result =1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityConvo.
+    //
+    // This does _not_ include deleted/not found entities
+    repeated common.entity.v1.EntityConvo    convos        = 10;
+
+    // The set of XiConvoId's that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.v1.XiConvoId                retriable_ids = 11;
+
+    // The set of XiConvoId's that could not be retrieved, but should _not_ be retried.
+    repeated common.v1.XiConvoId                failed_ids    = 12;
+
+    // The set of XiConvoId's that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.v1.XiConvoId                not_found_ids = 13;
+}
+
+message GetTrustedBotsRequest {
+    // If pageToken is absent, server will consider this as
+    // getting the first page.
+    //
+    // See GetTrustedBotsResponse, pageToken is that returned from server from the previous
+    // call in case of more.
+    PageToken page_token = 1;
+}
+
+message GetTrustedBotsResponse {
+    // Fields are not set when Result != OK
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    repeated common.XiBareUserJid trusted_bots = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 5000
+    }];
+
+    // Only return if there are more come.  This is the token for the next page.
+    PageToken page_token = 3;
+}
+
+message PageToken {
+
+    bytes token = 1;
+}
+
+message GetGroupRosterEntriesRequest {
+    repeated common.XiGroupJid ids  = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message GetGroupRosterEntriesResponse {
+    Result result = 1;
+    enum Result {
+        OK      = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    // The set of successfully retrieved EntityGroupRosterEntries.
+    //
+    // This does _not_ include deleted entities.
+    repeated common.entity.v1.EntityGroupRosterEntry group_roster_entries = 10;
+
+    // The set of XiGroupJids that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated common.XiGroupJid retriable_ids  = 11;
+
+    // The set of XiGroupJids that could not be retrieved, but should _not_ be retried.
+    repeated common.XiGroupJid failed_ids     = 12;
+
+    // The set of XiGroupJids that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated common.XiGroupJid not_found_ids  = 13;
+}
+
+message RequestedJid {
+    // Making this a oneof to future proof it
+    oneof jid_type {
+        common.v1.XiAliasJid alias_jid = 1;
+    }
+}
+
+message GetUsersByAliasRequest {
+    repeated RequestedJid ids  = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 20 }];
+}
+
+// Information that should be available to everyone for group_membership alias jids
+message PublicGroupMemberProfile {
+    // All fields should be optional. 
+
+    // An optional BioElement
+    common.entity.v1.BioElement bio_element = 1;
+
+    // An optional Profile Pic Element
+    common.entity.v1.ProfilePicElement profile_pic = 2;
+
+    // An optional Background Pic Extension
+    common.entity.v1.BackgroundProfilePicExtensionElement background_profile_pic_extension = 3;
+
+    // An optional Registration Element for user
+    common.entity.v1.RegistrationElement registration_element = 4;
+
+    // An optional User Interests Element 
+    common.entity.v1.InterestsElement interests_element = 5;
+
+    // An optional Emoji status element
+    common.entity.v1.EmojiStatusElement emoji_status_element = 6;
+
+    // An optional Display Name Element
+    common.entity.v1.DisplayNameElement display_name = 7;
+
+    // An optional Kin User ID Element
+    common.entity.v1.KinUserIdElement kin_user_id_element = 8;
+}
+
+// Information that should be available to everyone for anon chat alias jids
+message AnonChatMemberProfile {
+    // All fields should be optional. 
+
+    // An optional Profile Pic Element
+    common.entity.v1.ProfilePicElement profile_pic = 2;
+
+    // An optional Display Name Element
+    common.entity.v1.DisplayNameElement display_name = 7;
+}
+
+// Information that is restricted from public view
+// Requires a two-way relationship between the caller and alias jid
+message PrivateProfile {
+    // All fields should be optional. 
+
+    // An optional User Jid
+    common.XiBareUserJid id = 1;
+
+    // An optional User Name Element
+    common.entity.v1.UsernameElement username = 2;
+}
+
+message GetUsersByAliasPayload {
+    // All fields should be optional. 
+    // Callers do not necessarily know which fields will be populated in the response.
+
+    // An optional PublicGroupMemberProfile, present for group_membership ajid types
+    PublicGroupMemberProfile public_group_member_profile = 1;
+
+    // An optional AnonChatMemberProfile, should be present for anon_type ajids
+    AnonChatMemberProfile anon_chat_member_profile = 5;
+
+    // An optional PrivateProfile
+    PrivateProfile private_profile = 2;
+
+    // The RequestedJid that this payload pertains to
+    RequestedJid id = 3;
+
+    // The index in the ids field of the original request that this payload is for
+    int32 request_index = 4;
+}
+
+message GetUsersByAliasResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        // PARTIAL indicates that an error occurred when retrieving info for some of the requested ids, but other ids may have been retrieved successfully
+        PARTIAL = 1;
+    }
+
+    repeated GetUsersByAliasPayload payloads = 10;
+
+    // The set of RequestedJid that could not be retrieved, but should be retried.
+    //
+    // It is strongly encouraged (if not necessary) to retry with the set of retriable_ids,
+    // until the set is empty. This mechanism provides a tolerance to transient failures,
+    // as well as dealing with internal size restrictions (such as max XMPP response size).
+    // Retriable ids should be requested again right away; no backoff or delay is required.
+    repeated RequestedJid retriable_ids  = 11;
+
+    // The set of RequestedJid that could not be retrieved, but should _not_ be retried.
+    repeated RequestedJid failed_ids     = 12;
+
+    // The set of RequestedJid that could not be found (either because the entity doesn't
+    // exist, or it was deleted).
+    repeated RequestedJid not_found_ids  = 13;
+}

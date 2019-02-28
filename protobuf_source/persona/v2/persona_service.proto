@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package mobile.persona.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/persona/v2;persona";
+option java_package = "com.kik.gen.persona.v2";
+option objc_class_prefix = "KPBMobilePersonaV2";
+
+import "protobuf_validation.proto";
+
+import "common/v2/model.proto";
+
+service Persona {
+    // Change the first and/or last name for the specified Persona.
+    // Last name is not required and if it is not specified then any value currently stored for it will be cleared.
+    // The specified Persona must be owned by the caller of this method; clients cannot change Personas that they
+    // do not own.
+    // The specified PersonaId cannot be a wrapper for an AliasJid; the only way to change the display info for an
+    // AliasJid is to change the info for the Genesis Persona directly that the AliasJid maps to.
+    rpc SetDisplayName(SetDisplayNameRequest) returns (SetDisplayNameResponse) {}
+}
+
+message SetDisplayNameRequest {
+    common.v2.PersonaId persona_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    oneof display_name {
+        FirstLastName person_name = 2;
+    }
+
+    // Currently the only name format supported is first and optional last, but we may support
+    // other name formats in the future
+    message FirstLastName {
+        // These first_name, last_name specifications match v1/user_info_shared.proto
+        // If any first name or last name is allowed that would be rejected by that
+        // protobuf then calls to UserInfo will fail.
+        string first_name = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_codepoints: 255
+        }];
+
+        string last_name = 2 [(kik.validation.field_validation) = {
+            // Last name is optional to allow cases where we only
+            // want a single name. An example use cases is bots.
+            max_codepoints: 255
+        }];
+    }
+}
+
+message SetDisplayNameResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        NOT_FOUND = 1;
+        // Some Personas cannot be changed even by their owner, e.g. AliasJid Personas cannot be
+        // modified directly because they just map back to the Genesis Persona. Instead the
+        // Genesis Persona should be modified directly via its PersonaId.
+        NOT_MODIFIABLE = 2;
+        // I don't think we need these codes for now because the only name validation done currently
+        // is extra length checking in AccountUtils.isNameValid and the byte length restrictions in
+        // here are already more restrictive. However I could see us doing more validation in the
+        // future; in fact I'm surprised we don't already check against banned words/phrases or
+        // reject URLs
+        FIRST_NAME_INVALID = 3;
+        LAST_NAME_INVALID = 4;
+    }
+}

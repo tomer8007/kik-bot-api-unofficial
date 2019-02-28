@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package mobile.persona.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/persona/v2;persona";
+option java_package = "com.kik.gen.persona.v2";
+option objc_class_prefix = "KPBMobilePersonaV2";
+
+import "protobuf_validation.proto";
+
+import "common/v2/model.proto";
+import "persona/v2/persona_common.proto";
+
+// PersonaInfoService is for mobile to retrieve Personas by PersonaId or lookup PersonaIds by username
+// Mobile calls for setting/updating Persona info are in PersonaService
+service PersonaInfo {
+    rpc GetPersonaShort(GetPersonaShortRequest) returns (GetPersonaShortResponse) {}
+
+    rpc GetPersonaFull(GetPersonaFullRequest) returns (GetPersonaFullResponse) {}
+
+    rpc GetPersonaFullByUsername(GetPersonaFullByUsernameRequest) returns (GetPersonaFullByUsernameResponse) {}
+}
+
+message GetPersonaShortRequest {
+    repeated common.v2.PersonaId persona_ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1024
+    }];
+}
+
+message GetPersonaShortResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    repeated common.persona.v2.PersonaShort personas = 2 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+
+    // All the ids from the request that no Persona was found for, or the Persona is not visible to the caller
+    repeated common.v2.PersonaId not_found_ids = 3 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+
+    // All the ids from the request that hit an error on the server side
+    // Requesting them again may result in the server successfully returning them
+    repeated common.v2.PersonaId failed_ids = 4 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+}
+
+message GetPersonaFullRequest {
+    repeated common.v2.PersonaId persona_ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1024
+    }];
+}
+
+message GetPersonaFullResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    // All the PersonaFull that were found for the requested ids
+    repeated common.persona.v2.PersonaFull personas = 2 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+
+    // All the ids from the request that no Persona was found for
+    // Shouldn't happen if you're using valid PersonaId
+    repeated common.v2.PersonaId not_found_ids = 3 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+
+    // All the ids from the request that hit an error on the server side
+    // Requesting them again may result in the server successfully returning them
+    repeated common.v2.PersonaId failed_ids = 4 [(kik.validation.field_validation) = {
+        min_repetitions: 0
+        max_repetitions: 1024
+    }];
+}
+
+message GetPersonaFullByUsernameRequest {
+    common.v2.Username username = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message GetPersonaFullByUsernameResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        NOT_FOUND = 1; // This result is also returned if the rate limit has been reached
+    }
+
+    // persona is only returned if result == OK
+    common.persona.v2.PersonaFull persona = 2;
+}

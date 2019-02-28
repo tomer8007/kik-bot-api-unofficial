@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package mobile.profile.v1;
+option java_package = "com.kik.profile";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/profile/v1;profile";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+import "profile/v1/profile_common.proto";
+import "common/v1/model.proto";
+
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+//
+// Mobile-facing service allowing user to set their own profile information 
+// Group members with the right permission can set the group's profile information.
+//
+// Setter Methods:
+//======================
+// All elements are optional. Only provide elements that are to be changed.
+// 
+// To unset (remove) an element, send the UnsetXXX indicator.
+// DONOT send in blank string because this causes wasted DB space and network payload.
+//*************************************************************************************************
+service Profile {
+
+    rpc SetUserProfile(SetUserProfileRequest) returns (SetUserProfileResponse);
+
+    rpc SetGroupProfile(SetGroupProfileRequest) returns (SetGroupProfileResponse);
+
+    rpc SetConvoProfile(SetConvoProfileRequest) returns (SetConvoProfileResponse);
+}
+
+message SetUserProfileRequest {
+
+    common.XiBareUserJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    common.profile.v1.BioAction bio = 2;
+
+    common.profile.v1.OriginalProfilePicExtensionAction original_profile_pic_extension_action = 3;
+ 
+    common.profile.v1.BackgroundProfilePicExtensionAction background_profile_pic_extension_action = 4;
+
+    common.profile.v1.EmojiStatusAction emoji_status = 5;
+
+    // Client should send up to FeatureConfig.max_user_interests user interests in 
+    // a defined order. 
+    // Only ids of the interests need to be filled in. Server does not require the 
+    // verbiage. 
+    common.profile.v1.InterestsAction interests = 6;
+
+    // Don't use tag ranged [1000 - 1999]. They are reserved for internal use
+}
+
+message SetUserProfileResponse {
+    Result result = 1;
+    enum Result {
+        OK               = 0;
+        VALIDATION_ERROR = 1;
+    }
+    repeated RejectionReason rejection_reasons = 2;
+}
+
+message SetGroupProfileRequest {
+
+    common.XiGroupJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    common.profile.v1.BioAction bio = 2;
+
+    common.profile.v1.OriginalProfilePicExtensionAction original_profile_pic_extension_action = 3;
+ 
+    common.profile.v1.BackgroundProfilePicExtensionAction background_profile_pic_extension_action = 4;
+
+    // Don't use tag ranged [1000 - 1999]. They are reserved for internal use
+}
+
+message SetGroupProfileResponse {
+    Result result = 1;
+    enum Result {
+        OK               = 0;
+        VALIDATION_ERROR = 1;
+    }
+    repeated RejectionReason rejection_reasons = 2;
+}
+
+message SetConvoProfileRequest {
+    common.v1.XiConvoId id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    common.profile.v1.ChatThemeAction chat_theme_action = 2;
+
+    common.profile.v1.ChatThemeLockAction chat_theme_lock_action = 3;
+
+    // Don't use tag ranged [1000 - 1999]. They are reserved for internal use
+}
+
+message SetConvoProfileResponse {
+    Result result = 1;
+    enum Result {
+        OK               = 0;
+        FORBIDDEN_ERROR  = 1;
+    }
+}
+
+message RejectionReason {
+    Code code = 1;
+    enum Code {
+        FORBIDDEN                  = 0;
+        REJECTED_BIO_BY_MODERATION = 1;
+        REJECTED_ORIGINAL_PROFILE_PIC_EXTENSION_BY_MODERATION = 2;
+        REJECTED_BACKGROUND_PROFILE_PIC_EXTENSION_BY_MODERATION = 3;
+    }
+}

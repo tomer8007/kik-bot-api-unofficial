@@ -1,0 +1,74 @@
+syntax = "proto3";
+package mobile.masks.v1;
+
+option java_package = "com.kik.masksdata.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/masks/v1;masksdata";
+
+import "protobuf_validation.proto";
+
+service MasksData {
+    // Return the list with the version set as production
+    rpc GetProductionList (ListRequest) returns (ListResponse);
+    // Return the list with the verision set as Stage/Test
+    rpc GetStageList (ListRequest) returns (ListResponse);
+    // Return the list specified in the list_version field of ListRequest
+    rpc GetVersionList (ListRequest) returns (ListResponse);
+}
+
+message ListRequest {
+    // The version of the list to be served. Ignored by GetProductionList\GetStageList.
+    string requested_list_version = 1 [(kik.validation.field_validation) = { max_byte_length: 2083 }];  // sanity bound
+    // The version of the list the client currently holds.
+    string local_list_version = 2 [(kik.validation.field_validation) = { max_byte_length: 2083 }];  // sanity bound
+}
+
+message ListResponse {
+    string version = 1 [(kik.validation.field_validation) = { mandatory: true }];
+    repeated MaskDetails resources = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            min_repetitions: 1
+            max_repetitions: 200
+        }];
+}
+
+// An object describing a sequence of png images that are layered over the video feed.
+// The video feed size is assumed to be VGA portrait (480*640)
+message MaskDetails {
+    // A UUID, the mask's id.
+    string id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+    // Mask name, might be user facing.
+    string name = 2 [(kik.validation.field_validation) = { mandatory: true }];
+    // URL of the filter's thumbnail to display on the selection bar
+    string thumbnail_url = 3 [(kik.validation.field_validation) = {
+            mandatory: true
+            min_byte_length: 1
+            max_byte_length: 2083  // sanity bound
+        }];
+    // The number of frames in this seqeunce
+    uint32 frame_count = 4 [(kik.validation.field_validation) = { mandatory: true }];
+    // Frames per second
+    uint32 frame_rate = 5 [(kik.validation.field_validation) = { mandatory: true }];
+    // Number of times to play. 0 = infinite.
+    uint32 loop_count = 6 [(kik.validation.field_validation) = { mandatory: true }];
+    // URL of a zip file with all the sequence images
+    string sequence_archive_location = 7 [(kik.validation.field_validation) = {
+            mandatory: true
+            min_byte_length: 1
+            max_byte_length: 2083  // sanity bound
+        }];
+    // the index order in which to play the frames. If not set then frames default order applies.
+    repeated int32 sequence_order = 8 [(kik.validation.field_validation) = {
+            min_repetitions: 0
+            max_repetitions: 100
+        }];
+
+    message Rectangle {
+        int32 top = 1 [(kik.validation.field_validation) = { mandatory: true }];
+        int32 left = 2 [(kik.validation.field_validation) = { mandatory: true }];
+        int32 width = 3 [(kik.validation.field_validation) = { mandatory: true }];
+        int32 height = 4 [(kik.validation.field_validation) = { mandatory: true }];
+    }
+
+    // The frame in which to place the image sequence over the stream
+    Rectangle rectangle = 9 [(kik.validation.field_validation) = { mandatory: true }];
+}

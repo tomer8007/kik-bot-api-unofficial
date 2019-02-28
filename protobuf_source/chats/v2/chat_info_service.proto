@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package mobile.chats.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/chats/v2;chats";
+option java_package = "com.kik.gen.chats.v2";
+option objc_class_prefix = "KPBMobileChatsV2";
+
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "messaging/v2/model.proto";
+
+service ChatInfo {
+    // GetChatStream streams batches of chat info corresponding to the requested
+    // set of ChatIds. This should be called for any type of chat for which the
+    // client needs to know more than just the ChatId.
+    //
+    // Chat info includes contextual information like the type of
+    // chat and other minimal information specific to that type of chat needed to display it.
+    rpc GetChatInfoStream(GetChatInfoStreamRequest) returns (stream GetChatInfoStreamResponse) {}
+}
+
+message GetChatInfoStreamRequest {
+    repeated common.v2.ChatId chat_ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1024 // Sanity bound
+    }];
+}
+
+message GetChatInfoStreamResponse {
+    Result result = 1;
+    enum Result {
+        // The request was successfully processed. Note that this does not mean all chat ids
+        // specified in the request were sucessfully retrieved. See failure_details for any failures.
+        OK = 0;
+    }
+
+    // Successfully retrieved chat information corresponding to chat ids given in the request.
+    repeated common.messaging.v2.Chat chats = 2;
+
+    // Chats that failed to be retrieved by id.
+    repeated FailureDetails failure_details = 3;
+    message FailureDetails {
+        common.v2.ChatId chat_id = 1;
+
+        Reason reason = 2;
+        enum Reason {
+            UNKNOWN = 0;
+
+            // No chat info was found for this chat_id that can be returned to the caller's account.
+            NOT_FOUND = 1;
+        }
+    }
+}

@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package common.asset.v1;
+
+option java_package = "com.kik.asset.model";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/asset/v1;asset";
+
+import "protobuf_validation.proto";
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Common asset management service types for serving products to mobile clients
+
+// Contains the universal details of a product
+message ProductContent {
+    // A map between the name of the asset and its content
+    map<string, Asset> assets = 1 [(kik.validation.map_key) = {
+        min_byte_length: 1
+        max_byte_length: 128
+    }];
+
+    Type type = 2;
+
+    enum Type {
+        UNKNOWN = 0;
+        CHAT_THEME = 1;
+        AVATAR = 2;
+    }
+}
+
+// Contains the content of an asset (a component of a product). This model should be used for retrieving existing
+// assets, not creating or updating them. media_content or simple_content (or both) must be set.
+message Asset {
+    MediaContent media_content = 10;
+
+    // The preview for the media content being presented (optional)
+    MediaContent media_content_preview = 11;
+
+    // If the asset is not a media object (e.g. a color hex code), its data will be stored in this map. The expected
+    // max size for a value in simple_content is roughly 1024 bytes and there should be no more than 10 key-value pairs.
+    map<string, string> simple_content = 12 [(kik.validation.map_key) = {
+        min_byte_length: 1
+        max_byte_length: 64
+    }];
+}
+
+// Contains the details of a media component (e.g. image, video) of an asset
+message MediaContent {
+    string content_url = 1 [(kik.validation.field_validation) = {
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+
+    Mimetype mimetype = 2;
+    enum Mimetype {
+        UNKNOWN = 0;
+        IMAGE_JPEG = 1;
+        IMAGE_PNG = 2;
+    };
+}
+
+// Used to request assets of a specific pixel density from a service
+enum PixelDensity {
+    NODPI = 0;
+    ANDROID_LDPI = 1;
+    ANDROID_MDPI = 2;
+    ANDROID_HDPI = 3;
+    ANDROID_XHDPI = 4;
+    ANDROID_XXHDPI = 5;
+    ANDROID_XXXHDPI = 6;
+    IOS_X1 = 7;
+    IOS_X2 = 8;
+    IOS_X3 = 9;
+}

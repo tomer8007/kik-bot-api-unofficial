@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package mobile.localization.v1;
+option java_package = "com.kik.localization.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/localization/v1;localization";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+
+// This service provides centralized access of i18n strings for components that
+// send user facing messages.
+//
+// Strings are generally fetched via a unique ID and an optional language locale.
+//
+// Should refer to https://github.com/kikinteractive/localization-strings for a
+// complete listing of strings along with their IDs.
+service Localization {
+    // Fetch a string associated with a given ID and an optional locale.
+    // If local is not provided the default (English) string will be given.
+    rpc GetString(GetStringRequest) returns (GetStringResponse) {}
+
+    // Fetch a list of strings from a given list of IDs and an optional locale.
+    // A response will be streamed for each ID. A non-OK result will _not_ stop the stream.
+    // If local is not provided the default (English) strings will be given.
+    rpc GetStrings(GetStringsRequest) returns (stream GetStringResponse) {}
+}
+
+//----------------------------------------------------------------------------
+// Request/Response Types
+//----------------------------------------------------------------------------
+
+message GetStringRequest {
+    StringId string_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.XiLocale locale = 2;
+
+    reserved 3; // experiment_subject
+}
+
+message GetStringResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        // Set when the string ID was not found.
+        STRING_NOT_FOUND = 1;
+        // Set when the string is not available in the given locale.
+        // NOTE: The default string will be provided in this case.
+        LOCALE_NOT_AVAILABLE = 2;
+    }
+
+    // Id of the requested string.
+    StringId string_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Will only be set if result == OK or LOCALE_NOT_AVAILABLE.
+    StringText string_value = 3;
+}
+
+message GetStringsRequest {
+    repeated StringId string_ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1024
+    }];
+
+    common.XiLocale locale = 2;
+
+    reserved 3; // experiment_subject
+}
+
+//----------------------------------------------------------------------------
+// Supporting Types
+//----------------------------------------------------------------------------
+
+message StringId {
+    string id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+}
+
+message StringText {
+    string text = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 65535 // Should be fairly large to support high-unicode i18n strings.
+    }];
+}
+
+// Some experiment ID for conducting AB testing on string variants.
+// Currently not in use.
+message ExperimentSubjectId {
+    oneof subject_id {
+        common.XiBareUserJid user_jid = 1;
+    }
+}

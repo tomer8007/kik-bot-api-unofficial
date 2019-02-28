@@ -1,0 +1,146 @@
+// EXPERIMENTAL: The definitions here are experimental and subject to change at
+// any moment. They are pulled in from the kikx branch, which should be used as
+// the source of truth for any Kikx work. These appear in master to unblock work
+// on legacy systems.
+
+syntax = "proto3";
+
+package common.messaging.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messaging/v2;messaging";
+option java_package = "com.kik.gen.messaging.v2";
+option objc_class_prefix = "KPBCommonMessagingV2";
+
+import "google/protobuf/timestamp.proto";
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "chats/v2/chat_info.proto";
+import "chats/v2/chats_common.proto";
+
+// Chat represents the 'metadata' about a Chat. A chat is fundamentally broken
+// down into:
+//
+//     1. Metadata (id, type info, etc)
+//     2. Message Log (log of actual messages)
+//     3. Pointer States
+//
+// This represents (1), while the other two only have accessors via APIs, since
+// implementations of (2) and (3) are highly varied between server and clients.
+message Chat {
+    common.v2.ChatId id = 1;
+
+    // Contains minimal chat info depending on the type of chat.
+    // Note that this oneof is required.
+    oneof info {
+        common.chats.v2.OneToOneInfo one_to_one_info = 2;
+        common.chats.v2.GroupInfoShort group_info = 3;
+    }
+
+    // Optional chat theme of this chat.
+    common.chats.v2.ChatThemeId chat_theme_id = 4;
+
+    // Optional mute status of this chat. Note that this is caller sensitive as it denotes
+    // whether or not the _caller_ has muted the chat. Multiple members of a chat might
+    // see different mute statuses here.
+    common.chats.v2.MuteStatus mute_status = 5;
+}
+
+// Message represents the a message. For now, it only includes the bare minimum
+// for message routing / MLSM model. A fully defined message model still needs
+// to be defined (initial work was started multiple times).
+message Message {
+    // Note: ID will be constructed in such a way that ID(M_n) < ID(M_n+1), where
+    // n is the order in the underlying message log (as seen by server). If time
+    // was a universal truth, and servers had 100% accuracy, ID(M_n) would be the
+    // time that the server inserted it into the log.
+    //
+    // The ID(M_n) < ID(M_n+1) invariant is the _only_ assumption that can be
+    // made about the ID. The comparator is a lexical sort.
+    //
+    // IDs are _only_ gaurenteed to be unique within a given Chat. Collisions can
+    // (and will) occure cross-chats. For example, upgrading a 1:1 -> Group chat
+    // results in a log copy, which (intentionally) retains the IDs.
+    Id id = 1;
+    message Id {
+        bytes raw_value = 1;
+    }
+
+    common.v2.ChatId chat_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.v2.PersonaId sender = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Only used for rendering purposes.
+    google.protobuf.Timestamp client_sent = 4 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    string body = 5;
+}
+
+message Pointer {
+    common.v2.ChatId chat_id = 1;
+    Message.Id message_id = 2;
+    common.v2.PersonaId persona = 3;
+
+    Type type = 4;
+    enum Type {
+        PUSHED = 0;
+        DELIVERED = 1;
+        READ = 2;
+    }
+}
+
+message ChatUpdate {
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // An optional preview of the chat. This is only to be used for rendering
+    // purposes on the chat list stream. It must not be used for any chat storage.
+    oneof preview {
+        TextPreview text_preview = 2;
+        ImagePreview image_preview = 3;
+    }
+
+    message TextPreview {
+        string preview_text = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 1024
+        }];
+    }
+
+    message ImagePreview {
+        // todo: fill me out
+    }
+
+
+    // NameUpdate indicates that there is an update to the name of the chat.
+    NameUpdate name_update = 4;
+    message NameUpdate {
+        // Note: If name is an empty string, then this is indicitive of the name
+        // being cleared. It is up to the client to determine what should be
+        // rendered.
+        string name = 3;
+    }
+
+    // If ProfilePicUpdate is set, then there is an update to the chat's profile
+    // picture.
+    ProfilePicUpdate profile_pic_update = 5;
+    message ProfilePicUpdate {
+        string profile_pic_url = 4;
+    }
+
+    // If ParticipansChange is set, then the participants of the chat has changed,
+    // and clients should call out to the respective services to refresh their
+    // participants list.
+    ParticipantsUpdate participants_update = 6;
+    message ParticipantsUpdate {
+        // todo: deal with diffing?
+        // perhaps anything larger than a certain size will not be participants
+        repeated common.v2.PersonaId participant_ids = 1;
+    }
+}

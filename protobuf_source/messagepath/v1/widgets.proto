@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+import "messagepath/v1/keyboards.proto";
+
+// WidgetAttachment defines the mechanism that allow bots to alter the behavior of dynamic
+// content that supplements the chatbot experience.
+//
+// Specifying a Widget allows a bot to give the user additional information that provides
+// more context to a conversation. TextWidget is an example of a widget that stays at the
+// top of the screen, providing persistent information all users in a conversation.
+//
+// Up to 51 of these may be present in a single message to be delivered. The case where this can
+// occur is in the case of a bot responding to a mention in a group containing 50 individuals, and
+// also having a default.
+//
+// If a client receives multiple widgets in this list directed at a single user, the first one
+// should be taken as the one to display. Support for displaying multiple widgets may be added in
+// the future.
+//
+// See: https://docs.google.com/a/kik.com/document/d/1Y2tnA5KfCma0wmGoqnoqFKWTJZa-beU0mvU3v8A3UN0/edit
+message WidgetAttachment {
+    repeated Widget widgets = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1000
+    }];
+}
+
+message Widget {
+    // The user that will receive this particular Widget instance.
+    //
+    // In the event that this field is omitted, this widget should be sent to all users that will
+    // receive the message containing this widget.
+    XiBareUserJid to = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    oneof type {
+        TextWidget text_widget = 32;
+    }
+}
+
+// TextWidget allow bots to provide text to be shown at the top of the
+// conversation window.
+message TextWidget {
+    string body = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+
+    string title = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_byte_length: 1000
+    }];
+
+    // You can attach a Keyboard to a TextWidget, which specifies
+    // the keyboard to be shown when a reply button is pressed on the widget
+    //
+    // The `to` field of this Keyboard is ignored and overrided by the
+    // `to` field of the widget
+    Keyboard keyboard = 3 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+}

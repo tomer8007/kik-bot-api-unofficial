@@ -1,0 +1,55 @@
+syntax = "proto2"; // Need proto2 for custom options
+
+package kik.validation;
+option java_package = "com.kik.protovalidation";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/kikoptions;kikoptions";
+
+import "google/protobuf/descriptor.proto";
+
+//
+// Note that currently this file contains the master list of field option extension numbers used at kik
+//
+
+extend google.protobuf.FieldOptions {
+    // Note tag is just a random number between 50000-99999
+    // (see https://developers.google.com/protocol-buffers/docs/proto#customoptions)
+    optional FieldValidation field_validation = 76249;
+    optional FieldValidation map_key = 76250;
+    // Tag number 76251 is used in xiphias-model-common/proto/messagepath/v1/core_message_options.proto
+}
+
+message FieldValidation {
+    // TODO: Document semantics of this
+    optional bool mandatory = 1 [default = false];
+
+    optional string regex = 2;
+
+    //optional bool exclusive_min = 9 [default = false];
+    //optional bool exclusive_max = 10 [default = false];
+
+    // For strings:
+    optional int32 min_codepoints = 3;
+    optional int32 max_codepoints = 4;
+
+    // Valid for strings and byte arrays:
+    optional int32 min_byte_length = 5;
+    optional int32 max_byte_length = 6;
+
+    optional sfixed64 min_val = 7;
+    optional sfixed64 max_val = 8;
+
+    optional double min_double_val = 11;
+    optional double max_double_val = 12;
+
+    optional uint32 min_repetitions = 15;
+    optional uint32 max_repetitions = 16;
+
+    // Valid on repeated fields ONLY (with some additional restrictions on what those fields can contain)
+    optional Order ordered = 17;
+    enum Order {
+        // Ascending (smaller to bigger)
+        ASC = 0;
+        // Descending (bigger to smaller)
+        DESC = 1;
+    }
+}

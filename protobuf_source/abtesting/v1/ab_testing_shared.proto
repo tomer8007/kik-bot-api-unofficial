@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package common.abtesting.v1;
+option java_package = "com.kik.abtesting.rpc";
+option objc_class_prefix = "XIAB";
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/abtesting/v1;abtesting";
+
+import "protobuf_validation.proto";
+
+//*************************************************************************************************
+// A/B Testing identifiers
+//*************************************************************************************************
+message Experiment {
+    // The name of the of the AB test
+    string name = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+
+    // Variant of AB test the particular user is associated with
+    string variant = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+
+    // An id that may be used to distinguish multiple runs of the same experiment.
+    // Clients ** MUST NOT ** use this for any business-switching behaviour, this is ** ONLY ** meant to be
+    // transitively passed on in the client metric for data purposes.
+    string experiment_id = 3 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_byte_length: 0
+        max_byte_length: 255
+    }];
+}

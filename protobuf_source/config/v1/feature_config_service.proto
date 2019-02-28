@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package mobile.config.v1;
+
+option java_package = "com.kik.featureconfig.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/config/v1;config";
+
+import "protobuf_validation.proto";
+import "google/protobuf/duration.proto";
+
+// FeatureConfig is a service that provides global configuration settings for
+// various 'features' at Kik. The term 'feature' here is somewhat loose, but
+// generally refers to some setting that is visible to both mobile and server
+// systems.
+//
+// It is _not_ intended for usages such as AB Tests. AB Tests should be done via
+// the ABTesting service, or through server side implementations. AB Tests _may_
+// override / ignore settings described by the FeatureConfig service.
+//
+// The FeatureConfig service _may_ return different values based on the caller.
+//
+// Changes to settings are expected to resolve roughly within 24 hours. That is,
+// changes to settings are not expected to be universally visible in real time,
+// as is the case with many back end systems.
+service FeatureConfig {
+    // GetFeatureConfigs returns the entire set of feature configurations that
+    // _may_ be tailored based on the caller.
+    rpc GetFeatureConfigs(GetFeatureConfigsRequest) returns (GetFeatureConfigsResponse) {}
+
+    // GetAllUserInterestList returns a list of user interests current or ever existed
+    // This is likely only to be used internally for validating if an id is valid. 
+    rpc GetAllUserInterestIds(GetAllUserInterestIdsRequest) returns (GetAllUserInterestIdsResponse) {}
+
+    // Returns all chat interests that user can pick and/or chat with.
+    // This call is used internally for validating if the id is valid
+   rpc GetAllChatInterests(GetAllChatInterestsRequest) returns (GetAllChatInterestsResponse) {}
+
+}
+
+// GetFeatureConfigRequest is an empty request, that may contain fields in the
+// future.
+//
+// The service _may_ use caller information provided by the Xiphias Bridge via
+// headers.
+message GetFeatureConfigsRequest {
+}
+
+// GetFeatureConfigResponse contains a set of configurations that _may_ be
+// tailored to the caller.
+message GetFeatureConfigsResponse {
+    reserved 1;
+    reserved "result";
+
+    // The default maximum size for both public and private groups.
+    uint32 max_group_size = 10 [(kik.validation.field_validation) = {
+        // Intentionally leaving blank here. Selecting a max here is the
+        // same as selecting a hard max for clients. Product _may_ want to
+        // allow mega groups in the future (unlikely), but we do not want to
+        // shoot ourselves in the foot by putting a hard cap there.
+        //
+        // Please be careful when setting this property.
+    }];
+
+    // Switch for ProfileService updating a user's legacy roster last updated
+    // timestamp and legacy profile pic timestamp when that user's UserRosterEntry
+    // entity is updated.
+    // When this switch is true, the client should retrieve a user's UserRosterEntry
+    // entity whenever that user's profile pic timestamp is updated in their legacy
+    // roster info.
+    bool user_roster_entry_updates_legacy_roster_timestamp = 11;
+
+    // The following boolean are using by the client and server. 
+    // It controls (enable/disables) the call to EntityService.GetTrustedBots
+    // which we know will be obsolete after Harmony 3 is in place and is_trusted
+    // is supported properly via harmony roster subscription sync
+    bool entity_service_get_trusted_bots_enabled = 12;
+
+    // When the entity_service_get_trusted_bots_enabled is enabled, this is the duration to  
+    // lapse before the client should invoke another call to EntityService.getTrustedBots
+    google.protobuf.Duration min_duration_between_pull_entity_service_get_trusted_bots = 13 [(kik.validation.field_validation) = {
+        mandatory: true 
+        }];
+
+    // The max number of interests an user can select
+    uint32 max_user_interests = 14;
+
+    // The following is the current list of user interests that will be offered to the user 
+    // for selection. 
+    // Verbiage returned is localized using the connecting device locale. 
+    // Before locale is fully supported, English is returned. 
+    repeated UserInterestListItem current_user_interest_list = 15 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100 }];
+
+    // The list of chat interests
+    // Verbiage is what mobile client will display to the user
+    // When user picks the interests to chat about, the interest ids 
+    // are attached to findPartner API. 
+    repeated ChatInterestListItem current_chat_interest_list = 16 [(kik.validation.field_validation) = {
+        min_repetitions: 1
+        max_repetitions: 100 }];
+}
+
+message UserInterestListItem {
+    string id = 1;
+    string localized_verbiage = 2; 
+}
+
+message ChatInterestListItem {
+    string id = 1;
+    string localized_interest = 2; 
+
+    // Optional and only returned when used internally
+    // via GetAllChatInterests rpc
+    string localized_ice_breaker = 3; 
+}
+
+// GetAllUserInterestIdsRequest is empty for now, but might include fields in the future
+message GetAllUserInterestIdsRequest {
+}
+
+// This list includes the current interests that an user can pick if he is to update this profile
+// This also include all the interests we ever had offered to the client
+//
+// Don't see the need to return page tokens, when do will add it to the request object and will
+// return the page token here
+message GetAllUserInterestIdsResponse {
+    repeated string ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100 
+    }];
+}
+
+message GetAllChatInterestsRequest {
+}
+
+// This list includes all the currently pickable and interests picked for all 
+// Users in the waiting queue.
+message GetAllChatInterestsResponse {
+    repeated ChatInterestListItem chat_interests = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100 
+    }];
+}

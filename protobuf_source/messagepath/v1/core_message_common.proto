@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+//**************************************************
+//
+// Contains elements that are shared by different
+// message types
+//
+//**************************************************
+
+// AttributionAttachment is used to define the entity the content should be attributed to.
+// Attribution information is typically displayed below content messages and represents the source
+// of the content.
+message AttributionAttachment {
+    // The name of the source
+    string name = 1 [(kik.validation.field_validation) = { max_byte_length: 500 }];
+    // The icon representing the source
+    PictureElement icon = 2;
+}
+
+// ContentLayoutElement defines which content layout the client should use to render a
+// content message.
+message ContentLayoutElement {
+    ContentLayoutType type = 1;
+    enum ContentLayoutType {
+        DEFAULT = 0;
+        ARTICLE = 1;
+        PHOTO = 2;
+        VIDEO = 3;
+    }
+}
+
+// PictureElement is used to define a picture sent in a message
+message PictureElement {
+    // The URL of the full-sized image
+    string url = 1 [(kik.validation.field_validation) = { max_byte_length: 5120 }];
+}
+
+// UriElement is used to describe a URI sent in a message
+message UriElement {
+    string uri = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 5120
+    }];
+
+    // The platform this URI should be displayed on.
+    Platform platform = 100;
+    enum Platform {
+        ALL = 0;
+        WEB = 1;
+        IOS = 2;
+        ANDROID = 3;
+        WIDGET = 4;
+    }
+
+    // Describes the priority of the URI (the lower the number the higher the priority)
+    uint32 priority = 1000;
+}

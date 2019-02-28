@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package mobile.antispam.safetynet.v1;
+option java_package = "com.kik.antispam.safetynet.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/antispam/safetynet/v1;safetynet";
+
+import "common_rpc.proto";
+import "protobuf_validation.proto";
+
+//----------------------------------------------------------------------------------
+// Service Definition
+//----------------------------------------------------------------------------------
+
+// SafetyNet is an Android OS feature that can be used to verify the authenticity of devices and applications on
+// the platform. From the Android clients' perspective, the service works as follows:
+//
+//          - bind
+//              - if authenticated, check if this deviceID/username pair has been previously verified (via storage)
+//                  - if already verified, no action required
+//                  - if not already verified, action required
+//              - if anonymous, action required
+//
+//          - if action required:
+//              - request nonce from Kik SafetyNet service
+//              - make attestation request with nonce to Google
+//              - verify JWS result with Kik SafetyNet service
+//                  - if authenticated and result is OK, mark this deviceID/username pair as verified in storage
+service SafetyNet {
+    // Get a nonce to be signed using SafetyNet that can later be verified on the Kik SafetyNet verification
+    // service backend.
+    rpc GetNonce(common.VoidRequest) returns (GetNonceResponse) {}
+
+    // Given the JWS payload from the Google SafetyNet API call, verify the request using the provided certificate
+    // chain on the Kik SafetyNet verification backend.
+    //
+    // Clients are provided very little information in the response. As long as the nonce is valid (matches last
+    // nonce requested by client, not expired) and the request is well-formed (valid JWS, expected fields present
+    // in payload), the client will receive an OK response. Clients are *not* informed of whether or not the actual
+    // signature was valid, or if the client "verified" successfully with the backend.
+    rpc VerifyAttestationResult(VerifyAttestationResultRequest) returns (VerifyAttestationResultResponse) {}
+}
+
+//----------------------------------------------------------------------------------
+// Request/Response Types
+//----------------------------------------------------------------------------------
+
+message GetNonceResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    // A nonce that must be signed via the attestation API in order to validate with the Kik SafetyNet verification
+    // service backend.
+    string nonce = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 16 // best practice recommended in SafetyNet docs
+    }];
+}
+
+message VerifyAttestationResultRequest {
+    // The full JWS result from the Google SafetyNet attestation API.
+    string jws = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 25000 // sanity bound
+    }];
+}
+
+message VerifyAttestationResultResponse {
+    Result result = 1;
+    enum Result {
+        // The request was syntactically well-formed with a valid nonce. The client need not retry.
+        OK = 0;
+
+        // The nonce provided either expired, or did not match the last nonce provided to the client.
+        INVALID_NONCE = 1;
+
+        // The request was syntactically malformed (invalid JWS).
+        MALFORMED_REQUEST = 2;
+    }
+}

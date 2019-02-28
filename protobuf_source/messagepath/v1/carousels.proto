@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+import "messagepath/v1/keyboards.proto";
+import "messagepath/v1/link_message.proto";
+
+// CarouselMessageAttachment defines the properties required to render a carousel message sent by a
+// bot. A carousel message contains multiple pieces of content that can be scrolled through
+// horizontally.
+message CarouselMessageAttachment {
+    repeated CarouselItem items = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1000
+    }];
+}
+
+// CarouselItem defines a single piece of content in a carousel.
+message CarouselItem {
+    // The option to send either message_id or content provides flexibility in how carousels get
+    // implemented. `content` provides the ability for the client to immediately render the content
+    // of an item, while message_id provides a way to work around XMPP size limitations if needed.
+    // message_id is the ID of a XMPP message stanza that should render as another card in the
+    // carousel.
+    oneof item {
+        common.XiUuid message_id = 1;
+        CarouselItemContent content = 2;
+    }
+}
+
+message CarouselItemContent {
+    // Each carousel item can have its own keyboard attachment.
+    KeyboardAttachment keyboard_attachment = 30;
+
+    // In the event the client encounters a carousel item type that is newer than its protobuf
+    // definition, no `type` will be parseable from the CarouselItemContent that arrives. In this
+    // scenario, clients should show the user a carousel item element that indicates this type is
+    // not known.
+    oneof type {
+        LinkMessageAttachment link_message_attachment = 31;
+    }
+}

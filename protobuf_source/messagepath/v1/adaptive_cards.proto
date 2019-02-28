@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "protobuf_validation.proto";
+
+// AdaptiveCardAttachment defines the mechanism that allows bots to send an adaptive card message
+// defined using Microsoft's Adaptive Cards framework (see http://adaptivecards.io).
+//
+// By using this framework, developers can define a card in JSON composed of images, text, buttons
+// and more using Microsoft's schema. These card definitions can be used across multiple platforms.
+//
+// This attachment should be used by the client to determine how to render an adaptive card message.
+message AdaptiveCardAttachment {
+    // This split between card_id and card_definition provides flexibility in how adaptive cards get
+    // implemented long-term. card_definition will be used for a simpler implementation of sending
+    // the JSON directly to the client, while card_id provides a way to work around size limitations
+    // if necessary for future features.
+    oneof content {
+        // The ID of the adaptive card definition stored on the bots platform. The client will use
+        // this ID to retrieve the JSON definition of the card from the bots platform and then
+        // render it.
+        string card_id = 1 [(kik.validation.field_validation) = {
+            min_byte_length: 1
+            max_byte_length: 64
+        }];
+        // The dump of the JSON adaptive card definition.
+        string card_definition = 2 [(kik.validation.field_validation) = {
+            min_byte_length: 2
+            max_byte_length: 10000
+        }];
+    };
+}

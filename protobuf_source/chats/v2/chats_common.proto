@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package common.chats.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/chats/v2;chats";
+option java_package = "com.kik.gen.chats.v2";
+option objc_class_prefix = "KPBCommonChatsV2";
+
+import "common/v2/model.proto";
+import "protobuf_validation.proto";
+import "google/protobuf/timestamp.proto";
+
+// Theme id of a chat. Chats like OneToOne and Group chats can have chat themes which are products
+// that customize the user's chat experience.
+message ChatThemeId {
+    // Id of the chat theme product to be displayed.
+    // Chat theme assets are fetched from the product data service using this product id.
+    common.v2.Uuid id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+// Mute status of a chat from the perspective of the caller.
+message MuteStatus {
+    Status status = 1;
+    enum Status {
+        NOT_MUTED = 0;
+        MUTED = 1;
+    }
+
+    // Optional expiry time of the mute.
+    // If status == MUTED and this is set, then this mute status will expire
+    // on the value of this field and status will automatically change to NOT_MUTED.
+    // If status == MUTED and this is _not_ set, then this mute will not expire until
+    // the mute status is explicitly set to NOT_MUTED.
+    google.protobuf.Timestamp expiry = 2;
+}

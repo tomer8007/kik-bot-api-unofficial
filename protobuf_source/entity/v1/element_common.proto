@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package common.entity.v1;
+option java_package = "com.kik.entity.model";
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "ENT";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/entity/v1;entity";
+
+import "protobuf_validation.proto";
+import "common_model.proto";
+import "google/protobuf/timestamp.proto";
+import "common/v1/model.proto";
+
+//**************************************************
+//
+// Contains a dictionary of all elements that are
+// managed by the entity warehouse and
+// communicatied from server to mobile client
+//
+//**************************************************
+
+message KinUserIdElement {
+    // Kin User ID maps a Kik user to their Kin wallet address, and is included in all transaction JWT tokens
+    common.v1.XiKinUserId kin_user_id = 1;
+}
+
+message BioElement {
+    // a biography or short biographical profile of someone or some group
+    string bio = 1 [(kik.validation.field_validation) = { max_byte_length: 5000 }];
+}
+
+message BylineElement {
+    // a short description of a bot, user or a group
+    string byline = 1 [(kik.validation.field_validation) = { max_byte_length: 500 }];
+}
+
+message RegistrationElement {
+
+    // System time of when the user/group is created or registered
+    google.protobuf.Timestamp creation_date = 2;
+}
+
+// Original Profile Pic Extension
+message OriginalProfilePicExtensionElement {
+    // The details of this profile pic extension
+    ProfilePicExtensionDetail extension_detail = 1;
+}
+
+// Background Pic Extension
+message BackgroundProfilePicExtensionElement {
+    // The details of this profile pic extension
+    ProfilePicExtensionDetail extension_detail = 1;
+}
+
+message ProfilePicExtensionDetail {
+    oneof kind {
+        // A picture element. If the user uploads a picture use this
+        InnerPicElement pic = 2;
+        // A Kik Asset element. If the original pic is something we provide, use this
+        InnerKikAssetElement kik_asset = 3;
+    }
+}
+
+// Contains the details of any pic that is accessible by URL
+message InnerPicElement {
+    // Full Sized Pic URL
+    string full_sized_url = 1 [(kik.validation.field_validation) = { max_byte_length: 1000 }];
+
+    // Thumbnail Sized Pic URL
+    string thumbnail_url = 2 [(kik.validation.field_validation) = { max_byte_length: 1000 }];
+
+    google.protobuf.Timestamp last_updated_timestamp = 3;
+}
+
+// Contains an kik asset id. A Kik Asset is something that is premade by us and provided to users
+// A kik_asset_id might be something like SMILEY_FACE or FLAG_USA if those assets existed
+message InnerKikAssetElement {
+    // The id of a Kik Asset
+    string kik_asset_id = 1 [(kik.validation.field_validation) = { max_byte_length: 500 }];
+}
+
+message EmojiStatusElement {
+    InnerKikAssetElement emoji_status = 1;
+}
+
+// The maximum number of members allowed in the group concurrently
+message MaxGroupSizeElement {
+    // A zero value is more likely to mean there's a widespread problem with groups in general
+    // than that this group's maximum member size is really zero. In either case, program
+    // defensively and don't allow users to join a group if its size is zero.
+    uint32 max_group_size = 1;
+}
+
+// Either or not Kin functionality is enabled
+message KinEnabledElement {
+    bool kin_enabled = 1;
+}
+
+// Contains the rating details for an entity.
+message RatingSummary {
+    double average_rating = 1 [(kik.validation.field_validation) = {
+        min_double_val: 0.0
+        max_double_val: 5.0
+    }];
+    uint64 total_ratings_count = 2;
+}
+
+// All the roster info for a single group member that's part of a GroupRosterEntry
+message GroupMemberRoster {
+    // Note; To people looking at this in the future, DO NOT be tempted to merge
+    // user_jid and alias_jid into a oneof. We can't do it.
+
+    // We added the alias_jid field too late. There are some issues here, and no solution is perfect.
+    // Firstly, the database is already populated with user_jid values and those can NEVER change
+    // Why is alias_jid of type XiAliasJid though and not XiBareUserJid?
+    // Consider how both of these fields work together. If user_jid is not there, check for alias_jid
+    // if alias_jid is not there, check for user_jid
+    // The three relevant types are XiBareUserJid, XiAliasJid, and XiBareUserOrAliasJid
+    // If we remove or change the type of field 1 then we need to convert a bunch of values
+    // in the database but changing this API at the time of writing was too high priority to do that
+    // and so field 1 must remain an XiBareUserJid
+    // Given that field 1 remains unchanged, we still need to somehow work an XiAliasJid into this message
+    // Only two options make any sense. We can make field 3 an XiBareUserOrAliasJid or make it an XiAliasJid
+    // We went with an XiAliasJid based on some pretty razor thin advantages and disadvantages, but either
+    // way would have created an API that is less than ideal. That's why no oneof and no XiBareUserOrAliasJid
+    common.XiBareUserJid user_jid = 1 [(kik.validation.field_validation) = { mandatory: false }];
+
+    common.v1.XiAliasJid alias_jid = 3 [(kik.validation.field_validation) = { mandatory: false }];
+
+
+    AdminStatus admin_status = 2;
+    enum AdminStatus {
+        NONE = 0;
+        ADMIN = 1;
+        SUPER_ADMIN = 2;
+    }
+
+    // Just a wrapper so we can make it optional
+    message DirectMessagingDisabled {
+        bool direct_messaging_disabled = 1;
+    }
+
+    // Should only be present for public groups that are converted
+    DirectMessagingDisabled direct_messaging_disabled = 4;
+}
+
+message GroupMemberListElement {
+    repeated GroupMemberRoster group_members = 1;
+}
+
+message UsernameElement {
+    string username = 1 [(kik.validation.field_validation) = { max_byte_length: 1024 }];
+}
+
+message DisplayNameElement {
+    string display_name = 1 [(kik.validation.field_validation) = { max_byte_length: 1024 }];
+}
+
+message ProfilePicElement {
+    string url = 1 [(kik.validation.field_validation) = { max_byte_length: 1024 }];
+    google.protobuf.Timestamp last_updated_timestamp = 2;
+}
+
+message PublicElement {
+    bool is_public = 1;
+}
+
+// Hashtag for a group
+message GroupCodeElement {
+    string code = 1 [(kik.validation.field_validation) = { max_byte_length: 1000 }];
+}
+
+message GroupNameElement {
+    string name = 1 [(kik.validation.field_validation) = { max_byte_length: 1000 }];
+}
+
+message TrustedElement {
+    bool is_trusted = 1;
+}
+
+// The BotExtensionElement may not be present if this user is not a bot
+// If a user is a bot then BotExtensionElement will be present and
+// is_bot will be true
+// Eventually this element will contain fields such as isTrusted and other attributes
+message BotExtensionElement {
+    bool is_bot = 2;
+    bool is_trusted = 3;
+}
+
+message InterestsElement {
+    repeated InterestItem interests_element = 1 [(kik.validation.field_validation) = { max_repetitions: 20 }];
+    message InterestItem {
+        string id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+        string localized_verbiage = 2;
+    }
+}
+
+message ChatThemeElement {
+    // The id of the chat theme product to be displayed - the chat theme assets are fetched from the product data service
+    common.XiUuid product_id = 1;
+}
+
+message ChatThemeLockElement {
+    // The current permission settings for modifying a conversation's chat theme
+    LockStatus lock_status = 1;
+    enum LockStatus {
+        UNLOCKED = 0;
+        ADMIN_LOCKED = 1;
+    }
+}
+
+message AnonMatchAvatarElement {
+    common.XiUuid avatar_id = 1;
+}
+
+message DeactivationElement {
+    bool deactivated = 1;
+}

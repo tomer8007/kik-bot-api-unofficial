@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package mobileremote.video.v1;
+option java_package = "com.kik.video.mobileremote";
+option go_package = "github.com/kikinteractive/xiphias-api-mobileremote/generated/go/video/v1;video";
+
+import "protobuf_validation.proto";
+import "common_model.proto";
+import "common_rpc.proto";
+import "video/v1/video_common.proto";
+
+//
+// This is the service which conceptually lives on the client.
+//
+// A high level system diagram can be found in xiphias_api_mobile.kik_vide_service.proto
+//
+service MobileVideo {
+    // This API is used to notify clients of changes in any convos they are a part of.
+    //
+    // A notification should be sent to ALL members of a group, not just those active in the video
+    // chat.
+    //
+    // As with all mobileremote services (as of Oct 2016), this notification is NOT durable and will
+    // ONLY be sent to the client when they have an active connection. After opening a connection,
+    // the client is expected to use the mobile.video.v1.KikVideo.BatchedGetConvoState service to
+    // load initial state
+    rpc OnConvoVideoStateChanged(OnConvoVideoStateChangedNotification) returns (common.VoidResponse);
+}
+
+message OnConvoVideoStateChangedNotification {
+    common.video.v1.ConvoVideoState convo_video_state = 1;
+
+    // Uniquely identifies a push notification of a state change. This is used to relate a
+    // push harpy event (sent from InternalKikVideoService) and the client push ack'd harpy event.
+    //
+    // Consumers of this service should _not_ make any assumptions about the underlying data
+    // format of the notification_id.
+    string notification_id = 2 [(kik.validation.field_validation) = {
+        max_byte_length: 36
+    }];
+}

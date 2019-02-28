@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package common;
+
+option java_package = "com.kik.xiphias.rpc";
+option java_multiple_files = true;
+option java_outer_classname = "CommonRpcProto";
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go;common";
+
+// Being exempted from checkstyle versioning rule
+//  due to _exceedingly_ common and pervasive nature of defined datatypes
+option (kik.checkstyle).ignore_version = true;
+
+import "google/protobuf/descriptor.proto";
+import "protobuf_validation.proto";
+import "common_model.proto";
+import "kik_options.proto";
+
+//----------------------------------------------------------------------------
+// Common gRPC Request/Response messages
+//----------------------------------------------------------------------------
+
+message VoidRequest {
+}
+
+message VoidResponse {
+}
+
+// XiRequestId identifies a "logical request", which may consist of many
+// xiphias requests. In other words, if an XiRequestId is provided for a
+// call, than any xiphias request spawning from that call should re-use
+// the provided XiRequestId.
+//
+// The string representation of an XiRequestId is the canonical UUID
+// representation. This representation should only be used where using
+// an XiRequestId directly is not possible.
+//
+// It is primarily used for cases such as metrics and request tracing.
+message XiRequestId {
+    XiUuid id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+// A string token that is used to route calls to services in a
+// deterministic (sticky) way.
+//
+// The contents of the token string is left up to the client, but it should
+// be something consistent such as JID or device ID. The users of this
+// token should not care about what the client has used as the token string.
+message XiRoutingToken {
+    string token = 1 [(kik.validation.field_validation) = {
+        min_byte_length: 1
+        max_byte_length: 128
+    }];
+}
+
+//----------------------------------------------------------------------------
+// Self Describing Messages.
+//----------------------------------------------------------------------------
+
+// The goal of the SelfDescribingMessage is to allow the sending of arbitrarily
+// typed messages. It consists of the serialized message, as well as the required
+// metadata to reconstruct the message.
+//
+// An example use case of a SelfDescribingMessage is a Protobuf to XML translation.
+// The translator (receiver) needs to know both the schema and data to know how to
+// properly construct the XML representation, but wants to do so without knowing
+// the schema at compile time (i.e. dynamically).
+//
+// See: SelfDescribingMessageUtil for conversions to/from SelfDescribingMessage's.
+//
+// Caveats: The message's proto file cannot contain any dependencies that are
+//          not listed below, as it would require sending along all the
+//          dependencies (which can get quite large).
+//
+//          In the future, we may stick known proto files in a shared data
+//          source (e.g. zookeeper), and then reference them in the SelfDescribingMessage.
+//          However, there currently are no use case's to justify the work.
+//
+// Allowed Depdencncies:
+//      - google/protobuf/descriptor.proto
+//      - protobuf_validation.proto
+//      - common_model.proto
+
+message SelfDescribingMessage {
+    // Contains a single file descriptor that describes the message
+    // that is serialized in message_data.
+    google.protobuf.FileDescriptorSet field_descriptor_set = 1;
+
+    // The message name that is encoded in message data
+    // For example, if `message MyCustomMessage` is encoded,
+    // then the message name should be MyCustomMessage.
+    string message_name = 2;
+
+    // The serialized message data.
+    bytes message_data = 3;
+}

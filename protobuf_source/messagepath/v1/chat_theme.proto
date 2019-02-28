@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "KPB";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "protobuf_validation.proto";
+import "entity/v1/element_common.proto";
+
+// ChatThemeAttachment defines any updates about chat themes.
+//
+// If this attachment is sent, then the client can assume that the chat theme has changed.
+message ChatThemeAttachment {
+    common.entity.v1.ChatThemeElement new_chat_theme = 1;
+
+    common.entity.v1.ChatThemeLockElement new_chat_theme_lock = 2;
+}

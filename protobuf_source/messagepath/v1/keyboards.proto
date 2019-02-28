@@ -1,0 +1,311 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+import "protobuf_validation.proto";
+
+// KeyboardAttachment defines the mechanism that allow bots to alter the behavior of keyboards on a
+// user's device.
+//
+// Specifying a Keyboard allows a bot to give the user more information about what kinds of
+// responses they expect from the user at that point in time.
+//
+// Up to 51 of these may be present in a single message to be delivered. The case where this can
+// occur is in the case of a bot responding to a mention in a group containing 50 individuals, and
+// also having a default.
+//
+// If a client receives multiple keyboards in this list. The first one should be taken as the
+// correct one to display. In the future, clients may support multiple keyboards being received.
+//
+// See: https://docs.google.com/document/d/18C33WPHg9v-Yaot1eMeR8bonllo5qbL0oR0pC3ZjDPs/edit
+// And: https://docs.google.com/document/d/11WF4MeW55z1bPkBQwoDlQ1-kT0pQz_or4FWXBZgf2PY/edit
+// And: https://dev.kik.com/#/docs/messaging#keyboards
+message KeyboardAttachment {
+    repeated Keyboard keyboards = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_repetitions: 1000
+    }];
+}
+
+// A single keyboard defines how a client should render the input space on their screen.
+message Keyboard {
+    // The user that will receive this particular instance of the keyboard.
+    //
+    // In the event that this field is omitted, this keyboard should be sent to all users that will
+    // receive the message containing this keyboard.
+    // TODO: To be removed after switching all consumers to to_v2
+    XiBareUserJid to = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }, deprecated = true];
+
+    // to_v2 will replace non-versioned.
+    // The to can be userJid or an aliased jid
+    common.v1.XiBareUserJidOrAliasJid to_v2 = 3;
+
+    // Determines whether or not this keyboard will be shown to the user first.
+    //
+    // If true, show the user the system default keyboard with the option to toggle to this
+    // keyboard.
+    // If false, this keyboard should be shown first, with the option to toggle back to the system
+    // keyboard.
+    bool hidden = 2;
+
+    oneof type {
+        SuggestedResponseKeyboard suggested_response_keyboard = 32;
+    }
+}
+
+// SuggestedResponseKeyboards allow bots to provide an ordered list of options that a user can
+// select from in order to respond to the conversation.
+//
+// See: https://dev.kik.com/#/docs/messaging#suggested-response-keyboard
+message SuggestedResponseKeyboard {
+    // The Bots Platform may apply additional validation against ordering of values provided in this
+    // list.
+    repeated SuggestedResponseItem responses = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100
+    }];
+}
+
+// A suggested response item represents a single item within a possible list of options for a
+// SuggestedResponseKeyboard.
+message SuggestedResponseItem {
+    // Metadata is provided by bots, and must be returned back to the Bot Platform upon users
+    // selecting this instance of response. This metadata should be attached to a SuggestedReplyItem
+    // when being passed back to the bots platform.
+    //
+    // Metadata should not be inspected or interpreted by clients.
+    string metadata = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+
+    // In the event the client encounters a suggested response type that they have never seen before
+    // (i.e. their protobuf definitions predate the development of a suggested response type),
+    // no `type` will be parseable from the SuggestedResponseItem that arrives.
+    // In this scenario, clients are expected to show the user a suggested response element
+    // indicating that this type is not known by the client.
+    oneof type {
+        TextSuggestedResponse text_response = 32;
+        PaymentSuggestedResponse payment_response = 33;
+        FriendPickerSuggestedResponse friend_picker_response = 34;
+        PictureSuggestedResponse picture_response = 35;
+    }
+}
+
+// Container for a text message suggested response.
+//
+// See: https://dev.kik.com/#/docs/messaging#text-response-object
+message TextSuggestedResponse {
+    string body = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+}
+
+// Container for a payment suggested response.
+// Private, and undocumented suggested response type.
+// Only used internally for demoing purposes (as of Sept 2016).
+//
+// The Bots Platform uses the Stripe API for payment functionality.
+// See: https://github.com/kikinteractive/kik-product/wiki/Payments-API-Docs
+// And: https://stripe.com/docs/api
+message PaymentSuggestedResponse {
+    string description = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 1000
+    }];
+
+    int32 amount = 2 [(kik.validation.field_validation) = {
+        min_val: 1
+    }];
+
+    // ISO 4217 currency code, must be three characters.
+    string currency = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 3
+        max_byte_length: 3
+    }];
+
+    // Random UUID4 assigned to each payment suggested response by the Bots Platform in order to identify individual
+    // transactions.
+    common.XiUuid transaction_id = 4 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // This message will not be present if the user who is receiving this suggested response does not have a saved
+    // payment method.
+    SavedCard saved_card = 5 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // Container for a saved payment method.
+    message SavedCard {
+        // The last 4 digits of a user's saved card, must be 4 digits.
+        string last_4_digits = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            min_byte_length: 4
+            max_byte_length: 4
+        }];
+
+        // The brand of the user's saved card.
+        // In order to validate credit card numbers, the client needs the brand as well in addition to the last 4 digits.
+        // See http://www.freeformatter.com/credit-card-number-generator-validator.html for more information.
+        // See for https://stripe.com/docs/api#card_object-brand Stripe's supported brands
+        string brand = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            min_byte_length: 1
+            max_byte_length: 32
+        }];
+    }
+}
+
+// Container for a friend picker suggested response
+// All fields optional. Fields that are not given values have defaults defined by the API and/or
+// clients, depending on where these defaults are expected to live.
+// Clients will implement sensible default values, and the Bots API will be able to override them as
+// necessary.
+//
+// See: https://docs.google.com/document/d/1v4JtP1fdah5cvgXW2apScf_bemMkrvh_J370X5jJD48/edit
+// And: https://dev.kik.com/#/docs/messaging#friend-picker-response-object
+message FriendPickerSuggestedResponse {
+    string body = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_byte_length: 1000
+    }];
+
+    // Minimum number of users that can be selected in the friend picker shown on clients.
+    // Must be less than or equal to the max.
+    int32 min = 2 [(kik.validation.field_validation) = {
+        min_val: 0
+        max_val: 1000
+    }];
+
+    // Maximum number of users that can be selected in the friend picker shown on clients.
+    // Must be greater than or equal to the min.
+    int32 max = 3 [(kik.validation.field_validation) = {
+        min_val: 0
+        max_val: 1000
+    }];
+
+    // List of jids of users that have been chosen to be selected before the user provides any
+    // input.
+    //
+    // If a user that is selected is not on the receiving user's roster, that user will not be
+    // selected.
+    // If a user that is selected does not have the sending user in their roster, the resulting
+    // message will be dropped, as described by the `VisiblityRulesAttachment` that must come with
+    // messages that are sent as a result of `FriendPickedResponse`.
+    repeated XiBareUserJid preselected = 4 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_repetitions: 0
+        max_repetitions: 1000
+    }];
+}
+
+// Container for a picture suggested response.
+//
+// See: https://docs.google.com/document/d/1dzZHfT99cD0356C7i7VR6WDyTH6DlSF98eu_pgqEHGo/edit
+message PictureSuggestedResponse {
+    // The contents of this URL will be what appear in the client's picture suggested response
+    // rendering.
+    // This thumbnail will have been generated and hosted by the Bots Platform from the content
+    // provided by the bot.
+    string thumbnail_url = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+
+    // The URL of the full size image that will be made available to clients after sending the image
+    // as a response to the bot.
+    string pic_url = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+
+    // Created by the Bots Platform, and may be used to uniquely identify images.
+    XiUuid pic_id = 5 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+// Generic container for any kind of reply that's made using a custom keyboard.
+// Each keyboard should define its own reply message type that is sent in the event of a reply
+// directly from interacting with that keyboard.
+message KeyboardReplyAttachment {
+    oneof type {
+        SuggestedReply suggested_reply = 1;
+    }
+}
+
+// The entity that is returned to the Bot Platform when a user has selected a response that was
+// provided in a bot-supplied suggested response keyboard.
+message SuggestedReply {
+    // Metadata field as provided, verbatim, from the the suggested response item that was provided
+    // to the client.
+    string metadata = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_byte_length: 1
+        max_byte_length: 1000
+    }];
+
+    oneof type {
+        TextSuggestedReply text_reply = 32;
+        PaymentSuggestedReply payment_reply = 33;
+        FriendPickerSuggestedReply friend_picker_reply = 34;
+        PictureSuggestedReply picture_reply = 35;
+    }
+}
+
+// Empty object that exists solely for the purpose of parity with the SuggestedResponseItem
+// definition.
+//
+// Fields may be added in the future, but as of Sept 2016, there is nothing that needs to be
+// specifically forwarded on for text suggested replies.
+//
+// The presence of this field is not required if replying using a text suggested response.
+message TextSuggestedReply {
+
+}
+
+// The reply process of Payments uses a mechanism that exists off the standard message path.
+//
+// This message type is provided for the event that this process is consolidated into the standard
+// message path.
+// Fields may be added in the future, but as of Sept 2016, there is nothing that needs to be
+// specifically forwarded on for payment suggested replies.
+//
+// The presence of this field is not required if replying using a payment suggested response.
+message PaymentSuggestedReply {
+
+}
+
+// Reply specific for responses created from friend picker suggested responses.
+message FriendPickerSuggestedReply {
+    repeated XiBareUserJid picked = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 1000
+    }];
+}
+
+// Reply specific for picture suggested responses.
+message PictureSuggestedReply {
+    // The original pic ID as was sent in the picture suggested response that the user actioned
+    // upon.
+    XiUuid pic_id = 5 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}

@@ -335,3 +335,17 @@ class IncomingGifMessage(XMPPResponse):
             self.file_content_type = uri['file-content-type']
             self.type = uri['type']
             self.url = uri.text
+
+
+class IncomingVideoMessage(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true'
+        self.requets_read_receipt = data.request['r'] == 'true'
+        self.video_url = data.find('file-url').text
+        self.file_content_type = data.find('file-content-type').text
+        self.duration_milliseconds = data.find('duration').text
+        self.file_size = data.find('file-size').text
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+        self.group_jid = data.g['jid']

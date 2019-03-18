@@ -316,3 +316,21 @@ class IncomingGroupSticker(XMPPResponse):
         for item in extras.findAll('item'):
             extras_map[item.key.string] = item.val.text
         return extras_map
+
+
+class IncomingGifMessage(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true'
+        self.requets_read_receipt = data.request['r'] == 'true'
+        self.status = data.status.text if data.status else None
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+        self.group_jid = data.g['jid']
+        self.uris = [self.Uri(uri) for uri in data.content.uris]
+
+    class Uri:
+        def __init__(self, uri):
+            self.file_content_type = uri['file-content-type']
+            self.type = uri['type']
+            self.url = uri.text

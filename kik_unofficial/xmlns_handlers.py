@@ -5,7 +5,8 @@ from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent
+    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent, IncomingGifMessage, \
+    IncomingVideoMessage
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
@@ -127,6 +128,10 @@ class GroupMessageHandler(XmlnsHandler):
                 self.callback.on_image_received(IncomingImageMessage(data))
             elif app_id == 'com.kik.ext.camera':
                 self.callback.on_image_received(IncomingImageMessage(data))
+            elif app_id == 'com.kik.ext.gif':
+                self.callback.on_gif_received(IncomingGifMessage(data))
+            elif app_id == 'com.kik.ext.video-camera':
+                self.callback.on_video_received(IncomingVideoMessage(data))
 
         else:
             log.debug("[-] Received unknown group message. contents: {}".format(str(data)))

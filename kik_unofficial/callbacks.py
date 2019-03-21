@@ -1,7 +1,8 @@
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage
+    IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGifMessage, \
+    IncomingVideoMessage
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
@@ -82,8 +83,14 @@ class KikClientCallback:
         :param response: Contains the list of groups that were found (see the code of GroupSearchResponse)
         """
         pass
-        
+
     def on_image_received(self, response: IncomingImageMessage):
+        pass
+
+    def on_gif_received(self, response: IncomingGifMessage):
+        pass
+
+    def on_video_received(self, response: IncomingVideoMessage):
         pass
 
     # ----------

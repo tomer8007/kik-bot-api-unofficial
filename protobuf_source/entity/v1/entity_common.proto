@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package common.entity.v1;
+option java_package = "com.kik.entity.model";
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "ENT";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/entity/v1;entity";
+
+import "protobuf_validation.proto";
+import "common_model.proto";
+import "entity/v1/element_common.proto";
+import "common/v1/model.proto";
+import "google/protobuf/timestamp.proto";
+
+//**************************************************
+// Key used by Entity Warehouse, Subscription Service, etc
+// to explicitly identify entities
+//**************************************************
+//
+// NOTE: EntityKey has specific IDs that are expected to go with specific EntityTypes.
+//       Please check the comments for EntityType to understand what id values are valid
+//       (Ideally we would restructure the EntityKey message, but it's already too embedded to change now)
+message EntityKey {
+    EntityType type = 1;
+
+    enum EntityType {
+        // USER - expects id to contain 'user_jid'
+        USER = 0;
+
+        // GROUP - expects id to contain 'group_jid'
+        GROUP = 1;
+
+        // USER_ROSTER_ENTRY - expects id to contain 'user_jid'
+        USER_ROSTER_ENTRY = 2;
+
+        // GROUP_ROSTER_ENTRY - expects id to contain 'group_jid'
+        GROUP_ROSTER_ENTRY = 3;
+
+        // CONVO - expects id to contain 'convo_id'
+        CONVO = 4;
+
+        // Note: ALIAS_BLOCK_ENTRY is not an entity type actually stored within EntityWarehouse.
+        //       Used to identify a pseudo-entity for use within Internal Subscription Service.
+        // ALIAS_BLOCK_ENTRY - expects id to contain 'alias_jid'
+        ALIAS_BLOCK_ENTRY = 5;
+    }
+
+    oneof id {
+        // user_jid requires type to be USER or USER_ROSTER_ENTRY
+        common.XiBareUserJid user_jid = 2;
+
+        // group_jid requires type to be GROUP or GROUP_ROSTER_ENTRY
+        common.XiGroupJid group_jid = 3;
+
+        // convo_id requires type to be CONVO
+        common.v1.XiConvoId convo_id = 4;
+
+        // alias_jid requires type to be ALIAS_BLOCK_ENTRY
+        common.v1.XiAliasJid alias_jid = 5;
+    }
+}
+
+//**************************************************
+//
+// Contains a dictionary of all entities that are
+// managed by the entity warehouse and
+// communicatied from server to mobile client
+//
+//**************************************************
+
+message EntityGroup {
+
+    common.XiGroupJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Use tag number range of [100-199] for elements sourced from profile service
+    common.entity.v1.BioElement bio_element = 100;
+
+    // Original Profile Pic Extension
+    common.entity.v1.OriginalProfilePicExtensionElement original_profile_pic_extension = 101;
+
+    // Background Pic Extension
+    common.entity.v1.BackgroundProfilePicExtensionElement background_profile_pic_extension = 102;
+
+    // Maximum Group Size
+    common.entity.v1.MaxGroupSizeElement max_group_size_element = 103;
+
+    // Is KIN enabled
+    common.entity.v1.KinEnabledElement kin_enabled_element = 104;
+}
+
+message EntityUser {
+
+    common.XiBareUserJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Use tag number range of [100-199] for elements sourced from profile service
+    common.entity.v1.BioElement bio_element = 100;
+
+    // Original Profile Pic Extension
+    common.entity.v1.OriginalProfilePicExtensionElement original_profile_pic_extension = 101;
+
+    // Background Pic Extension
+    common.entity.v1.BackgroundProfilePicExtensionElement background_profile_pic_extension = 102;
+
+    // Registration Element for user
+    common.entity.v1.RegistrationElement registration_element = 103;
+
+    // User Interests Element 
+    common.entity.v1.InterestsElement interests_element = 104;
+
+    // Anon Match Avatar Element
+    common.entity.v1.AnonMatchAvatarElement anon_match_avatar_element = 105;
+
+    // Kin User ID Element
+    common.entity.v1.KinUserIdElement kin_user_id_element = 107;
+}
+
+// Entity containing information of a single user that is broadcasted to his/her rosters.
+message EntityUserRosterEntry {
+    common.XiBareUserJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    common.entity.v1.EmojiStatusElement emoji_status_element = 2;
+    
+    common.entity.v1.UsernameElement username = 3;
+    
+    common.entity.v1.DisplayNameElement display_name = 4;
+    
+    common.entity.v1.ProfilePicElement profile_pic = 5;
+    
+    // The presence of this element indicates that this User is a bot, regardless of the element's content; Regular Users will never have this element.
+    common.entity.v1.BotExtensionElement bot_extension = 6;
+}
+
+// Entity containing information of group that is broadcast to its members' rosters.
+message EntityGroupRosterEntry {
+    common.XiGroupJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+    
+    common.entity.v1.PublicElement public = 2;
+    
+    // Hashtag for the group
+    common.entity.v1.GroupCodeElement group_code = 3;
+    
+    common.entity.v1.GroupNameElement group_name = 4;
+    
+    common.entity.v1.ProfilePicElement profile_pic = 5;
+    
+    common.entity.v1.GroupMemberListElement members = 6;
+
+    google.protobuf.Timestamp last_updated_ts = 7;
+
+    // As of Harmony 3.0, banned member list is included in legacy roster for backward compat
+    // See https://github.com/kikinteractive/xiphias-api-internal/blob/master/proto/entity/subscription/v1/internal_subscription_service.proto
+    // for details.
+    // Newer version of the clients will get banned member list via Entity Service 
+}
+
+message EntityBot {
+    common.XiBareUserJid id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Use tag number range of [100-199] for elements sourced from profile service
+    common.entity.v1.BioElement bio_element = 100;
+
+    // Original Profile Pic Extension
+    common.entity.v1.OriginalProfilePicExtensionElement original_profile_pic_extension = 101;
+
+    // Background Pic Extension
+    common.entity.v1.BackgroundProfilePicExtensionElement background_profile_pic_extension = 102;
+
+    // Registration Element for bot
+    common.entity.v1.RegistrationElement registration_element = 103;
+
+    // Byline for a bot
+    common.entity.v1.BylineElement byline_element = 200;
+
+    // Rating information for the bot
+    common.entity.v1.RatingSummary rating_summary = 201;
+
+    // Is the bot trusted
+    common.entity.v1.TrustedElement trusted = 202;
+}
+
+message EntityConvo {
+    common.v1.XiConvoId id = 1;
+
+    common.entity.v1.ChatThemeElement chat_theme_element = 100;
+
+    common.entity.v1.ChatThemeLockElement chat_theme_lock_element = 101;
+}

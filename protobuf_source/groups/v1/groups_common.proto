@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package common.groups.v1;
+option java_package = "com.kik.groups";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/groups/v1;groups";
+
+import "google/protobuf/timestamp.proto";
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+//----------------------------------------------------------------------------
+// Common Groups-related messages
+//----------------------------------------------------------------------------
+
+//
+// Top level group object.  This should be used for APIs that return complete
+// group info, including display data and roster data.
+//
+// NOTE: This should be kept field compatible with LimitedGroupDetails from
+// https://github.com/kikinteractive/xiphias-api-mobile/blob/master/proto/groups/v1/group_search_service.proto
+//
+message GroupRosterEntry {
+    reserved 3; // member_count from LimitedGroupDetails
+
+    common.XiGroupJid jid = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Contains data required for mobile clients to display groups
+    GroupDisplayData display_data = 2;
+
+    // Explicit indication of a public group
+    bool is_public = 11;
+
+    // Deletion status of the group if fetching single group entry; or,
+    // deletion status of user from the group if fetching roster entries for a user.
+    oneof group_or_member_deleted {
+        bool is_group_deleted = 12;
+        bool is_member_deleted = 16;
+    }
+
+    // Time of last update to group
+    google.protobuf.Timestamp last_updated = 13;
+
+    // Optional group member list, does not include banned users, does include admins
+    repeated GroupMember members = 14 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_repetitions: 0
+        // NOTE: Group sizes can be 50 or 100 at the present time, but MAY be subject to further increase beyond 
+        // 100 members in the future. Clients MUST NOT validate against this limit
+        max_repetitions: 150 // (Sanity bound; there are some rare cases where group size becomes larger than 100)
+    }];
+
+    // Optional banned member list
+    repeated BannedGroupMember banned_members = 15 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_repetitions: 0
+        // MAY be subject to increase in the future
+        max_repetitions: 110 // (Sanity bound; may be rare cases where there are > 100 banned members)
+    }];
+}
+
+//
+// Display-specific metadata for a group
+//
+message GroupDisplayData {
+    // Optional Hashtag of the group (aka 'code' in server parlance)
+    // This field must contain '#' plus 2 to 32 more characters
+    // Note: this is deprecated, use group_code field
+    string hashtag = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        regex: "^#[A-Za-z0-9._]{2,32}$"
+    }, deprecated = true];
+
+    // Optional display name of group.
+    // Note: this is deprecated, use group_name field
+    string display_name = 3 [(kik.validation.field_validation) = {
+        max_byte_length: 1020 // 255 4-byte chars
+    }, deprecated = true];
+
+    // Optional group code or 'hashtag'.
+    GroupCode group_code = 6 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // Optional group display name.
+    GroupName group_name = 7 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // Optional BASE URL of group's display picture.  The base URL is
+    // an incomplete URL that requires {size} and {display_pic_last_modified}
+    // appended for use by the mobile client.  see NOTE below for format:
+    //
+    // NOTE: Construct an actual URL using something like
+    //       {display_pic_base_url}/{size}.jpg?ts={display_pic_last_modified}
+    //       where {size} is "orig" or "thumb", and the other variables are
+    //       taken from fields in this message
+    // See the following link for more details:
+    // https://github.com/kikinteractive/kik-product/wiki/Profile-Pictures#download-url-format
+    //
+    string display_pic_base_url = 4 [(kik.validation.field_validation) = {
+        max_byte_length: 2048
+    }];
+
+    // Optional timestamp of the group's display picture.
+    // NOTE: This is a special case - we explicitly are not using google.protobuf.Timestamp here.
+    // TODO: REVISIT THIS - do we want a more generic bytes or string to be attached to the
+    //       URL for cache busting?
+    uint64 display_pic_last_modified = 5;
+}
+
+//
+// Member (not banned member) of a group
+//
+// Keep this field compatible with the BannedGroupMember message
+message GroupMember {
+    // ID of group member
+    common.XiBareUserJid jid = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    bool is_admin = 3;
+
+    bool is_super_admin = 4;
+
+    bool is_inactive = 5;
+
+    bool is_bot = 6;
+
+    // If true, users will not be directly reachable by public group members
+    bool direct_messaging_disabled = 7;
+}
+
+//
+// Banned Member of a group
+//
+// Keep this field compatible with the GroupMember message
+message BannedGroupMember {
+    // ID of group member
+    common.XiBareUserJid jid = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+//
+// Code which identifies a group; used for group search.
+//
+message GroupCode {
+    // The hastag must contain '#' plus 2 to 32 more characters.
+    string hashtag = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^#[\\w\\.]{2,32}$"
+    }];
+}
+
+//
+// Display name of group.
+//
+message GroupName {
+    string display_name = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 1020 // 255 4-byte chars
+    }];
+}
+
+//
+// A code used for associating a group invitation to a particular group member.
+//
+message GroupInviteCode {
+    // This is a 160-bit random number encoded into a URL-safe base64 string.
+    // 160/6 ~ 27 base64 characters, allowing more to be safe.
+    string code = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 50
+    }];
+}

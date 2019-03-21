@@ -1,0 +1,27 @@
+// EXPERIMENTAL: The definitions here are experimental and subject to change at
+// any moment. They are pulled in from the kikx branch, which should be used as
+// the source of truth for any Kikx work. These appear in master to unblock work
+// on legacy systems.
+
+syntax = "proto3";
+
+package common.session.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/session/v2;session";
+option java_package = "com.kik.gen.session.v2";
+option objc_class_prefix = "KPBCommonSessionV2";
+
+import "google/protobuf/timestamp.proto";
+
+// SessionToken is a globally unique token used to authenticate requests within
+// a user's session.
+message SessionToken {
+    Token token = 1;
+    message Token {
+        bytes raw_value = 1;
+    }
+
+    // The UTC timestamp when the token expire and becomes invalid. Server
+    // reserves the right to invalidate session tokens at any point in time.
+    google.protobuf.Timestamp expiry = 2;
+}

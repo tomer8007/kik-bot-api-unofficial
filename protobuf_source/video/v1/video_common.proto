@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package common.video.v1;
+
+option java_package = "com.kik.video";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/video/v1;video";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+import "google/protobuf/timestamp.proto";
+
+
+//
+// TODO: Generalize this beyond just video
+//
+message ConvoId {
+    oneof kind {
+        OneToOneConvoId one_to_one = 1;
+        XiGroupJid group = 2;
+    }
+}
+
+//
+// TODO: Generalize this beyond just video
+//
+message OneToOneConvoId {
+    // MUST be ordered
+    repeated XiBareUserJid users = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        ordered: ASC
+        min_repetitions: 2
+        max_repetitions: 2 }];
+}
+
+//
+// Note that the ConvoVideoState does NOT include any information about the conference for a particular
+// conversation.
+//
+// ConvoVideoState represents a snapshot of active users who are connected to the media server and
+// users who are in the process of connecting to the media server.
+//
+// TODO: Ensure design covers the bounded time an user can be in CONNECTING state.
+message ConvoVideoState {
+    // Convo video state is specific to a convo (ie: this is the primary key)
+    ConvoId convo_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true }];
+
+    // Note:
+    //  -   There MAY NOT be an entry for every person in the convo, this should just contain
+    //      those users involved in the video part of the convo (ex: there WILL NOT be an entry here
+    //      for every member of a group).
+    //  -   This is NOT guaranteed to reflect the latest group membership state (ex: there may be
+    //      users who are no longer in a group chat which still appear in this list). TODO: document expected handling
+    //  -   Each user will appear only once in this list.
+    repeated UserState user_states = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        min_repetitions: 0
+        // This represents a hard limit. Currently (Oct 2016), the maximum size here should be 50
+        // which is the max group size (TODO: actually this should be the maximum number of people
+        // allowed in a video call which is initially 6 I believe).
+        max_repetitions: 100 }];
+
+    message UserState {
+        XiBareUserJid user = 1 [(kik.validation.field_validation) = {
+        mandatory: true }];
+
+        State state = 2;
+        enum State {
+            // This should never be used and exists to detect cases where the producer of this message
+            // has not set the state.
+            NOT_SET = 0;
+
+
+            // A user is in CONNECTING state when he/she has requested to join the conference (and
+            // the server has accepted the request) however, the client is not yet connected to the
+            // media server
+            //
+            // There is a bounded amount of time clients should be in this CONNECTING state.
+            //
+            // Note that the _typical_ flow is that users will first be in this connecting state then move to
+            // the connected state, but no component of the system should rely on receiving each of these
+            // incremental updates.
+            CONNECTING = 5;
+
+            // This indicate that the client has an active connection to the media server.
+            CONNECTED = 10;
+        }
+    }
+
+    // This is crucial information needed to handle the ordering of state change events on the
+    // receiving end.
+    //
+    // Please note, due to Rounds internal implementation needs, this timestamp is not always the clock
+    // time of the event, it is however sequential in the order of actual events. Controlling this
+    // timestamp should only be done at source (Rounds state tracking). DO NOT compare this timestamp
+    // to any other system time to determine sequential ordering of events.
+    google.protobuf.Timestamp timestamp = 3 [(kik.validation.field_validation) = {
+        mandatory: true }];
+}
+
+// TERMINOLOGY: Conference: is an active video chat session on a media server.
+//
+// Notes:
+//  -   This message contains the necessary information to connect to a media server
+//  -   Its expected that there SHOULD only be a single conference for a particular conversation
+//      at any given time.
+message ConferenceConnectionInfo {
+    string host = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length : 1024 }];
+
+    int32 port = 2;
+
+    // This is assigned by the Round's VideoConferenceService
+    //
+    // It's comprised of 3 parts and is in the format of
+    //     "A.B.C"
+    // Where
+    //     A - app name (i.e. kik)
+    //     B - 16 characters (base 64 encoded) acts as the underline ID
+    //     C - 4 characters (base 64 encoded) acts as a checksum
+    string conference_id = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 32 }];
+}
+
+// This token should be passed to the media server when the client connects to it.
+// It MAY be used to identify the connecting client but MUST NOT be interpreted by the client.
+message MediaServerConnectionToken {
+    // Clients MUST NOT interpret this message.
+    bytes payload = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length:  1
+        max_byte_length: 5120 }];
+}

@@ -1,0 +1,30 @@
+syntax = "proto2"; // Need proto2 for custom options
+
+package common.messagepath.v1;
+option java_package = "com.kik.messagepath.model";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+    // This option is used to document and control what CoreMessage attachments (fields) can be set
+    // based on where the message originates from. Currently (Oct 2016), this option should only be
+    // used on top level CoreMessage fields (ie: checking is not done recursively)
+    //
+    // NOTE: protobuf_validation.proto contains the master list of extension numbers used at kik
+    //
+    optional CoreMessageOriginRestriction origin_restriction = 76251;
+}
+
+message CoreMessageOriginRestriction {
+    // The list of origins which are not allowed to use the particular attachment when sending
+    // messages
+    repeated Origin deny = 1;
+
+    enum Origin {
+        // Native mobile clients connecting over XMPP
+        MOBILE = 0;
+        // Bot platform bots sending messages over the WebMessagingBridge (As of Oct 2016)
+        BOT = 1;
+    }
+}

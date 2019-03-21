@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package mobile.groups.v1;
+option java_package = "com.kik.groups";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/groups/v1;groups";
+
+import "protobuf_validation.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+
+//
+// Mobile-facing service to provide a curated set of "suggested search terms"
+// to be used to search for public groups.  This will allow the kik clients to
+// provide an easily-updatable list of search suggestions to the user.
+//
+service GroupSuggest {
+    // Provides a set of suggested group search terms
+    // Notes:
+    // * Terms ordering: This method makes no guarantees as to the order of the suggested terms
+    //   provided.  While unlikely, the order may appear different from one request to the next.
+    // * Response size: This method will return as many as 100 suggestions.  If the list is too large for display,
+    //   the client is expected to arbitrarily (or randomly) select a subset from this list.
+    // * Rate Limiting: This method will be rate limited.  The expectation is no more than 1 call per minute
+    //   per active client.
+    //
+    rpc GetSuggestedGroupSearchTerms(GetSuggestedGroupSearchTermsRequest) returns (GetSuggestedGroupSearchTermsResponse) {}
+}
+
+//----------------------------------------------------------------------------
+// Request/Response Types
+//----------------------------------------------------------------------------
+
+message GetSuggestedGroupSearchTermsRequest {
+}
+
+message GetSuggestedGroupSearchTermsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        RATE_LIMIT_EXCEEDED = 1;
+    }
+
+    repeated SuggestedTerm suggested_term = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 100
+    }];
+    message SuggestedTerm {
+        // A simple string intended as a search term that may be presented to
+        // the user as a suggestion to use when searching for groups.  If
+        // selected, this term should be provided to the group search service
+        // as-is.
+        // Note these terms will not have a '#' character prefix, nor any special
+        // wildcards. (there are no wildcards included in the spec at this time)
+        string term = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            regex: "^[A-Za-z0-9._]{1,32}$"
+        }];
+    }
+}

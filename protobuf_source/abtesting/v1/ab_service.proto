@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package mobile.abtesting.v1;
+
+option java_package = "com.kik.abtesting.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/abtesting/v1;abtesting";
+
+import "common_model.proto";
+import "abtesting/v1/ab_testing_shared.proto";
+import "protobuf_validation.proto";
+
+//----------------------------------------------------------------------------
+// Terminology
+//----------------------------------------------------------------------------
+//
+// Experiment:  Defines information about a particular AB test
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+service AbTesting {
+    // Returns the set of experiments a particular user is participating in.
+    rpc GetParticipatingExperiments(GetExperimentsRequest) returns (GetExperimentsResponse) {}
+}
+
+//----------------------------------------------------------------------------
+// Request/Response Types
+//----------------------------------------------------------------------------
+
+message GetExperimentsRequest {
+    // The jid for the user we are fetching experiments for
+    // NOTE: "This will not be part of the request long term - the server bridge will send the jid as a GRPC header to service." - Dan
+    common.XiBareUserJid jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+	// Set of service selected (and only service selected) Experiment's the user already knows it is in.
+    // We *ARE NOT* including pre-registration selected experiments at this time.
+	repeated common.abtesting.v1.Experiment participating_experiments = 2 [(kik.validation.field_validation) = {
+		mandatory: false
+		max_repetitions: 100
+    }];
+}
+
+message GetExperimentsResponse {
+    // Set of Experiment's associated with the requested user
+    repeated common.abtesting.v1.Experiment participating_experiments = 1;
+
+    // Determines whether or not this response should direct clients to send the metrics update.
+    // This should be TRUE in the majority of scenarios except for when there is a need to handle
+    // client metrics load issues.
+    // Specifically, this should be only used in overload scenarios to prevent heartbeats for users not in any
+    // experiments. However it is technically possible to be used at any time.
+    bool should_send_metrics_event = 2;
+}

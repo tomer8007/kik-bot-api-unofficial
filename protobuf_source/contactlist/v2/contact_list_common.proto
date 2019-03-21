@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package common.contactlist.v2;
+option java_package = "com.kik.gen.contactlist.v2.model";
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "KPBCommonCNLV2";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/contactlist/v2;contactlist";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+
+//============================================================================
+// V2 of Common messages for Contact-related services
+//============================================================================
+
+// Context Details for a user's friendship with another entity (eg: other user/group)
+message UserFriendContext {
+    // The context of the relationship - i.e. how the user found the other / how the user was found
+    // This is sourced from com.kik.plugin.FriendContextExtended in kik-server, 
+    // but branched off to support:
+    // https://github.com/kikinteractive/xiphias-api-mobile/blob/master/proto/contactlist/v2/contactlist_service.proto
+    oneof context_kind {
+        DefaultContext default = 1;
+        Scan scan = 2;
+        ExplicitUsernameSearch explicit_username_search = 3;
+        InlineUsernameSearch inline_username_search = 4;
+        InlinePromoted inline_promoted = 5;
+        FuzzyMatching fuzzy_matching = 6;
+        AddressBookMatching address_book_matching = 7;
+        PromotedChatsList promoted_chats_list = 8;
+        TalkToAd talk_to_ad = 9;
+        FindPeopleAd find_people_ad =  10;
+        GroupAddAll group_add_all =  11;
+        GroupInfoAdd group_info_add = 12;
+        WebKikMe web_kik_me = 13;
+        WebProfileKikMe web_profile_kik_me = 14;
+        CardProfileKikProtocol card_profile_kik_protocol = 15;
+        CardSendKikToUser card_send_kik_to_user = 16;
+        CardOpenConversation card_open_conversation = 17;
+        CardOpenProfile card_open_profile = 18;
+        FriendPicker friend_picker = 19;
+        UsernameMention username_mention = 20;
+        BotMention bot_mention = 21;
+        BotMentionReply bot_mention_reply = 22;
+        BotShop bot_shop = 23;
+        GroupMemberAdd group_member_add = 24;
+        GroupInfoMenuAdd group_info_menu_add = 25;
+        GroupMenuAdd group_menu_add = 26;
+        PullUsernameSearch pull_username_search = 27;
+        SendToUsernameSearch send_to_username_search = 28;
+        LinkAttribution link_attribution = 29;
+        SuggestFriend suggest_friend = 30;
+    }
+
+    // When DefaultContext is specified, default friending context notification message of
+    // "soandso started chatting with you" is to be used and that the friending context type is
+    // not important.
+    message DefaultContext {}
+    message Scan {
+        // According to https://github.com/kikinteractive/kik-product/wiki/Scan-Code
+        // scan_code has max length of 314 And nonce: 256.
+        // Here length restriction here is simply provide a reasonable bound.     
+        bytes scan_code = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 500
+        }];
+        bytes nonce_key = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 500
+        }];
+    }
+    message ExplicitUsernameSearch {}
+    message InlineUsernameSearch {}
+    message InlinePromoted {}
+    message FuzzyMatching {}
+    message AddressBookMatching {}
+    message PromotedChatsList{}
+    message TalkToAd{}
+    message FindPeopleAd {}
+    message GroupAddAll {
+        oneof key {
+            common.v2.ChatId chat_id = 1;
+        }
+    }
+    message GroupInfoAdd {
+        oneof key {
+           common.v2.ChatId chat_id = 1;
+        }
+    }
+    message WebKikMe {
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            mandatory: true 
+            max_byte_length: 5000 
+        }];
+    }
+    message WebProfileKikMe {
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            mandatory: true
+            max_byte_length: 5000 
+        }];
+    }
+    message CardProfileKikProtocol {
+        string related_card_name = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 5120 // arbitrary, but matches cerulean ingestion
+        }];
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            max_byte_length: 5000 
+        }];
+    }
+    message CardSendKikToUser {
+        string related_card_name = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 5120 // arbitrary, but matches cerulean ingestion
+        }];
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            max_byte_length: 5000 
+        }];  
+    }
+    message CardOpenConversation {
+        string related_card_name = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 5120 // arbitrary, but matches cerulean ingestion
+        }];
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            max_byte_length: 5000 
+        }];       
+    }
+    message CardOpenProfile {
+        string related_card_name = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 5120 // arbitrary, but matches cerulean ingestion
+        }];
+        string related_url = 3 [(kik.validation.field_validation) = { 
+            max_byte_length: 5000 
+        }];        
+    }
+    message SuggestFriend {}
+    message FriendPicker {}
+    message LinkAttribution {}
+    message UsernameMention {}
+    message BotMention {}
+    message BotMentionReply {}
+    message BotShop {}
+    message GroupMemberAdd {}
+    message GroupInfoMenuAdd {
+        oneof key {
+           common.v2.ChatId chat_id = 1;
+        }  
+    }
+    message GroupMenuAdd {
+        oneof key {
+           common.v2.ChatId chat_id = 1;
+        }     
+    }
+    message PullUsernameSearch {}
+    message SendToUsernameSearch {}
+}

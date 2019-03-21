@@ -1,0 +1,190 @@
+syntax = "proto3";
+package mobile.kin.payment.v1;
+
+option java_package = "com.kik.kin.payment.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/kin/payment/v1;payment";
+
+import "protobuf_validation.proto";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+import "kin/payment/v1/payment_common.proto";
+import "kin/authentication/v1/authentication_common.proto";
+
+//********************************************************************************
+// Feature Payment service
+//
+// The feature payment service is responsible for processing KIN payments for all chat experiences
+// Processing include verifying payment JWT, storing transaction records and/or calling other services
+// Examples include: in-group admin tipping, p2p user tipping (future), cover charge (future)
+//********************************************************************************
+service FeaturePayment {
+    // Retrieves a PayToUser JWT that is used to initiate user-to-user payment transaction on the KIN marketplace.
+    rpc GetPayToUserJwt(GetPayToUserJwtRequest) returns (GetPayToUserJwtResponse);
+
+    // Verifies and processes a payment confirmation JWT originating from the Kin SDK. A record of the transaction will
+    // be stored during processing.
+    rpc ProcessPaymentToUser(ProcessPaymentToUserRequest) returns (ProcessPaymentToUserResponse);
+
+    // Retrieves limits that affect a user's ability to spend Kin
+    rpc GetUserSpendTransactionLimits(GetUserSpendTransactionLimitsRequest) returns (GetUserSpendTransactionLimitsResponse);
+
+    // Retrieves limits that affect a user's ability to receive Kin for multiple users
+    rpc GetUsersReceiveTransactionLimits(GetUsersReceiveTransactionLimitsRequest) returns (GetUsersReceiveTransactionLimitsResponse);
+}
+
+message GetPayToUserJwtRequest {
+    // User jid of the sending user. Will be one-way hashed before being included in the JWT.
+    common.XiBareUserJid sender_user_jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // User or alias jid of the receiving user, depending on the chat type (public group payments will use alias jids).
+    // Will be one-way hashed before being included in the JWT.
+    common.v1.XiBareUserJidOrAliasJid recipient_jid = 2 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Contains information about the payment being requested, including feature and amount.
+    common.kin.payment.v1.PaymentInfo payment_info = 3 [(kik.validation.field_validation) = { mandatory: true }];
+}
+
+message GetPayToUserJwtResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        REJECTED = 1;
+    }
+
+    RejectionReason rejection_reason = 2;
+
+    enum RejectionReason {
+        UNKNOWN = 0;
+        // The requested feature is not valid
+        INVALID_FEATURE = 1;
+        // The alias jid is either not registered or is not valid for the requested feature
+        INVALID_ALIAS_JID = 2;
+        // Transaction amount exceeds the max amount for a single spend transaction
+        MAX_SPEND_AMOUNT_EXCEEDED = 3;
+        // Transaction amount + previous cumulative spend transactions exceed the sender's daily spend quota
+        DAILY_SPEND_LIMIT_EXCEEDED = 4;
+        // The recipient doesn't have any remaining daily spend quota
+        DAILY_RECEIVE_LIMIT_EXCEEDED = 5;
+    }
+
+    // The generated PayToUser JWT. The JWT payload is defined in the Kin ecosystem API:
+    // https://github.com/kinecosystem/ecosystem-api#paytouser-payload.
+    common.kin.authentication.v1.OfferJwt pay_to_user_offer_jwt = 3;
+}
+
+message ProcessPaymentToUserRequest {
+    // User jid of the sending user. Used to verify and process the payment_confirmation_jwt.
+    common.XiBareUserJid sender_user_jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // User or alias jid of the receiving user, depending on the chat type (public group payments will use alias jids).
+    // Used to verify and process the payment_confirmation_jwt.
+    common.v1.XiBareUserJidOrAliasJid recipient_jid = 2 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Contains information about the payment being requested, including feature and amount. Used to verify and process
+    // the payment_confirmation_jwt.
+    common.kin.payment.v1.PaymentInfo payment_info = 3 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // PaymentConfirmation JWT (https://github.com/kinecosystem/ecosystem-api#paymentconfirmation-payload) originating
+    // from the Kin SDK. The information in the JWT will be verified against the other information contained in the
+    // request. The stellar blockchain transaction ID in the JWT will be used to store the transaction record.
+    common.v1.XiJWT payment_confirmation_jwt = 4 [(kik.validation.field_validation) = { mandatory: true }];
+}
+
+message ProcessPaymentToUserResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        REJECTED = 1;
+    }
+
+    RejectionReason rejection_reason = 2;
+
+    enum RejectionReason {
+        UNKNOWN = 0;
+        // The requested feature is not valid
+        INVALID_FEATURE = 1;
+        // The JWT is corrupt or not valid
+        INVALID_JWT = 2;
+        // The information provided in the request does not match the information in the JWT
+        REQUEST_JWT_MISMATCH = 3;
+    }
+}
+
+message GetUserSpendTransactionLimitsRequest {
+    // The user whose limits we're retrieving
+    common.XiBareUserJid user_jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // The feature to retrieve limits for
+    common.kin.payment.v1.Feature feature = 2;
+}
+
+message GetUserSpendTransactionLimitsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        REJECTED = 1;
+    }
+
+    RejectionReason rejection_reason = 2;
+    enum RejectionReason {
+        UNKNOWN = 0;
+        // The requested feature is not valid
+        INVALID_FEATURE = 1;
+    }
+
+    // Limits related to the amount of a single transaction
+    TransactionAmountLimits transaction_amount_limits = 3;
+}
+
+message GetUsersReceiveTransactionLimitsRequest {
+    // The bare or alias jids of the users whose limits are being retrieved
+    repeated common.v1.XiBareUserJidOrAliasJid user_jids = 1 [(kik.validation.field_validation) = {
+        min_repetitions: 1
+        max_repetitions: 50
+    }];
+
+    // The feature to retrieve limits for
+    common.kin.payment.v1.Feature feature = 2;
+}
+
+message GetUsersReceiveTransactionLimitsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        REJECTED = 1;
+    }
+
+    RejectionReason rejection_reason = 2;
+    enum RejectionReason {
+        UNKNOWN = 0;
+        // The requested feature is not valid
+        INVALID_FEATURE = 1;
+        // One or more of the requested alias jids are either not registered or are not valid for the requested feature
+        INVALID_ALIAS_JID = 2;
+    }
+
+    // Sanity bound. There may be situations where the client needs to retrieve limits for more than this number of
+    // users, but in those cases the client should batch the users.
+    repeated UserTransactionLimits user_transaction_limits = 3 [(kik.validation.field_validation) = {
+        max_repetitions: 50
+    }];
+}
+
+message UserTransactionLimits {
+    common.v1.XiBareUserJidOrAliasJid user_jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Limits related to the transaction Kin amount
+    TransactionAmountLimits transaction_amount_limits = 2;
+}
+
+message TransactionAmountLimits {
+    // The max amount of a transaction
+    common.kin.payment.v1.KinAmount max_amount = 1;
+
+    // The daily transaction quota of a user
+    common.kin.payment.v1.KinAmount daily_limit = 2;
+
+    // The remaining daily transaction quota of a user
+    common.kin.payment.v1.KinAmount remaining_daily_limit = 3;
+}

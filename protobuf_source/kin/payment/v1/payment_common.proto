@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package common.kin.payment.v1;
+
+option java_package = "com.kik.kin.payment.model";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/kin/payment/v1;payment";
+
+import "protobuf_validation.proto";
+import "common_model.proto";
+
+// Contains information related to a specific payment
+message PaymentInfo {
+    // The feature a payment is associated with
+    Feature feature = 1;
+
+    FeatureData feature_data = 2;
+
+    // The amount of Kin in this payment. No min/max values are set because the size of Kin payments in the long term
+    // aren't defined.
+    KinAmount kin_amount = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+enum Feature {
+    UNKNOWN = 0;
+    PUBLIC_GROUP_ADMIN_TIP = 1;
+}
+
+message FeatureData {
+    oneof kind {
+        PublicGroupAdminTipData public_group_admin_tip_data = 1;
+    }
+}
+
+message PublicGroupAdminTipData {
+    common.XiGroupJid group = 1 [(kik.validation.field_validation) = {mandatory : true}];
+}
+
+message KinAmount {
+    double amount = 1;
+}

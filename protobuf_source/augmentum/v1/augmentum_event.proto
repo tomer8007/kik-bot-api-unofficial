@@ -1,0 +1,257 @@
+syntax = "proto3";
+
+package common.augmentum.v1;
+option java_package = "com.kik.augmentum.model";
+option java_outer_classname = "AugmentumEventProto";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "AUG";
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/augmentum/v1;augmentum";
+
+import "google/protobuf/timestamp.proto";
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+// An augmentum event is uniquely identified by considering ALL of the 'timestamp', 'event',
+// and 'instance_id' fields. ALL fields of the EventId message (event field) MUST be
+// considered. An event CANNOT be identified uniquely if the instance_id is not set (see comments on
+// field for additional details). ALL of these fields should be used when creating database primary
+// keys.
+//
+// Currently (June 2016) the maximum size for an augmentum event is restricted 10k (INCLUDING
+// fields added by the system during processing which MAY total a maximum of 2k) so ingestion
+// endpoints and event producers should limit the maximum event size to 8k (ideally 4k). These
+// maximums MAY be subject to increase in the future up to a hard limit of 100k per event (including
+// a maximum of 10k added by the augmentum system).
+//
+// All fields are optional unless explicitly stated otherwise.
+message AugmentumEvent {
+
+    //----------------------------------------------------------------------------------------------
+    // Basic event fields
+    //----------------------------------------------------------------------------------------------
+
+    // REQUIRED
+    //
+    // By convention, when an event spans a time range, this should represent the END time.
+    google.protobuf.Timestamp timestamp = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // REQUIRED
+    EventId event = 2 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // All fields should be restricted to ensure compatibility with S3 object keys
+    // http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMetadata.html#object-key-guidelines-safe-characters
+    message EventId {
+
+        // REQUIRED
+        //
+        // Identifies the physical place the event was generated, specifically as it relates to
+        // control of event naming (ex: dev team or codebase) plus the security and trust context.
+        // Use the namespace field to provide additional context for where the event was generated.
+        string origin = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            // IMPORTANT: This regex is NOT finalized and WILL change (including the set of base origins).
+            // Additionally, we MAY allow upper case characters.
+            regex: "^(botsplatform|bots|kikpoints|kikx|kinwallet|mobile|server|spart|test)(\\.(tracing|log))?$"
+            min_byte_length: 4
+            // Kinesis stream names are limited to 128 characters, so let's leave some room for to add onto the origin
+            // for these names
+            max_byte_length: 64 }];
+
+       // HIGHLY RECOMMENDED be set
+       //
+       // Further identifies the place the event was generated within the context of the origin. It is up to the owners of the origin to
+       // determine what makes sense for setting this field. This field MUST NOT be dynamic in any way (ie. it should not be constructed from
+       // something whose output is not constant like timestamps, user input, usernames, JIDs, hostnames, IPs, URLs, etc). The following are
+       // the standards adopted by server.
+       //
+       // For an event that is not intended for tracing or logging, the source code repository name is typically used to help structure the
+       // namespace value. Parts of the repository name are used to start the namespace value, which can be optionally followed by dot
+       // delimited strings. For example, Xiphias service repositories have the form xiphias-service-{name}. In this case, the namespace would
+       // begin with {name}. For all other repositories, use the exact repository name. For larger repositories like kik-server, you may
+       // want to break the namespace based on the context of its sub projects. For example, the core server project can use the namespace
+       // kik-server.tigase, while the support site can use kik-server.support.
+       //
+       // Standards for request tracing and logging events are in the process of being finalized.
+       string namespace = 2 [(kik.validation.field_validation) = {
+            regex: "^[a-zA-Z][\\w\\.\\-]{0,511}$";
+            max_byte_length: 512; }];
+
+        // REQUIRED
+        //
+        // The name of the event. It is up to the owners of the origin to determine what makes sense for setting this field.
+        // This field MUST NOT be dynamic in any way (ie. it should not be constructed from something whose output is not
+        // constant like timestamps, user input, usernames, JIDs, hostnames, IPs, URLs, etc).
+        //
+        // For an event that is not intended for tracing or logging, this is the value of an enum. For languages that don't
+        // support enums, this can be a set of strings.
+        //
+        // Standards for request tracing and logging events are in the process of being finalized.
+        string name = 5 [(kik.validation.field_validation) = {
+            mandatory: true
+            // Spaces and dashes are allowed but their usage is DISCOURAGED
+            //
+            // TODO: Consider disallowing multiple spaces together (motivated by S3 object key docs)
+            //
+            // Note: disallowing the ':' character.
+            regex: "^[a-zA-Z][\\w\\.\\- ]{0,511}$"
+            min_byte_length: 1
+            max_byte_length: 512 }];
+    }
+
+
+    // NOT REQUIRED but SHOULD be set.
+    //
+    // Identifies a unique instance of an event, primarily used to de-duplicate data because of
+    // Two Generals esque problems. See the comments on the AugmentumEvent message for additional
+    // regarding how events are uniquely identified.
+    //
+    // The following guidelines apply to this field:
+    //  - Setting this field is HIGHLY RECOMMENDED although not strictly required
+    //  - If NOT set at the origin of the event, it SHOULD be set as early as possible
+    //    in the data pipeline
+    common.XiUuid instance_id = 3;
+
+    //----------------------------------------------------------------------------------------------
+    // Primary identifiers
+    //----------------------------------------------------------------------------------------------
+
+    // The LOCAL part of a users jid.
+    common.XiBareUserJid user_jid = 4;
+
+    // This MUST be the UNPREFIXED device id.
+    // ie: it MUST NOT start with CIP, CAN, etc.
+    string device_id = 5 [(kik.validation.field_validation) = {
+        // Regex MAY be subject to change. Specifically, moving to base64 URL
+        // safe encoding instead of base16 encoding
+        regex: "^[a-f0-9]+$"
+        min_byte_length: 8
+        // MAY be subject to increase although this is the maximum value used to date (June 2016)
+        max_byte_length: 64 }];
+
+    // AKA: message id
+    common.XiUuid packet_id = 6;
+
+    // The LOCAL part of a group jid
+    common.XiGroupJid group_jid = 7;
+
+    // Username MUST be treated in a case insensitive way.
+    // Setting this field is necessary ONLY when the jid is unknown.
+    // When set, this username SHOULD represent a real kik user.
+    // DO NOT use this field when this username is known to not be a kik user
+    // or possibly not be a kik user (for example: a 'username search' event).
+    //
+    // The Augmentum/ingestion system SHOULD convert this to a user jid (if possible).
+    string username = 20 [(kik.validation.field_validation) = {
+        regex: "^[\\w\\.]{2,30}$"
+        max_byte_length: 30 }];
+
+    common.XiUuid content_id = 21;
+
+    // An OAuthed email address used to access a service. A typical use case includes email for an authenticated user
+    // accessing an internal tool.
+    string oauthed_email = 22 [(kik.validation.field_validation) = {
+        // The actual regex for emails is far more complex (see http://www.ex-parrot.com/~pdw/Mail-RFC822-Address.html),
+        // but let's keep this simple to catch most invalid email addresses.
+        regex: "^[\\w\\.\\+\\-_]+@[\\w\\.]+\\.[a-zA-Z]{2,6}$"
+        max_byte_length: 128 }];
+
+    //----------------------------------------------------------------------------------------------
+    // Core event attributes
+    //----------------------------------------------------------------------------------------------
+
+    // REQUIRED for origin mobile, OPTIONAL for others.
+    //
+    // When a user_jid or device_id is specified, this refers to the the Kik client version being
+    // used.
+    string client_version = 8 [(kik.validation.field_validation) = {
+        // MAY be subject to change
+        regex: "^\\d+\\.\\d+\\.\\d+(\\.\\d+)?(-[a-zA-Z0-9]+)?$"
+        // This maximum length represents the current limit in the server device id database
+        // MAY be subject to increase in the future
+        max_byte_length: 16 }];
+
+    // REQUIRED for origin mobile, OPTIONAL for others
+    //
+    // When a user_jid or device_id is specified, this refers to the the Kik device type being
+    // used.
+    common.XiDeviceId.DevicePrefix device_prefix = 9;
+
+    //----------------------------------------------------------------------------------------------
+    // General extras
+    //
+    // This is what most users are going to be dealing with most of the time
+    //----------------------------------------------------------------------------------------------
+
+    // Common data:
+    //  - Is conceptually equivalent to mixpanel super properties.
+    //  - MAY be added to the event behind the scenes by the client library
+    //  - SHOULD NOT be specific to a particular instance of an event.
+    //
+    // May be fairly arbitrary JSON (see AugStruct for restrictions though).
+    AugStruct common_data = 10;
+
+    // Flexible and arbitrary data associated with this specific event.
+    AugStruct event_data = 11;
+
+    //----------------------------------------------------------------------------
+    // Well known extras
+    //----------------------------------------------------------------------------
+
+    // MUST NOT be set by even producers. This field is added by the Augmentum system directly.
+    AugmentumAttributes augmentum = 12;
+    message AugmentumAttributes {
+        google.protobuf.Timestamp ingestion_time = 1;
+
+        // DEPRECATED - will be removed in the near future (injestion being an incorrect spelling)
+        //
+        // Should ONLY be used when delivering flattened events to the legacy augmentum-firehose-mobile
+        // kinesis stream.
+        google.protobuf.Timestamp injestion_time = 2 [deprecated = true];
+
+        // The IP from which the event originated (may be either ipv4 or ipv6 style).
+        string source_ip = 5 [(kik.validation.field_validation) = {
+            max_byte_length: 45 }];
+    }
+}
+
+//----------------------------------------------------------------------------
+// Augmentum struct stuff
+//
+// Copy pasta from https://github.com/google/protobuf/blob/master/src/google/protobuf/struct.proto#L50
+// Make sure field numbering stays consistent with struct.proto so we can get rid of this if we want.
+//----------------------------------------------------------------------------
+
+// This is a JSON object.
+message AugStruct {
+    map<string, AugValue> fields = 1 [(kik.validation.map_key) = {
+            // Note: Subject to change.
+            // Although the % symbol is allowed, its usage is HIGHLY DISCOURAGED and support for this
+            // MAY be removed in the future.
+            regex: "^[a-zA-Z0-9_\\-%\\. ]{1,64}$"
+            min_byte_length: 1
+            // MAY increase in the future (up to 128 or possibly 256)
+            max_byte_length: 64 }];
+}
+
+message AugValue {
+    oneof kind {
+        AugNullValue null_value = 1;
+        double number_value = 2;
+        string string_value = 3 [(kik.validation.field_validation) = {
+                // MAY be subject to increase in the future
+                max_byte_length: 2048 }];
+        bool bool_value = 4;
+        AugStruct struct_value = 5;
+        AugListValue list_value = 6;
+    }
+}
+
+enum AugNullValue {
+    NULL_VALUE = 0;
+}
+
+message AugListValue {
+    repeated AugValue values = 1 ;
+}

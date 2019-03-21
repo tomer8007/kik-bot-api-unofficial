@@ -1,0 +1,172 @@
+syntax = "proto3";
+
+package common.chats.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/chats/v2;chats";
+option java_package = "com.kik.gen.chats.v2";
+option objc_class_prefix = "KPBCommonChatsV2";
+
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "groups/v2/groups_common.proto";
+import "google/protobuf/timestamp.proto";
+import "asset/v1/asset_common.proto";
+
+// Chat-specific information is contained here. For global information common to all chats,
+// see common.messaging.v2.Chat.
+
+// OneToOne chat-specific info.
+// Note that clients will look to the members of this chat for more display information.
+message OneToOneInfo {
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Members of the OneToOne chat. There can only be exactly two members of a OneToOne chat.
+    repeated OneToOneMember members = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        // ordered: ASC todo: requires byte comparable support in Java
+        min_repetitions: 2
+        max_repetitions: 2
+    }];
+}
+
+message OneToOneMember {
+    common.v2.PersonaId persona_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Whether or not this persona belongs to the requesting persona when this model
+    // is used in the context of a request-response.
+    // This is useful to handle client-server syncing issues so that client always
+    // knows which persona in the OneToOne chat belongs to the user.
+    bool is_self = 2;
+}
+
+// Group chat-specific info - short edition.
+// Contains the bare minimum of what is needed to display a group chat.
+// For full group info, see GroupInfoFull.
+message GroupInfoShort {
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Optional group display name.
+    DisplayName display_name = 2;
+
+    // Optional display picture for the group.
+    DisplayImage display_pic = 3;
+
+    // Optional public group fields.
+    // A group is a public group iff this is set.
+    common.groups.v2.PublicGroupFields public_group_fields = 4;
+
+    // Optional lock on chat theme modification for the group. An admin can modify who
+    // has permissions to change the chat_theme.
+    GroupChatThemeLock chat_theme_lock = 5;
+
+    // Group member list, does not include banned users, does include admins
+    repeated GroupMember members = 6 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        // NOTE: Max group size can be 50 or 100 at the present time, but MAY be subject to further increase beyond
+        // 100 members in the future. Clients MUST NOT validate against this limit
+        max_repetitions: 1000 // (Sanity bound)
+    }];
+}
+
+// Group chat-specific info - full edition.
+// Superset of GroupInfoShort, contains all information about a group.
+message GroupInfoFull {
+    GroupInfoShort info_short = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Optional background picture for the group.
+    DisplayImage background_pic = 2;
+
+    // Optional group bio.
+    Bio bio = 3;
+}
+
+// Member of a group
+// Note that this is not a banned member. See mobile.groups.v2.BannedGroupMember.
+message GroupMember {
+    // ID of group member
+    // Keep this field compatible with the mobile.groups.v2.BannedGroupMember message
+    common.v2.PersonaId persona_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Whether or not this persona belongs to the requesting persona when this model
+    // is used in the context of a request-response.
+    // This is useful to handle client-server syncing issues so that client always
+    // knows which persona in a group belongs to the user.
+    bool is_self = 2;
+
+    // Admins have special privileges in group chats.
+    // Admins can perform all group operations regular members can, but they
+    // can additionally:
+    // - promote non-admin members to admin.
+    // - ban non-admin members from the group chat.
+    // - change group name.
+    // - change group photo.
+    // - change chat theme modification permissions.
+    bool is_admin = 3;
+
+    // Super admins are admins with further privileges over regular admins.
+    // In addition to all regular admin actions, super admins can also do the following:
+    // - demote admins.
+    // - remove admins from the group chat.
+    // - ban admins from the group chat.
+    //
+    // Note that SuperAdmins are also considered admins, and will always
+    // have is_admin enabled as well.
+    bool is_super_admin = 4;
+
+    // If true, other members will not be able to start one to one chats with this group member.
+    bool direct_messaging_disabled = 5;
+}
+
+// Display name of a group.
+// This is only ever outputted by server via GroupInfoShort/Full and therefore has more relaxed
+// validation in order to accommodate any additions to group display names.
+// See mobile.groups.v2.CreateGroupRequest for restrictions on group name when creating a group.
+message DisplayName {
+    string display_name = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_codepoints: 1000
+    }];
+}
+
+// Contains the details of any image that is accessible by URL
+message DisplayImage {
+    // Image URLs.
+    // image will contain the url of the full-sized image file and image_preview will contain the
+    // url of the thumbnail-sized image file.
+    asset.v1.MediaContent image = 1;
+    asset.v1.MediaContent image_preview = 2;
+
+    google.protobuf.Timestamp last_updated_timestamp = 3;
+}
+
+// Group chat theme lock that allows admins to lock permissions on chat theme
+// modification within the group chat.
+message GroupChatThemeLock {
+    // The current permission settings for modifying a group's chat theme
+    LockStatus lock_status = 1;
+    enum LockStatus {
+        // Any member of the group can change the chat theme.
+        UNLOCKED = 0;
+
+        // Only admins of the group can change the chat theme.
+        ADMIN_LOCKED = 1;
+    }
+}
+
+// A biography or short biographical of a group chat.
+message Bio {
+    string bio = 1 [(kik.validation.field_validation) = {
+        max_codepoints: 1250
+    }];
+}

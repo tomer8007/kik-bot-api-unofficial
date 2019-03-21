@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package mobile.badgecount.v1;
+
+option java_package = "com.kik.badgecount.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/badgecount/v1;badgecount";
+
+import "common_model.proto";
+import "common_rpc.proto";
+import "protobuf_validation.proto";
+
+// The badge count service is designed to allow the client to communicate its unread conversation state back to
+// the server.  For various complexity and performance reasons across critical message paths, The server is unlikely 
+// to be able to determine the badge counter as calculated by the client with 100% accuracy, so by having the
+// client report it's state, the server can self-correct its conversation state and report more accurate badge 
+// counters in the future.
+service BadgeCount {
+
+    // This is called to synchronize the server's internal "unread conversation" state.
+    // Due to iOS limitations, the client can't reliably compare the last pushed badge counter with its actual 
+    // state, so SetUnreadConversations should be called whenever the client receives a non-empty QoS flush,
+    // on the last batch of QoS pages to periodically synchronize the state, and provide some ability to
+    // measure the reliability of the server's internal state. 
+    rpc SetUnreadConversations(SetUnreadConversationsRequest) returns (common.VoidResponse);
+}
+
+message SetUnreadConversationsRequest {
+    // This should contain the entire set of unread conversations by jid
+    //   - IF the entire set of unread conversations exceeds max_repetitions, take the first 200 conversation buckets
+    //     as the client sees them.
+    repeated common.XiBareUserOrGroupJid conversations_unread = 1 [(kik.validation.field_validation) = {
+    	mandatory: false
+        // Bounding is necessary to avoid unbound-data-related performance issues.  200 is chosen as 99 is the max
+        // badge count on the client, and this will reduce the frequency of incorrect badge counters for high badge 
+        // count clients.
+    	max_repetitions: 200
+    }];
+
+    // this only differs from the size of conversations_unread when the actual number of unread conversations is larger 
+    // conversations_unread.max_repetitions
+    uint32 unread_count = 2;
+}

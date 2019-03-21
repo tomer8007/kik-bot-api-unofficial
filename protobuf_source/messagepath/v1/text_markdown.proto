@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "protobuf_validation.proto";
+
+// TextMarkdownAttachment defines the mechanism that allows bots to send a text message containing
+// text with markdown.
+//
+// This attachment should be used by the client to render text with markdown.
+message TextMarkdownAttachment {
+    string markdown = 1 [(kik.validation.field_validation) = {
+        max_byte_length: 2500
+    }];
+}

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package common.profile.v1;
+
+option java_package = "com.kik.profile";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/profile/v1;profile";
+
+import "entity/v1/element_common.proto";
+
+// Kin User ID action
+message KinUserIdAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    common.entity.v1.KinUserIdElement element_kin_user_id = 2;
+}
+
+// User/Group bio
+message BioAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    common.entity.v1.BioElement element_bio = 2;
+}
+
+// Original Profile Pic Extension
+message OriginalProfilePicExtensionAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    common.entity.v1.OriginalProfilePicExtensionElement original_profile_pic_extension = 2;
+}
+
+// Background Pic Extension
+message BackgroundProfilePicExtensionAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    common.entity.v1.BackgroundProfilePicExtensionElement background_profile_pic_extension = 2;
+}
+
+// Anon Match Avatar
+message AnonMatchAvatarAction {
+    Type action_type = 1;
+    enum Type {
+        SET = 0;
+        UNSET = 1;
+    }
+
+    common.entity.v1.AnonMatchAvatarElement element_avatar = 2;
+}
+
+message EmojiStatusAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    
+    common.entity.v1.EmojiStatusElement element_emoji_status = 2;
+}
+
+message InterestsAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    
+    common.entity.v1.InterestsElement interests = 2;
+}
+
+// Chat themes
+message ChatThemeAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+    
+    common.entity.v1.ChatThemeElement element_chat_theme = 2;
+}
+
+message ChatThemeLockAction {
+    Type action_type = 1;
+    enum Type {
+        SET   = 0;
+        UNSET = 1;
+    }
+}

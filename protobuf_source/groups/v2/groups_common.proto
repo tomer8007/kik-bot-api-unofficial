@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package common.groups.v2;
+
+option java_package = "com.kik.gen.groups.v2";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/groups/v2;groups";
+option objc_class_prefix = "KPBCommonGroupsV2";
+
+import "protobuf_validation.proto";
+
+// Fields necessary for public groups.
+message PublicGroupFields {
+    // Group hashtag which uniquely identifies a group. Used for group search.
+    Hashtag hashtag = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+// Hashtag must contain '#' plus 2 to 32 more characters.
+message Hashtag {
+    string hashtag = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^#[\\w\\.]{2,32}$"
+    }];
+}

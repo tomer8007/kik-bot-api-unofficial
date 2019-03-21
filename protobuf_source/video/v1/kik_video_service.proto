@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package mobile.video.v1;
+option java_package = "com.kik.video.mobile";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/video/v1;video";
+
+import "protobuf_validation.proto";
+import "common_rpc.proto";
+import "video/v1/video_common.proto";
+
+// This is the service the mobile clients use to talk to 'kik'.
+//
+// This service acts as the 'control plane' for clients to query the state of video chats (aka
+// conferences) and join video chats within the context of a conversation. After requesting to join
+// a video chat, this service provides connection information to the client so that they may connect
+// to a media server to exchange video data. This service does NOT itself deal with video data directly.
+//
+//
+// High Level System Interaction Diagram:
+//
+//       ---------------------    3     ---------------------            ----------------
+//       | Kik Video Service | ------>  | Video Conference   | <-------> | Media Server |
+//       |                   | <--------|  service (Rounds)  |     6     |              |
+//       ---------------------    4     ----------------------           ---------------
+//             ^    |                                                         ^
+//             |    |                                                         |
+//           1 |    | 2                                                       |
+//             |    V                                                         |
+//       |---------------|                                                    |
+//       | mobile client |<---------------------------------------------------|
+//       -----------------                     5
+//
+//  1. xiphias_api_mobile.kik_vide_service.proto describes this interaction
+//  2. xiphias_api_mobileremote.mobile_video_service.proto describes this interaction
+//  3. xiphias_api_internal.rounds_video_conference_service.proto describes this interaction
+//  4. xiphias_api_internal.internal_kik_video_service.proto describes this interaction
+//  5, 6 are not described in any xiphias apis.
+//
+service KikVideo {
+    // This method allows clients to query the state of a video chat without joining it.
+    //
+    // Usage notes:
+    //  -   Clients are expected to query the set of user visible conversations after the client connects.
+    //  -   Clients MAY query this API after their initial connection but this SHOULD be unnecessary
+    //      as updates will be pushed to the client via the mobileremote.video.v1.MobileVideo service
+    rpc BatchedGetConvoState(BatchedGetConvoStateRequest) returns (BatchedGetConvoStateResponse);
+
+    // Used by the client to start or join a video chat within the context of a specific conversation.
+    //
+    // If successful, this method changes the users state to connecting in the ConvoVideoState message.
+    //  -   It WILL result in a MobileVideo (mobileremote) update for all the other users in the convo.
+    //  -   It MAY result in a MobileVideo (mobileremote) update for the user requesting to join
+    //
+    // Once the client actually connects to the media server, they change state to be connected.
+    //  -   This will result in a MobileVideo (mobileremote) update being sent to all clients in the
+    //      conversation (including the user who is joining).
+    //
+    // Other notes:
+    //  -   This method has 'get or create' semantics for a conference associated with a particular
+    //      conversation.
+    //  -   Clients MUST call this method prior to connecting to a media server
+    //  -   This method returns connection information for the media server.
+    //  -   This connection info is TRANSIENT and MUST be re-requested using this method if the client
+    //      gets disconnected from the media server or is unable to connect.
+    //  -   This method is expected to be idempotent. It is VALID to call this method multiple
+    //      times. IE: this method SHOULD return a success even if the user requesting to join is
+    //      already in the conference.
+    //
+    // The timeout between a successful join request and the client actually connecting to the
+    // media server is on the order of X.
+    rpc JoinConvoConference(JoinConvoConferenceRequest) returns (JoinConvoConferenceResponse);
+
+    // Explicit action from the user to notify the system that they have left a conference.
+    // This has best effort ONLY semantics.
+    rpc OnLeaveConvoConference(LeaveConvoConferenceNotification) returns (common.VoidResponse);
+}
+
+message BatchedGetConvoStateRequest {
+    repeated common.video.v1.ConvoId convo_ids = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 20 }];
+}
+
+message BatchedGetConvoStateResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        // Tag 3 is reserved for NOT_FOUND which is returned by GetConvoStateFromVCS, as batch
+        // response NOT_FOUND is not returned. Note that this mobile facing API does not currently
+        // have a concept of 'not found' and will simply reutrn an empty ConvoVideoState for convos
+        // which do not have an active conference.
+        // NOT_FOUND = 3
+    }
+
+    // This list SHOULD be the exact same set of convo ids requested (but order is not guaranteed).
+    // A ConvoVideoState message with no users listed SHOULD be returned if there is no conference
+    // associated with the convo.
+    repeated common.video.v1.ConvoVideoState latest_states = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+        max_repetitions: 20 }];
+}
+
+message JoinConvoConferenceRequest {
+    common.video.v1.ConvoId convo_id = 1  [(kik.validation.field_validation) = {
+        mandatory: true }];
+
+    // This tag was used for the request_id before Xiphias Client headers came around.
+    // Must be reserved for backwards compatibility.
+    reserved 2;
+}
+
+message JoinConvoConferenceResponse {
+    Result result  = 1;
+    enum Result {
+        // Note that clients MUST check for an OK result as new error results may be added in the future.
+        OK = 0;
+
+        // The conference has reached its maximum number of participants
+        FULL = 1;
+
+        // The user is not allowed to join the conference. This MAY be caused by (but is not limited
+        // to), not being a member of the group.
+        NOT_ALLOWED = 2;
+    }
+
+    // This MUST be present for the following results, but MAY be absent otherwise:
+    //  -   OK
+    //  -   FULL
+    common.video.v1.ConvoVideoState latest_state = 2;
+
+    // This MAY be null if the user is NOT allowed to join the video
+    common.video.v1.ConferenceConnectionInfo connection_info = 3;
+
+    // This token must be provided to the media server when the client connects to it.
+    // This SHOULD be present if connection_info is present.
+    common.video.v1.MediaServerConnectionToken connection_token = 4;
+}
+
+message LeaveConvoConferenceNotification {
+    common.video.v1.ConvoId convo_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true} ];
+
+    // This tag was used for the request_id before Xiphias Client headers came around.
+    // Must be reserved for backwards compatibility.
+    reserved 2;
+
+    // TAG 3 IS RESERVED FOR "force", so DON'T USE HERE.
+    reserved 3;
+
+    // This is the token returned to the client through this KikVideo service via JoinConvoConferenceFromVcsResponse
+    // The client should cache this token and ALWAYS pass this token for onLeave.
+    // This token is intended for the rounds' video conference server to sort out race conditions. For example
+    // client turns the video on/off too quickly and the leave may arrive after the rejoin. In this case, the sequenctial nature
+    // of the token will block the previous onLeave (note the client on leave event send leave via kikvideo and also requests disconnect
+    // from the media server directly).
+    common.video.v1.MediaServerConnectionToken connection_token = 4;
+}
+

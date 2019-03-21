@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package mobile.antispam.iospushverification.v1;
+option java_package = "com.kik.antispam.iospushverification.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/antispam/iospushverification/v1;iospushverification";
+
+import "protobuf_validation.proto";
+
+// iOS push verification is a service that aims to verify the authenticity of an alleged iOS client through their
+// ability to receive an invisible VoIP push and echo it back to our backend.
+//
+// The service works as follows:
+//  1.  authenticated stream:
+//          when a client receives a TriggerSendVoipPushToken request, they submit their push token via a call to
+//          SubmitVoipPushToken
+//      anonymous stream:
+//          client immediately calls SubmitVoipPushToken on bind
+//  2.  client will receive a VoIP push notification from the verification backend
+//  3.  upon receiving the VoIP push notification, the client should send back the payload to the IosPushVerification
+//      service via a call to ForwardPushPayload
+service IosPushVerification {
+    // submit a VoIP push token to enter the verification flow
+    rpc SubmitVoipPushToken (SubmitVoipPushTokenRequest) returns (SubmitVoipPushTokenResponse) {
+    }
+
+    // upon receiving a VoIP push notification with a verification payload, forward the payload to verify that
+    // it was received
+    rpc ForwardPushPayload (ForwardPushPayloadRequest) returns (ForwardPushPayloadResponse) {
+    }
+}
+
+message SubmitVoipPushTokenRequest {
+    // the VoIP push token that will be used to send a notification to the client for the sake of verification
+    string token = 1 [(kik.validation.field_validation) = {
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+}
+
+message SubmitVoipPushTokenResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+}
+
+message ForwardPushPayloadRequest {
+    // the payload that the client received via a VoIP push notification
+    string payload = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 25000
+    }];
+}
+
+message ForwardPushPayloadResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+}

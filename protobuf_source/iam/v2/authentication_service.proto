@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package mobile.iam.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/iam/v2;iam";
+option java_package = "com.kik.gen.iam.v2";
+option objc_class_prefix = "KPBMobileIAMV2";
+
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "session/v2/model.proto";
+
+// Authentication is the 'public' facing service that clients use to authenticate
+// a user and provide session tokens.
+service Authentication {
+    // Authenticate authenticates the user using an ID and secret pair. A session
+    // token is provided on success that authorizes a user to perform authenticated
+    // requests, which should be provided as a header. Clients wishing to get new
+    // sessions MUST go through this API call.
+    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
+
+    // Logout terminates the user's session by invalidating their session token.
+    // This request must be authenticated using the user's current session token.
+    rpc Logout(LogoutRequest) returns (LogoutResponse) {}
+}
+
+message AuthenticateRequest {
+    oneof credentials {
+        UsernameCredentials username_credentials = 1;
+        EmailCredentials email_credentials = 2;
+    }
+
+    common.v2.ClientInstanceId client_instance_id = 10 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // The set of credentials when a user logs in using their username
+    message UsernameCredentials{
+        common.v2.Username username = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+        }];
+
+        // The username-derived passkey as described in https://github.com/kikinteractive/kik-product/wiki/Passkeys
+        bytes passkey = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 1024
+        }];
+    }
+
+    // The set of credentials when a user logs in user their email address
+    message EmailCredentials {
+        common.v2.Email email = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+        }];
+
+        // The email-derived passkey as described in https://github.com/kikinteractive/kik-product/wiki/Passkeys
+        bytes passkey = 2 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 1024
+        }];
+    }
+}
+
+message AuthenticateResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        FAILED = 1;
+    }
+
+    // Clients should use this session token in a header to authenticate subsequent
+    // requests
+    //
+    // Set iff Result == OK
+    common.session.v2.SessionToken session_token = 2;
+
+    // Set iff Result == OK
+    common.v2.AccountId account_id = 3;
+
+    // TODO: THIS IS NOT MEANT FOR RELEASE
+    // JUST FOR MILESTONE ONE
+    common.v2.PersonaId genesis_persona = 4;
+}
+
+message LogoutRequest {
+}
+
+message LogoutResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+}

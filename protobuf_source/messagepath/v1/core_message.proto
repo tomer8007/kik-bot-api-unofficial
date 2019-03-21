@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option java_outer_classname = "CoreMessageProto";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "MPTH"; // Just MSG? K?
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "protobuf_validation.proto";
+
+import "messagepath/v1/core_message_options.proto";
+import "messagepath/v1/visibility_rules.proto";
+import "messagepath/v1/mentions.proto";
+import "messagepath/v1/keyboards.proto";
+import "messagepath/v1/widgets.proto";
+import "messagepath/v1/adaptive_cards.proto";
+import "messagepath/v1/text_markdown.proto";
+import "messagepath/v1/carousels.proto";
+import "messagepath/v1/chat_theme.proto";
+import "messagepath/v1/feature_payment.proto";
+
+//##################################################################################################
+// Core message definition
+//##################################################################################################
+
+message CoreMessage {
+    //----------------------------------------------------------------------------------------------
+    // Base attributes
+    // 1-499
+    //----------------------------------------------------------------------------------------------
+
+    //----------------------------------------------------------------------------------------------
+    // Main mutually exclusive attachments
+    // 500-999
+    //----------------------------------------------------------------------------------------------
+    CarouselMessageAttachment carousel_message_attachment = 515;
+
+    //----------------------------------------------------------------------------------------------
+    // Other non-exclusive attachments
+    // 1000-1499
+    //----------------------------------------------------------------------------------------------
+
+    // This attachment is used to override the clients default rules for where to display the message
+    // and how to send push (among other things) - see comments on the message definition for more
+    // info.
+    //
+    // This attachment may ONLY be set on server generated messages and messages from bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    VisibilityRulesAttachment visibility_rules_attachment = 1000 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // For mention replies (from bots to users), this attachment is used to indicate the user who
+    // originally mentioned the bot.
+    //
+    // This should only be used the client for internal logic specific to mention-reply messages
+    // (e.g. on iPhone 10.9 it is used to determine whether to show the "Reply" button)
+    // DO NOT use this attachment to determine visibility rules (use the visibility_rules_attachment for that).
+    //
+    // This attachment may ONLY be sent by bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    MentionReplyAttachment mention_reply_attachment = 1002 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // The keyboard attachment is sent by the Bots Platform in order for clients to update their
+    // keyboard display.
+    //
+    // This attachment may not be included in the event that no change in user keyboard is desired
+    // from a message.
+    //
+    // Historically, this property was known as "Suggested Responses", but in the interest of
+    // flexibility, and future-compatibility, it was generalized to a field that implies changing
+    // a user's input mechanism, rather than only suggesting responses.
+    //
+    //
+    // This attachment may ONLY be set by bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    KeyboardAttachment keyboard_attachment = 1003 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // The keyboard reply attachment is sent by clients in order to identify when a user has used
+    // the input mechanism that was provided by a bot-provided keyboard attachment.
+    //
+    // This attachment may ONLY be set by clients.
+    // It is NOT valid for bots to send messages with this attachment.
+    KeyboardReplyAttachment keyboard_reply_attachment = 1004 [
+        (origin_restriction) = {
+            deny: BOT }];
+
+    // The widget attachment is sent by the Bots Platform in order for clients to update their
+    // widget display.
+    //
+    // This attachment may not be included in the event that no change in conversation widgets
+    // is desired from a message.
+    //
+    //
+    // This attachment may ONLY be set by bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    WidgetAttachment widget_attachment = 1005 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // For adaptive card messages (from bots to users), this attachment is used to indicate how an
+    // adaptive card message should be rendered.
+    //
+    // This should be used by the client to retrieve the appropriate JSON card definition(s) then
+    // render the message.
+    //
+    // This attachment may ONLY be set by bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    AdaptiveCardAttachment adaptive_card_attachment = 1006 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // For text messages (from bots to users), this attachment is used by the clients
+    // to render markdown text.
+    //
+    // This attachment may ONLY be set by bots.
+    // It is NOT valid for native clients to send messages with this attachment.
+    TextMarkdownAttachment text_markdown_attachment = 1007 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // This attachment will be sent with status messages to notify clients
+    // about updated chat theme information.
+    //
+    // This attachment may ONLY be set on the server side.
+    // It is NOT valid for native clients to send messages with this attachment.
+    ChatThemeAttachment chat_theme_attachment = 1008 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+
+    // This attachment will be sent with status messages to notify clients
+    // about updated chat theme information.
+    //
+    // This attachment may ONLY be set on the server side.
+    // It is NOT valid for native clients to send messages with this attachment.
+    TransactionDetailsAttachment transaction_details_attachment = 1009 [
+        (origin_restriction) = {
+            deny: MOBILE }];
+}

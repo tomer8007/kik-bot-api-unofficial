@@ -1,0 +1,219 @@
+syntax = "proto3";
+package mobile.matching.v1;
+
+option java_package = "com.kik.matching.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/matching/v1;matching";
+
+import "protobuf_validation.proto";
+import "google/protobuf/timestamp.proto";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+import "matching/v1/matching_common.proto";
+
+// These endpoints facilitate clients starting, ending and voting on anonymous chat sessions
+service AnonMatching {
+    // Finds a chat partner, starting a new chat session request or updates an existing request 
+    // if there's already something in the queue
+    rpc FindChatPartner (FindChatPartnerRequest) returns (FindChatPartnerResponse);
+
+    // Cancels a find chat partner request.  If a session has already been created, it will not
+    // be cancelled, and the session details will still be returned to clients as normal
+    rpc CancelFindChatPartner (CancelFindChatPartnerRequest) returns (CancelFindChatPartnerResponse);
+
+    // Ends a chat session before the chat expiry duration.  The other chat partner
+    // will be notified that the chat has ended prematurely, and the chat session will be
+    // marked for eventual cleanup
+    rpc EndChatSession (EndChatSessionRequest) returns (EndChatSessionResponse);
+
+    // Returns session details
+    rpc GetChatSession (GetChatSessionRequest) returns (GetChatSessionResponse);
+
+    // Allows clients to make a decision on the chat session.  "Yes" = make friends with
+    // the chat partner, "No" = don't make friends
+    // 
+    // *** TO BE SUPPORTED IN THE FUTURE
+    // rpc VoteOnChatSession(VoteOnChatSessionRequest) returns (VoteOnChatSessionResponse);
+
+    // Used by clients to query the number of chats the server will allow a user before
+    // they are rate limited
+    rpc GetRemainingAnonChats(GetRemainingAnonChatsRequest) returns (GetRemainingAnonChatsResponse);
+}
+
+// If the user already has an ongoing search in the queue, it will be updated
+// by sending another FindChatPartnerRequest. It is considered normal behaviour and
+// no exception or warning or special status code is returned
+message FindChatPartnerRequest {
+
+    // If no interests are included in this request, this is considered a "quick chat",
+    // and users will be matched with anyone.
+    repeated ChatInterest interests = 1 [(kik.validation.field_validation) = {
+        // in practice, the server may ignore or disallow more than 5 interests.  
+        // bounding this high to allow for speculative future interest requirements.
+        max_repetitions: 5  
+    }];
+
+    // Matching Variant defines the queue to search a partner.
+    // If a value is not provided, the default queue will be used.
+    // For certain whitelisted accounts (QA accounts), a different queue is used.
+    // Providing a value for matching_variant will override any other default queue setting.
+    string matching_variant = 2;
+}
+
+message FindChatPartnerResponse {
+    Result result = 1;
+    enum Result {
+        // Chat partner immediately found and will be returned with this response
+        PARTNER_FOUND = 0;
+
+        // Chat partner not found (yet), user has been put in queue
+        IN_QUEUE = 1;
+
+        // The rejected response is a general rejection status that encompasses any rejections not covered by
+        // other REJECTED_* result codes, such as too many active chat sessions,
+        // or Bouncer rejections (spam analysis)
+        // If the user is in the queue already his requested is updated but not rejected
+        REJECTED = 2;
+
+        // User has exceeded their daily limit of sessions
+        REJECTED_NO_REMAINING_SESSIONS = 3;
+
+        // User is temporarily banned for bad behavior
+        REJECTED_TEMPORARILY_BANNED = 4;
+    }
+
+    // The optional id of the request, can be used to cancel this request if in queue
+    // Will not be present unless result = (PARTNER_FOUND or IN_QUEUE)
+    common.XiUuid find_chat_request_id = 2;
+
+    // optional, will only be present if result = PARTNER_FOUND
+    SessionDetails session_details = 3;
+
+    // In case of a rejection, this is the (UTC) timestamp of when the user
+    // will be allowed to return and request a new anon-chat.
+    //
+    // Will only be present if the rejection is for any reason that can expire
+    // such as REJECTED_NO_REMAINING_SESSIONS or REJECTED_TEMPORARILY_BANNED
+    google.protobuf.Timestamp rejected_expiry_time = 4;
+}
+
+message CancelFindChatPartnerRequest {
+    // The id that was returned by the FindChatPartnerResponse should be used here to cancel the request
+    common.XiUuid find_chat_request_id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+}
+
+message CancelFindChatPartnerResponse {
+    Result result = 1;
+    enum Result {
+        // Find chat session request successfully cancelled
+        OK = 0;
+
+        // Chat session has already been created, the session will not be cancelled,
+        // details will be included in the same way that clients
+        // waiting after a FindChatSessionResponse.Result.IN_QUEUE receive them 
+        SESSION_ALREADY_CREATED = 1;
+    }
+}
+
+message GetChatSessionRequest {
+    common.matching.v1.AnonMatchingSessionKey session_key = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message GetChatSessionResponse {
+    Result result = 1;
+    enum Result {
+        // Chat session found, details will be provided.
+        OK = 0;
+        // Chat session not found.  Either invalid id or session already cleaned up.
+        NOT_FOUND = 1;
+    }
+
+    // Will only be present if Result = OK
+    SessionDetails session_details = 2;
+}
+
+//message VoteOnChatSessionRequest {
+//    // The chat session id
+//    common.XiUuid session_id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+//
+//    VoteDecision vote_decision = 2;
+//    enum VoteDecision {
+//        // Do not make friends with chat partner
+//        NO_FRIENDING = 0;
+//        // Make friends with chat partner.  Real jid details will come in separate xmpp message
+//        MAKE_FRIENDS = 1;
+//    }
+//}
+
+//message VoteOnChatSessionResponse {
+//    Result result = 1;
+//    enum Result {
+//        // Vote logged, details will be provided.
+//        OK = 0;
+//        // Chat session not found or expired.  Clients should not retry this.
+//        NOT_FOUND = 1;
+//    }
+//}
+
+message EndChatSessionRequest {
+    common.matching.v1.AnonMatchingSessionKey session_key = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message EndChatSessionResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+}
+
+message GetRemainingAnonChatsRequest {
+    // empty placeholder.  Currently we get user jid from the request header
+}
+
+message GetRemainingAnonChatsResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+
+    // The number of chats remaining in a (configurable) time period.
+    int32 remaining_chats = 2;
+}
+
+// Represents a chat interest that the user optionally selects for chat matching
+message ChatInterest {
+    string interest_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+
+    string interest_name = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_byte_length: 1
+        max_byte_length: 255
+    }];
+}
+
+// Contains details of a 1on1 anonymous chat match session
+message SessionDetails {
+    // The session id
+    common.XiUuid session_id = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // The alias jid of the chat partner.
+    common.v1.XiAliasJid chat_partner_alias = 3 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Chat session end time (UTC)
+    google.protobuf.Timestamp session_end_time = 4;
+
+    // Session vote expiry (UTC), the session could be cleaned up any time after this. no further actions can be 
+    // taken on this session after this time.
+    google.protobuf.Timestamp session_expiry_time = 5;
+
+
+    common.matching.v1.ChatSessionState session_state = 6;
+}

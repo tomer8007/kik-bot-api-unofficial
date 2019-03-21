@@ -6,6 +6,8 @@ from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
 
+from bs4 import BeautifulSoup
+
 import kik_unofficial.callbacks as callbacks
 import kik_unofficial.datatypes.exceptions as exceptions
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -14,9 +16,7 @@ import kik_unofficial.datatypes.xmpp.login as login
 import kik_unofficial.datatypes.xmpp.roster as roster
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
-from bs4 import BeautifulSoup
-
-from kik_unofficial.datatypes.xmpp import account
+from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures
 
@@ -28,6 +28,7 @@ class KikClient:
     """
     The main kik class with which you're managing a kik connection and sending commands
     """
+
     def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
                  kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
         """
@@ -69,7 +70,7 @@ class KikClient:
             'kik:groups': xmlns_handlers.GroupMessageHandler(callback, self),
             'kik:iq:friend': xmlns_handlers.FriendMessageHandler(callback, self),
             'kik:iq:friend:batch': xmlns_handlers.FriendMessageHandler(callback, self),
-            'kik:iq:xiphias:bridge': xmlns_handlers.GroupSearchHandler(callback, self),
+            'kik:iq:xiphias:bridge': xmlns_handlers.XiphiasHandler(callback, self),
         }
 
     def _connect(self):
@@ -215,6 +216,23 @@ class KikClient:
 
     def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
         return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
+
+    def xiphias_get_users(self, peer_jids: Union[str, List[str]]):
+        """
+        Calls the new format xiphias message to request user data such as profile creation date
+        and background picture URL.
+
+        :param peer_jids: one jid, or a list of jids
+        """
+        return self._send_xmpp_element(xiphias.UsersRequest(peer_jids))
+
+    def xiphias_get_users_by_alias(self, alias_jids: Union[str, List[str]]):
+        """
+        Like xiphias_get_users, but for aliases instead of jids.
+
+        :param alias_jids: one jid, or a list of jids
+        """
+        return self._send_xmpp_element(xiphias.UsersByAliasRequest(alias_jids))
 
     # --------------------------
     #  Group Admin Operations

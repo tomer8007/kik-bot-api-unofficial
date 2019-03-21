@@ -1,0 +1,51 @@
+syntax = "proto3";
+package mobile.kin.authentication.v1;
+
+option java_package = "com.kik.kin.authentication.rpc";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/kin/authentication/v1;authentication";
+
+
+import "protobuf_validation.proto";
+
+import "common_model.proto";
+import "common/v1/model.proto";
+
+//********************************************************************************
+// Kin Authentication service
+//
+// The Kin authentication service is responsible for registering user so that they are able to access the Kin
+// marketplace.
+//********************************************************************************
+
+service Authentication {
+
+    rpc GenerateUserJwt(GenerateUserJwtRequest) returns (GenerateUserJwtResponse);
+}
+
+message GenerateUserJwtRequest {
+
+    common.XiBareUserJid user_jid = 1 [(kik.validation.field_validation) = { mandatory: true }];
+}
+
+message GenerateUserJwtResponse {
+
+    Result result = 1;
+    enum Result {
+        OK = 0;
+        REJECTED = 1;
+    }
+
+    UserJwtRejectionReason rejection_reason = 2;
+
+    common.v1.XiJWT user_jwt = 3;
+}
+
+message UserJwtRejectionReason {
+
+    Code code = 1;
+    enum Code {
+        UNKNOWN = 0;
+        // User not authorized or whitelisted to use Kin marketplace
+        REJECTED_USER_NOT_AUTHORIZED = 1;
+    }
+}

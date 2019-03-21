@@ -1,0 +1,314 @@
+syntax = "proto3";
+
+package mobile.groups.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/groups/v2;groups";
+option java_package = "com.kik.gen.groups.v2";
+option objc_class_prefix = "KPBMobileGroupsV2";
+
+import "protobuf_validation.proto";
+import "common/v2/model.proto";
+import "messaging/v2/model.proto";
+import "groups/v2/groups_common.proto";
+import "chats/v2/chat_info.proto";
+
+service Group {
+    // Get full group information for a given group chat.
+    rpc GetGroupInfoFull(GetGroupInfoFullRequest) returns (GetGroupInfoFullResponse) {}
+
+    // Streams batches of banned group members in the given group chat.
+    rpc GetBannedGroupMembersStream(GetBannedGroupMembersStreamRequest) returns (stream GetBannedGroupMembersStreamResponse) {}
+
+    // Create a group chat. Returns a ChatId corresponding to the created group chat.
+    rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {}
+
+    // Leave a group chat.
+    //
+    // Notes:
+    // - This should be called by a member of group chat that wishes to _leave_.
+    // - A group admin cannot not use this to remove another member from the group chat, see RemoveFromGroup.
+    rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse) {}
+
+    // Add persona(s) to a group chat.
+    //
+    // Notes:
+    // - A non-member persona may add themeselves to a group chat if the group chat allows this (e.g. is a public group).
+    // - A member of the group chat may add other personas to this group chat.
+    rpc AddToGroup(AddToGroupRequest) returns (AddToGroupResponse) {}
+
+    // Remove persona(s) from a group chat.
+    //
+    // Notes:
+    // - A group admin should use this to remove another member from the group chat.
+    // - This method is only useable by a member that is either an Admin or SuperAdmin.
+    // - The group member to remove cannot be the requesting member.
+    // - Admins cannot be removed by other Admins except SuperAdmins.
+    rpc RemoveFromGroup(RemoveFromGroupRequest) returns (RemoveFromGroupResponse) {}
+
+    // Ban members from a group chat.
+    //
+    // TODO: Not in scope for friends and family.
+    // rpc BanFromGroup(BanFromGroupRequest) returns (BanFromGroupResponse) {}
+
+    // Join the public group chat by specifying the hashcode (aka groupcode, hashtag)
+    //
+    // TODO: Not in scope for friends and family.
+    // rpc JoinPublicGroup(JoinPublicGroupRequest) returns (JoinPublicGroupResponse) {}
+
+    // Join the group chat by invite code.
+    //
+    // TODO: Not in scope for friends and family.
+    // rpc JoinGroupByInviteCode(JoinGroupByInviteCodeRequest) returns (JoinGroupByInviteCodeResponse) {}
+
+    // Generate an invite code for a group chat.
+    //
+    // TODO: Not in scope for friends and family.
+    // rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse) {}
+}
+
+message GetGroupInfoFullRequest {
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona with the necessary permissions in the group chat to view full group chat info.
+    common.v2.PersonaId requestor_persona_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message GetGroupInfoFullResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+
+        // No group was found in which requesting persona could retrieve full group info.
+        NOT_FOUND = 1;
+    }
+
+    // Set if result == OK.
+    common.chats.v2.GroupInfoFull info = 2;
+}
+
+message GetBannedGroupMembersStreamRequest {
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona with the necessary permissions in the group chat to view banned members.
+    common.v2.PersonaId requestor_persona_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message GetBannedGroupMembersStreamResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+
+        // No group was found in which requesting persona could retrieve banned members.
+        NOT_FOUND = 1;
+    }
+
+    // Set if result == OK
+    repeated BannedGroupMember banned_group_members = 2 [(kik.validation.field_validation) = {
+        max_repetitions: 1024
+    }];
+}
+
+// Banned Member of a group
+message BannedGroupMember {
+    // ID of group member
+    // Keep this field compatible with the common.groups.v2.GroupMember message
+    common.v2.PersonaId persona_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message CreateGroupRequest {
+    // Creator of the group.
+    common.v2.PersonaId creator_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Initial members of the group NOT including the group creator.
+    // Note that the upper bound on the number of members in a group is a
+    // configuration setting and likely to be less than 1024.
+    repeated common.v2.PersonaId initial_members = 2 [(kik.validation.field_validation) = {
+        max_repetitions: 1024
+    }];
+
+    // Optional name of the group.
+    GroupName group_name = 3;
+
+    // Set this if creating a public group.
+    common.groups.v2.PublicGroupFields public_group_fields = 4;
+
+    // Mandatory request id used to make this call idempotent and avoid races.
+    // The request id should be unique and randomly generated by the client for each group to be created.
+    // The request will fail if this id is not unique, meaning the group
+    // is already created/being created.
+    common.v2.Uuid request_id = 5 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message CreateGroupResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+
+        // The provided creation id already exists so a group is already created/being created.
+        CREATION_ID_EXISTS = 1;
+
+        // The provided group creation request contained restricted values.
+        // See restricted_field for details on what was rejected.
+        POLICY_RESTRICTION = 2;
+
+        // The provided hashtag is not unique and has already been taken. Hashtags must be unique.
+        HASHTAG_NOT_UNIQUE = 3;
+
+        // Creator persona was not permitted to create a group chat with the given request.
+        NOT_PERMITTED = 4;
+    }
+
+    // Chat info for the newly created chat. This will only be set if result == OK.
+    common.messaging.v2.Chat chat = 2;
+
+    // This field is set if result == POLICY_RESTRICTION.
+    // Will contain the all RestrictedFields in the request that caused the request to fail with POLICY_RESTRICTION.
+    repeated RestrictedField restricted_fields = 3;
+    enum RestrictedField {
+        UNSPECIFIED = 0;
+        GROUP_NAME = 1;
+        GROUP_HASHTAG = 2;
+    }
+}
+
+message GroupName {
+    string group_name = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_codepoints: 250
+    }];
+}
+
+message LeaveGroupRequest {
+    // Group chat to leave.
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona leaving group.
+    common.v2.PersonaId leaver_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+}
+
+message LeaveGroupResponse {
+    Result result = 1;
+    enum Result {
+        OK = 0;
+    }
+}
+
+message AddToGroupRequest {
+    // Chat to add persona to.
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona adding members to the group.
+    // This persona must be a member of the group and have the necessary permissions
+    // to add other personas to the group.
+    common.v2.PersonaId adder_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona ids to add to the group.
+    // Note that the upper bound on the number of members in a group is a
+    // configuration setting and likely to be less than 1024.
+    repeated common.v2.PersonaId new_member_ids = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100
+    }];
+}
+
+message AddToGroupResponse {
+    Result result = 1;
+    enum Result {
+        // The request was successfully processed. Note that this does not mean all new member ids
+        // specified in the request were sucessfully added to the group. See failure_details for any failures.
+        OK = 0;
+
+        // Adder was not permitted to add other personas to this group chat.
+        NOT_PERMITTED = 1;
+    }
+
+    // Personas that failed to be added to the group.
+    repeated FailureDetails failure_details = 2;
+    message FailureDetails {
+        common.v2.PersonaId persona_id = 1;
+
+        Reason reason = 2;
+        enum Reason {
+            // An unknown/transient failure occurred while adding this persona. Caller should retry.
+            UNKNOWN = 0;
+
+            // Persona is banned from the chat.
+            BANNED = 1;
+
+            // Group member limit was reached.
+            GROUP_FULL = 2;
+
+            // Adder was not permitted to add this persona to the group chat.
+            NOT_PERMITTED = 3;
+        }
+    }
+}
+
+message RemoveFromGroupRequest {
+    // Group to remove persona from.
+    common.v2.ChatId chat_id = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Persona removing others from the group.
+    common.v2.PersonaId remover_id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Personas to remove.
+    repeated common.v2.PersonaId removee_ids = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 100
+    }];
+}
+
+message RemoveFromGroupResponse {
+    Result result = 1;
+    enum Result {
+        // The request was successfully processed. Note that this does not mean all removee ids
+        // specified in the request were sucessfully removed to the group. See failure_details for any failures.
+        OK = 0;
+
+        // Remover was not permitted to remove other personas from this group chat.
+        NOT_PERMITTED = 1;
+    }
+
+    // Personas that failed to be removed from the group.
+    repeated FailureDetails failure_details = 2;
+    message FailureDetails {
+        common.v2.PersonaId persona_id = 1;
+
+        Reason reason = 2;
+        enum Reason {
+            // An unknown/transient failure occurred while removing this persona. Caller should retry.
+            UNKNOWN = 0;
+
+            // The remover was not permitted to remove this persona from the group chat.
+            NOT_PERMITTED = 1;
+        }
+    }
+}

@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package mobile.iam.v2;
+
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/iam/v2;iam";
+option java_package = "com.kik.gen.iam.v2";
+option objc_class_prefix = "KPBMobileIAMV2";
+
+import "protobuf_validation.proto";
+import "client/v2/client_meta.proto";
+import "common/v2/model.proto";
+import "google/protobuf/timestamp.proto";
+import "session/v2/model.proto";
+import "common_model.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+
+// Service for handling methods called when attempting to register (i.e. create an account)
+//
+// NOTE: All methods are rate limited
+// NOTE: Providing an Authentication token with any method in this service will be considered an error.
+service Registration {
+    // Validates that the provided username and/or email address can be used for Registration
+    rpc ValidateForRegister(ValidateForRegisterRequest) returns (ValidateForRegisterResponse) {}
+
+    // Register a new account.
+    //
+    // Response may indicate that a verification procedure must be done.  If this is the case, some other system
+    // must be engaged with values/tokens provided in the RegisterResponse.  Once a verification token is
+    // acquired from these other systems, the Register request must be re-issued with those verification tokens.
+    // TODO: Definition of verification procedures are still outsdanding
+    rpc Register(RegisterRequest) returns (RegisterResponse) {}
+}
+
+//----------------------------------------------------------------------------
+// Message Definitions
+//----------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------
+// ValidateForRegister
+
+message ValidateForRegisterRequest {
+    // email to check uniqueness of.
+    // Note: email technically may not be larger than 254 unicode chars for legacy pairity
+    common.v2.Email email = 1 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+
+    // username to check uniqueness of.
+    common.v2.Username username = 2 [(kik.validation.field_validation) = {
+        mandatory: false
+    }];
+}
+
+message ValidateForRegisterResponse {
+    // Indicates success or failure of the request overall.
+    // NOTE: Other members of this response are valid iff Result == OK
+    Result result = 1;
+    enum Result {
+        // All provided request elements have been verified as unique
+        OK = 0;
+        // One or more provided request elements have been determined to be NOT acceptable for registration.
+        // Problematic request elements are indicated in invalid_elements response field.
+        FAILED = 1;
+        // No input values were provided.
+        MISSING_INPUT = 2;
+    }
+
+    // Indicate which elements of the associated request are NOT valid for use in registration.
+    repeated InvalidElement invalid_elements = 2;
+    enum InvalidElement {
+        EMAIL = 0;
+        USERNAME = 1;
+    }
+}
+
+//----------------------------------------------------------------------------
+// Register
+
+message RegisterRequest {
+
+    string first_name = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_codepoints: 255
+    }];
+
+    string last_name = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_codepoints: 255
+    }];
+
+    common.v2.Username username = 3 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.v2.Email email = 4 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.client.v2.DeviceDetails device_details = 5 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.client.v2.ClientLocale locale = 6 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    common.client.v2.ClientVersion version = 7 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // Declared birthday of user performing the account registration.
+    // After translating to a gregorian date, the value of any fields other than Year/Month/Day are ignored.
+    google.protobuf.Timestamp birthday = 8 [(kik.validation.field_validation) = {
+        mandatory: true
+    }];
+
+    // The username-derived passkey as described in https://github.com/kikinteractive/kik-product/wiki/Passkeys
+    bytes username_passkey = 9 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 1024
+    }];
+
+    // The email-derived passkey as described in https://github.com/kikinteractive/kik-product/wiki/Passkeys
+    bytes email_passkey = 10 [(kik.validation.field_validation) = {
+        mandatory: true
+        max_byte_length: 1024
+    }];
+
+    // TODO: further fields regarding Captcha, Phone, or other forms of Verification (?)
+}
+
+message RegisterResponse {
+    Result result = 1;
+    enum Result {
+        // Success - account has been created with provided details.
+        OK = 0;
+
+        // Some form of additional verification has been requested. (such as a captcha challenge)
+        // Details of the verification (will be) available in this response, and the request is expected to be
+        // re-submitted with challenge response, or whatever details are needed for the verification flow.
+        // TODO: Verification request details are to be included in this response.
+        VERIFICATION_REQUIRED = 1;
+
+        // Verification details in request were not acceptable.
+        // This indicates that the verification challenge response was invalid or not accepted.
+        // New verification details (will be) available in this response so that the user may answer the verification challenge
+        // and re-submit the request with new answers to the new verification details.
+        ERROR_VERIFICATION_FAILED = 2;
+
+        // General failure code; intentionally no explanatory details provided.
+        // eg: Rate limit applied to requesting IP
+        // eg: Attempted to register QA or system-test user pattern, but not authorized to do so.
+        // eg: Birthday field indicates user has not met age requirements.
+        ERROR_NOT_ACCEPTABLE = 3;
+
+        // Validation of provided details has failed, and/or policy checking indicates a violation.
+        // - see 'invalid_elements' in this response for which request fields had validation problems.
+        // - see 'policy_violation_elements' in this response for which request fields had policy violations.
+        ERROR_VALIDATION_FAILED = 4;
+
+        // Username or email address already has an associated account.  see invalid_elements for which field(s) (email/username)
+        // are already in use.
+        ERROR_ALREADY_REGISTERED = 5;
+    }
+
+    // Indication of which elements of the request which have failed server validations.
+    repeated RequestElement invalid_elements = 2;
+
+    // Indication of which elements of the request have violated server policies (eg: potentially have bad language, etc)
+    repeated RequestElement policy_violation_elements = 3;
+
+    enum RequestElement {
+        OTHER = 0;
+        FIRST_NAME = 1;
+        LAST_NAME = 2;
+        // Note: FULL_NAME indicates the violation was found when checking both names together sparated by a single space.
+        FULL_NAME = 3;
+        USERNAME = 4;
+        EMAIL = 5;
+        DEVICE_ID = 6;
+        LOCALE = 7;
+        VERSION = 8;
+        // Note: BIRTHDAY should only be considered a validation issue if it is somehow *missing*.
+        //       *DO NOT* use this to indicate that the user submission is UNDERAGE. In such cases
+        //       we instead return an ERROR_NOT_ACCEPTABLE Result code.
+        BIRTHDAY = 9;
+        USERNAME_PASSKEY = 10;
+        EMAIL_PASSKEY = 11;
+    }
+
+    // TOOD: further fields regarding Captcha, Phone, or other forms of Verification
+}
+
+//----------------------------------------------------------------------------

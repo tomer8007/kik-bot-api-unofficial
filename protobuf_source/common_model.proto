@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package common;
+option java_package = "com.kik.ximodel";
+option java_outer_classname = "CommonModelProto";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go;common";
+
+// Being exempted from checkstyle versioning rule
+//  due to _exceedingly_ common and pervasive nature of defined datatypes
+option (kik.checkstyle).ignore_version = true;
+
+import "protobuf_validation.proto";
+import "kik_options.proto";
+
+//*************************************************************************************************
+// General data structures
+//*************************************************************************************************
+
+message XiUuid {
+    sfixed64 msb = 1;
+    sfixed64 lsb = 2;
+}
+
+//*************************************************************************************************
+// User identifiers
+//*************************************************************************************************
+
+// A bare JID for a kik user.
+// Domain component is omited and assumed to be talk.kik.com
+message XiBareUserJid {
+    string local_part = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        // Note that this is slightly more strict (and more correct) than the regex used in the server
+        // https://github.com/kikinteractive/kik-server/blob/master/server/src/main/java/com/kik/utils/AccountUtils.java#L431
+        regex: "^[a-z_0-9\\.]{2,30}(_[a-z0-9]{3})?$"}];
+}
+
+//*************************************************************************************************
+// User identifiers
+//*************************************************************************************************
+message XiUsername {
+    string username = 1;
+}
+
+message XiUid {
+    uint64 uid = 1 [(kik.validation.field_validation) = {
+        min_val: 1
+        // 2^40 - 1
+        max_val: 1099511627775 }];
+}
+
+// A Kik device ID. Device IDs should be generated on install and persist across the user resetting their account.
+message XiDeviceId {
+    // Should NOT be NONE
+    DevicePrefix prefix = 1;
+    // Note: Except for 0, numbering should be kept consistent with
+    // https://github.com/kikinteractive/kik-server/blob/master/common/src/main/java/com/kik/utils/KikDevice.java
+    enum DevicePrefix {
+        NONE = 0;
+        // iPhone
+        CIP = 1;
+        // Android
+        CAN = 2;
+        // Server teams test client
+        CTS = 17;
+        // Bot
+        CBT = 18;
+        UNRECOGNIZED_DEVICE = 10;
+
+        //-----------------------------------------
+        // Legacy (but still maybe kicking around)
+        //-----------------------------------------
+
+        // Winphone
+        CWP = 11;
+        // Symbian
+        CSY = 13;
+        // J2ME
+        CME = 15;
+    }
+
+    // The UNPREFIXED device id.
+    string id = 2 [(kik.validation.field_validation) = {
+        mandatory: true
+        // Regex MAY be subject to change. Specifically, moving to base64 URL safe encoding instead
+        // of base16 encoding.
+        //
+        // NOTE: As of August 2016 there are a bunch of entries in the device db that DO NOT match
+        // this regex, but all of which are historic spammers version 6.7.0.59 or lower. We MAY need
+        // to relax this regex in the future if we have to deal with these entries. No well behaving
+        // client should violate the restrictions defined here.
+        regex: "^[a-f0-9]+$"
+        min_byte_length: 8
+        // MAY be subject to increase although this is the maximum value used to date (August 2016)
+        max_byte_length: 64 }];
+}
+
+//*************************************************************************************************
+// Group identifiers
+//*************************************************************************************************
+
+message XiGid {
+    uint64 gid = 1 [(kik.validation.field_validation) = {
+        // 2^40
+        min_val: 1099511627776
+        // 2^41 - 1
+        max_val: 2199023255551 }];
+}
+
+// Domain component is omitted and assumed to be groups.kik.com
+message XiGroupJid {
+    string local_part = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        regex: "^\\d{13}_g$" }];
+}
+
+//*************************************************************************************************
+// Mixed identifiers
+//*************************************************************************************************
+
+message XiUidOrGid {
+    oneof uid_or_gid {
+        XiUid uid = 1;
+        XiGid gid = 2;
+    }
+}
+
+message XiBareUserOrGroupJid {
+    oneof user_or_group_jid {
+        XiBareUserJid user_jid = 1;
+        XiGroupJid group_jid = 2;
+    }
+}
+
+//*************************************************************************************************
+// User client metadata
+//*************************************************************************************************
+
+// The kik client version composed of major, minor, bugfix, build, and/or dev_build version numbers.
+// The string representation of release builds is {major}.{minor}.{bugfix}.{build}
+// The string representation of internal (dev) builds is {major}.{minor}.{bugfix}-{dev_build}
+// In rare cases, we can see an internal build with the format {major}.{minor}.{bugfix}.{build}-{dev_build}
+// It is expected that  major and minor versions will be double digit.
+message XiClientVersion {
+    uint32 major = 1 [(kik.validation.field_validation) = { min_val: 1 }];
+    uint32 minor = 2;
+    uint32 bugfix = 3;
+
+    // The maximum of 10 comes from the current limitation in the device database where
+    // the full string representation of the clients version must be less than 16 characters.
+    // and the shortest major.minor.bugfix. string is 6.  (16 - 6 = 10)
+    // This is optional
+    string build = 4 [(kik.validation.field_validation) = { max_byte_length: 10 }];
+
+    // The dev build occurs after the first optional dash ("-") character, and is represented as
+    // everything after, including any subsequent dashes.  
+    // The maximum of 10 comes from the current limitation in the device database where
+    // the full string representation of the clients version must be less than 16 characters.
+    // and the shortest major.minor.bugfix- string is 6.  (16 - 6 = 10)
+    // This is optional
+    string dev_build = 5 [(kik.validation.field_validation) = { max_byte_length: 10 }];
+}
+
+//*************************************************************************************************
+// Locale
+//*************************************************************************************************
+
+message XiLocale {
+    string locale = 1 [(kik.validation.field_validation) = {
+        // Follows toString() of java.util.Locale with only language and region set
+        // Can be parsed using com.kik.i18n.LangUtils.parseLocale
+        // Example patterns: en, en_CA, en_029
+        // This has been relaxed to allow es_41, which is being sent by some versions of 
+        // android
+        regex: "^(?i)[a-z]{2,8}(?:_([a-z]{2}|[0-9]{2,3}))?$" }];
+}

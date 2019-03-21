@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package common.push.v2;
+
+option java_package = "com.kik.gen.push.v2";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/push/v2;push";
+option objc_class_prefix = "KPBCommonPushV2";
+
+import "protobuf_validation.proto";
+
+message PushToken {
+    oneof kind {
+        AndroidPushToken android_push_token = 1;
+        IosPushToken ios_push_token = 2;
+    }
+
+    message AndroidPushToken {
+        string token = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 1024
+        }];
+    }
+
+    message IosPushToken {
+
+        // iOS systems returns this token to us in bytes, so we'll encode it in a URL-safe base64 string. 
+        string token = 1 [(kik.validation.field_validation) = {
+            mandatory: true
+            max_byte_length: 1024
+        }];
+
+        Type type = 2;
+        enum Type {
+            APPSTORE_PRODUCTION = 0;
+            APPSTORE_SANDBOX = 1;
+            ENTERPRISE_PRODUCTION = 2;
+            ENTERPRISE_SANDBOX = 3;
+        }
+    }
+}

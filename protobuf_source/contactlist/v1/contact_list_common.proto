@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package common.contactlist.v1;
+option java_package = "com.kik.contactlist.v1.model";
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "CNL";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/contactlist/v1;contactlist";
+
+import "common_model.proto";
+import "protobuf_validation.proto";
+
+//============================================================================
+// Common messages for Contact-related services
+//============================================================================
+
+// A Key, defining a user/entity pair which have some form of relationship.
+message UserRelationKey {
+    // Relationship Owner - i.e. the user which is maintiaining the relationship
+    common.XiBareUserJid relation_owner = 1 [(kik.validation.field_validation) = { mandatory: true }];
+
+    // Related Entity - the entity for which the relation_owner is related somehow
+    UserRelationMemberKey relation_member = 2;
+}
+
+// A User Relation Member - contains the details about the thing a user is/can be related to
+message UserRelationMemberKey {
+    oneof member_kind {
+        common.XiBareUserJid user_jid = 1;
+        common.XiGroupJid group_jid = 2;
+    }
+}
+
+// Context Details for a user's friendship with another entity (eg: other user/group)
+message UserFriendContext {
+    // The context of the relationship - i.e. how the user found the other / how the user was found
+    // This value must be one of the values from com.kik.plugin.FriendContextType in kik-server.
+    // NOTE: NOT modeling this as an enum due to the difficulty involved in adding new types to the list.
+    string context_type_str = 5 [(kik.validation.field_validation) = { max_byte_length: 200 }];
+
+    // DEPRECATED. context type - migrating to string context_type_str
+    ContextType context_type = 1;
+
+    enum ContextType {
+        DEFAULT                   =  0;
+        EXPLICIT_USERNAME_SEARCH  =  1;
+        INLINE_USERNAME_SEARCH    =  2;
+        INLINE_PROMOTED           =  3;
+        FUZZY_MATCHING            =  4;
+        ADDRESS_BOOK_MATCHING     =  5;
+        PROMOTED_CHATS_LIST       =  6;
+        TALK_TO_AD                =  7;
+        FIND_PEOPLE_AD            =  8;
+        GROUP_ADD_ALL             =  9;
+        GROUP_INFO_ADD            = 10;
+        WEB_KIK_ME                = 11;
+        WEB_PROFILE_KIK_ME        = 12;
+        CARD_PROFILE_KIK_PROTOCOL = 13;
+        CARD_SEND_KIK_TO_USER     = 14;
+        CARD_OPEN_CONVERSATION    = 15;
+        CARD_OPEN_PROFILE         = 16;
+        FRIEND_PICKER             = 17;
+        USERNAME_MENTION          = 18;
+        BOT_MENTION               = 19;
+        BOT_MENTION_REPLY         = 20;
+        BOT_SHOP                  = 21;
+        GROUP_MEMBER_ADD          = 22;
+        GROUP_INFO_MENU_ADD       = 23;
+        GROUP_MENU_ADD            = 24;
+        PULL_USERNAME_SEARCH      = 25;
+        SEND_TO_USERNAME_SEARCH   = 26;
+        LINK_ATTRIBUTION          = 27;
+        SUGGEST_FRIEND            = 28;
+    }
+
+    // Optional card name when the context type refers to a card case
+    string related_card_name = 2 [(kik.validation.field_validation) = {
+        max_byte_length: 5120 // arbitrary, but matches cerulean ingestion
+    }];
+
+    // Optional URL when the context type refers to web/card cases
+    string related_url = 3 [(kik.validation.field_validation) = { max_byte_length: 5000 }];
+
+    // Optional Group ID when the context type refers to a group case
+    XiGroupJid related_group = 4;
+}

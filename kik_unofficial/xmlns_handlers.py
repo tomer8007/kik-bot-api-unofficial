@@ -1,15 +1,17 @@
 import logging
+
 from bs4 import BeautifulSoup
 
 from kik_unofficial.callbacks import KikClientCallback
-from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent, IncomingGifMessage, \
     IncomingVideoMessage
+from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
+from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
-from kik_unofficial.datatypes.xmpp.login import LoginResponse
+from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 
 log = logging.getLogger('kik_unofficial')
 
@@ -83,7 +85,7 @@ class MessageHandler(XmlnsHandler):
                 # usually SafetyNet-related (?)
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
                 log.warning("[!] Received mobile-remote-call with method '{}' of service '{}'".format(
-                                mobile_remote_call['method'], mobile_remote_call['service']))
+                    mobile_remote_call['method'], mobile_remote_call['service']))
             elif data.find('images'):
                 # images
                 self.callback.on_image_received(IncomingImageMessage(data))
@@ -142,6 +144,12 @@ class FriendMessageHandler(XmlnsHandler):
         self.callback.on_peer_info_received(PeerInfoResponse(data))
 
 
-class GroupSearchHandler(XmlnsHandler):
+class XiphiasHandler(XmlnsHandler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_group_search_response(GroupSearchResponse(data))
+        method = data.query['method']
+        if method == 'GetUsers':
+            self.callback.on_xiphias_get_users_response(UsersResponse(data))
+        elif method == 'GetUsersByAlias':
+            self.callback.on_xiphias_get_users_response(UsersByAliasResponse(data))
+        else:  # TODO
+            self.callback.on_group_search_response(GroupSearchResponse(data))

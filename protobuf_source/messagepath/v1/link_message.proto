@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package common.messagepath.v1;
+
+option java_package = "com.kik.messagepath.model";
+option objc_class_prefix = "MPTH";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/messagepath/v1;messagepath";
+
+import "protobuf_validation.proto";
+import "messagepath/v1/core_message_common.proto";
+
+// LinkMessageAttachment defines the information required to render a link message sent by a bot.
+message LinkMessageAttachment {
+    // Clients handle up to 10 URIs in a message. The URI of lowest priority is typically set as a
+    // fallback page for old versions of iOS and Android that do not support the Kik browser.
+    repeated UriElement uris = 1 [(kik.validation.field_validation) = {
+        mandatory: true
+        min_repetitions: 1
+        max_repetitions: 10
+    }];
+
+    // The title of the link message.
+    string title = 50 [(kik.validation.field_validation) = { max_byte_length: 1000 }];
+
+    // The text of the link message.
+    string text = 51 [(kik.validation.field_validation) = { max_byte_length: 2000 }];
+
+    // The picture to display in the link message.
+    PictureElement picture = 52;
+
+    // Describes the entity the link should be attributed to.
+    AttributionAttachment attribution = 53;
+
+    // Dictates which content layout should be used for this message.
+    ContentLayoutElement content_layout = 54;
+
+    // Dictates if the link message can be forwarded to another conversation or not.
+    bool allow_forward = 55;
+}

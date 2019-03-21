@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package common.persona.v2;
+
+option java_package = "com.kik.gen.persona.v2";
+option go_package = "github.com/kikinteractive/xiphias-model-common/generated/go/persona/v2;persona";
+option objc_class_prefix = "KPBCommonPersonaV2";
+
+import "google/protobuf/timestamp.proto";
+
+import "protobuf_validation.proto";
+import "asset/v1/asset_common.proto";
+import "common/v2/model.proto";
+
+// PersonaShort wraps a subset of the Persona fields. Depending on the context under which the
+// client is displaying Persona info, only this smaller subset of the Persona fields may be
+// required.
+// All of these fields except username will be specific to a given Persona instance, that is they
+// exist apart from the Persona's owner's account info and each Persona can have different values
+// for these fields even when those Personas are owned by the same user.
+// Username will only be returned in cases where the caller is allowed to know the username.
+// The rules governing when username will be returned are not yet determined.
+message PersonaShort {
+    common.v2.PersonaId persona_id = 1;
+
+    // If signalling_disabled is set to true; then signals _may_ not be sent for this persona.
+    // Clients should periodically refresh their local stores for this persona, until signalling has
+    // been enabled.
+    bool signalling_disabled = 2;
+
+    // An optional field whose full use is still up in the air.
+    // If provided, this username string can be used to retrieve this Persona.
+    // For Genesis Personas, the user's account/login Username can be used to retrieve that Persona.
+    // Going forward, other Personas may have Usernames associated with them, however those
+    // Usernames will be unrelated to the account Username and will not be used for
+    // authentication/logging in.
+    Username username = 3;
+
+    // The name displayed for this Persona when viewed by other users. It can be actively changed,
+    // i.e. users can change it easily and frequently, and we aim to propagate those changes to
+    // other clients promptly.
+    // When set DisplayName consists of a required first name and an optional last name, but when
+    // returned to the client the first name and last name are appended, and in fact the client
+    // treats the first space in this combined display name as the break between the first and last
+    // name, regardless of whether that matches the first and last name as stored on the server.
+    DisplayName display_name = 4;
+
+    // In classic-Kik this is the ProfilePic. It can be actively changed. It's the image displayed
+    // to other users when they see this Persona in a chat list, or a chat with them, or viewing
+    // their Persona (i.e. viewing their Profile in classic-Kik).
+    DisplayImage display_image = 5;
+
+    // EmojiStatus is an optional icon that appears with a Persona's DisplayImage. It does actively
+    // change.
+    EmojiStatus emoji_status = 6;
+
+    // Indicates that this Persona is for a bot. BotExtension also contains bot-specific information
+    // (see below). It does not actively change.
+    BotExtension bot_extension = 7;
+}
+
+// PersonaFull contains all the fields in PersonaShort plus some other fields. All of the fields
+// common to PersonaShort will have the same value for the same PersonaId; e.g. the PersonaShort and
+// PersonaFull for the same PersonaId will never have different DisplayNames, EmojiStatuses, etc.
+// Like the PersonaShort fields, the additional PersonaFull fields are specific to this Persona,
+// apart from Registration. The Registration field always shows when the owner of the Persona
+// registered their account, rather than when that specific Persona was created.
+// While the user/client can change the PersonaFull fields on demand (apart from Registration),
+// generally they're not expected to change as often as the "actively changed" PersonaShort fields,
+// and the server may not propagate those changes to clients as promptly as it does the
+// actively-changed PersonaShort fields.
+message PersonaFull {
+	// A PersonaFull extends/includes a PersonaShort. this.short.PersonaId is the PersonaId for this
+	// Persona.
+    PersonaShort short = 1;
+    
+    // A text-only blurb written by the user, intended for them to describe themselves
+    Bio bio = 2;
+
+    // original_display_pic is not the "standard"/"classic" display picture that everyone sees;
+    // instead it's the original display image the user took without any cropping/badges/etc.
+    // applied. The client can use the original_display_pic to reconstruct the display image if any
+    // of the parts of the composed image change.
+    DisplayImage original_display_pic = 3;
+
+    // A picture to appear behind the display image
+    DisplayImage background_display_pic = 4;
+
+    // Contains the date when the owner of this Persona created their Kik account
+    Registration registration = 5;
+
+    // A list of activities/topics/etc. that the user has selected from a larger list created by
+    // Kik.
+    // Interests are currently set and stored in ProfileService.
+    // See https://kikinteractive.atlassian.net/wiki/spaces/OW/pages/58720407/User+Interests and
+    // https://github.com/kikinteractive/xiphias-service-feature-config/blob/970dc4932506c6a176b5ad07df553988d596bbc7/feature-config-service/src/main/java/com/kik/featureconfig/rpc/impl/FeatureConfigServiceImpl.java#L153
+    // for more details.
+    Interests interests = 6;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//  Persona fields
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message Username {
+    string username = 1 [(kik.validation.field_validation) = { max_byte_length: 1024 }];
+}
+
+message DisplayName {
+    string display_name = 1 [(kik.validation.field_validation) = { max_byte_length: 1024 }];
+}
+
+// Contains the details of any image that is accessible by URL
+message DisplayImage {
+    // Image URLs.
+    // image will contain the url of the full-sized image file and image_preview will contain the
+    // url of the thumbnail-sized image file.
+    asset.v1.MediaContent image = 1;
+    asset.v1.MediaContent image_preview = 2;
+
+    google.protobuf.Timestamp last_updated_timestamp = 3;
+}
+
+// BotExtension is present if and only if this Persona is for a bot.
+// Further bot-specific fields may be added in the future.
+message BotExtension {
+    // is_kin_verified indicates if this bot is verified/trusted/allowed to use Kin.
+    // Some important notes on the naming of these bot-related fields:
+    // Previously there has been some unfortunate use of very similar names for bot-related fields.
+    // In the legacy roster code, "verified" refers to a user being a bot, and is completely
+    // unrelated to Kin. That legacy use of "verified" is equivalent to "bot_extension" being
+    // present in a Persona.
+    // In AccountExtraInfoService and EntityService, "IsTrusted" is used to denote bots that are
+    // verified/trusted/allowed to use Kin, and is equivalent to "is_kin_verified" here.
+    bool is_kin_verified = 1;
+}
+
+// Contains an kik asset id. A Kik Asset is something that is premade by Kik and provided to users
+// A kik_asset_id might be something like SMILEY_FACE or FLAG_CANADA
+message EmojiStatus {
+    // The id of a Kik Asset
+    string kik_asset_id = 1 [(kik.validation.field_validation) = { max_byte_length: 500 }];
+}
+
+message Bio {
+    // a biography or short biographical profile of someone
+    string bio = 1 [(kik.validation.field_validation) = { max_byte_length: 5000 }];
+}
+
+message Registration {
+    // System time of when the user originally created their account
+    google.protobuf.Timestamp creation_date = 1;
+}
+
+message Interests {
+    repeated InterestItem interests = 1 [(kik.validation.field_validation) = { max_repetitions: 20 }];
+    message InterestItem {
+        // Key identifying the interest such that its name/description can be localized. The list of
+        // possible interests comes from the server via FeatureConfigService.
+        // For details see
+        // https://github.com/kikinteractive/xiphias-service-feature-config/blob/970dc4932506c6a176b5ad07df553988d596bbc7/feature-config-service/src/main/java/com/kik/featureconfig/rpc/impl/FeatureConfigServiceImpl.java#L153
+        string id = 1 [(kik.validation.field_validation) = { max_byte_length: 5000 }];
+
+        // The localized (if possible) name to display for this Interest
+        string localized_verbiage = 2 [(kik.validation.field_validation) = { max_byte_length: 5000 }];
+    }
+}

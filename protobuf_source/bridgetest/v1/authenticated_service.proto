@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package mobile.bridgetest.v1;
+option java_package = "com.kik.bridgetest";
+option go_package = "github.com/kikinteractive/xiphias-api-mobile/generated/go/bridgetest/v1;bridgetest";
+
+import "common_rpc.proto";
+import "bridgetest/v1/bridgetest_common.proto";
+
+//----------------------------------------------------------------------------
+// Service Interfaces
+//----------------------------------------------------------------------------
+
+// A service that expects requestors to be authenticated
+service Authenticated {
+    // Send a message; the same message is sent back
+    rpc Echo(common.bridgetest.v1.EchoRequest) returns (common.bridgetest.v1.EchoResponse);
+
+    // Wait a specified amount of time (ms) before responding
+    rpc Workout(common.bridgetest.v1.WorkoutRequest) returns (common.VoidResponse);
+
+    // Throws an exception
+    rpc Exception(common.VoidRequest) returns (common.VoidResponse);
+
+    // Validates bridge headers
+    rpc ValidateHeaders(common.bridgetest.v1.ValidateHeadersRequest) returns (common.bridgetest.v1.ValidateHeadersResponse);
+}

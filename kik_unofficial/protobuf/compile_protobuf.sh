@@ -1,3 +1,8 @@
+: '
+This bash script is used to compile all of the .proto files of kik into python (using `protoc`), as you can see in the protobuf/ directory.
+It also fixes python package names to generate correct directory structure for this project.
+'
+
 #!/bin/bash
 set -e
 files=$(find protobuf_source -name '*.proto')

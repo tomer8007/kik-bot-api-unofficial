@@ -11,8 +11,8 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoRe
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
-username = 'your_kik_username'
-password = 'your_kik_password'
+username = 'shlomo991'
+password = '123456'
 
 
 def main():

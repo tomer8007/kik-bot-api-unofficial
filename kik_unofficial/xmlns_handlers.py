@@ -134,6 +134,8 @@ class GroupMessageHandler(XmlnsHandler):
                 self.callback.on_gif_received(IncomingGifMessage(data))
             elif app_id == 'com.kik.ext.video-camera':
                 self.callback.on_video_received(IncomingVideoMessage(data))
+            elif app_id == 'com.kik.ext.video-gallery':
+                self.callback.on_video_received(IncomingVideoMessage(data))
 
         else:
             log.debug("[-] Received unknown group message. contents: {}".format(str(data)))

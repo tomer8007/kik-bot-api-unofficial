@@ -344,7 +344,7 @@ class IncomingVideoMessage(XMPPResponse):
         self.requets_read_receipt = data.request['r'] == 'true'
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
-        self.duration_milliseconds = data.find('duration').text
+        self.duration_milliseconds = data.find('duration').text if data.find('duration') else None
         self.file_size = data.find('file-size').text
         self.from_jid = data['from']
         self.to_jid = data['to']

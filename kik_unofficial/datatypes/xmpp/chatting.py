@@ -344,8 +344,26 @@ class IncomingVideoMessage(XMPPResponse):
         self.requets_read_receipt = data.request['r'] == 'true'
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
-        self.duration_milliseconds = data.find('duration').text
+        self.duration_milliseconds = data.find('duration').text if data.find('duration') else None
         self.file_size = data.find('file-size').text
         self.from_jid = data['from']
         self.to_jid = data['to']
         self.group_jid = data.g['jid']
+
+
+class IncomingCardMessage(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.request_delivered_receipt = data.request['d'] == 'true'
+        self.request_read_receipt = data.request['r'] == 'true'
+        self.from_jid = data['from']
+        self.to_jid = data['to']
+        self.group_jid = data.g['jid']
+        self.app_name = data.find('app-name').text if data.find('app-name') else None
+        self.card_icon = data.find('card-icon').text if data.find('card-icon') else None
+        self.layout = data.find('layout').text if data.find('layout') else None
+        self.title = data.find('title').text if data.find('title') else None
+        self.text = data.find('text').text if data.find('text') else None
+        self.allow_forward = data.find('allow-forward').text if data.find('allow-forward') else None
+        self.icon = data.find('icon').text if data.find('icon') else None
+        self.uri = data.find('uri').text if data.find('uri') else None

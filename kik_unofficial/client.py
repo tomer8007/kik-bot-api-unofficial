@@ -57,7 +57,11 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
-        self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            self.loop = asyncio.get_event_loop()
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()

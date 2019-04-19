@@ -2,10 +2,9 @@ import asyncio
 import logging
 import sys
 import time
-from asyncio import Transport, Protocol
 from threading import Thread
 from typing import Union, List, Tuple
-
+from asyncio import Transport, Protocol
 from bs4 import BeautifulSoup
 
 import kik_unofficial.callbacks as callbacks
@@ -145,7 +144,9 @@ class KikClient:
         log.info("[+] Requesting roster (list of chat partners)...")
         return self._send_xmpp_element(roster.FetchRosterRequest())
 
-    # --- common messaging operations ---
+    # -------------------------------
+    # Common Messaging Operations
+    # -------------------------------
 
     def send_chat_message(self, peer_jid: str, message: str, bot_mention_jid=None):
         """

@@ -287,7 +287,7 @@ class IncomingImageMessage(XMPPResponse):
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingGroupSticker(XMPPResponse):

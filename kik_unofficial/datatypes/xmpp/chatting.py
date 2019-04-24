@@ -283,11 +283,11 @@ class IncomingImageMessage(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request['d'] == 'true'
         self.requets_read_receipt = data.request['r'] == 'true'
-        self.image_url = data.find('file-url').get_text()
+        self.image_url = data.find('file-url').get_text() if data.find('file-url') else None
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g else None
 
 
 class IncomingGroupSticker(XMPPResponse):

@@ -2,6 +2,7 @@ import base64
 
 from bs4 import BeautifulSoup
 
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 from kik_unofficial.datatypes.exceptions import KikApiException
 from kik_unofficial.protobuf.entity.v1.entity_common_pb2 import EntityUser
 
@@ -31,7 +32,8 @@ class User(Peer):
             self._parse_entity(xml_data.entity.text)
 
     def _parse_entity(self, entity):
-        decoded_entity = base64.urlsafe_b64decode(entity)
+        decoded_entity = base64.urlsafe_b64decode(f"{entity}{'='*(4 - (len(entity) % 4))}")
+        decoded_entity = ParsingUtilities.decode_base64(entity)
         user = EntityUser()
         user.ParseFromString(decoded_entity)
         if user.registration_element:

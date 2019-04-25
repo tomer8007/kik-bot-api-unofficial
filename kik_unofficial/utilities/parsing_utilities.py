@@ -22,6 +22,10 @@ class ParsingUtilities:
         return base64.decodebytes(data)
 
     @staticmethod
+    def base64_string_padding(data):
+        return f"{data}{'=' * (4-(len(data)) % 4)}"
+
+    @staticmethod
     def byte_to_signed_int(byte):
         if byte > 127:
             return (256 - byte) * (-1)

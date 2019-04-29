@@ -22,7 +22,7 @@ class ParsingUtilities:
         return base64.decodebytes(data)
 
     @staticmethod
-    def base64_string_padding(data):
+    def fix_base64_padding(data):
         return f"{data}{'=' * (4-(len(data)) % 4)}"
 
     @staticmethod

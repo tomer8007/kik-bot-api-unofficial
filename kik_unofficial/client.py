@@ -56,7 +56,8 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()

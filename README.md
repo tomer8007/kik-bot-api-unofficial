@@ -5,7 +5,7 @@ It basically lets you do the same things as the offical Kik app by pretending to
 
 This is the new branch of this project and is recommended.
 ## Installation and dependencies ##
-First, make sure you are using **Python 3.6**, not python 2.7. Second, just install it directly from GitHub:
+First, make sure you are using **Python 3.6+**, not python 2.7. Second, just install it directly from GitHub:
 ```
 git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
 pip3 install ./kik-bot-api-unofficial

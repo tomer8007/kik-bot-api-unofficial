@@ -59,6 +59,13 @@ class KikClientCallback:
     def on_login_ended(self, response: LoginResponse):
         pass
 
+    def on_disconnected(self):
+        """
+        Called when the connection is closed the loop has ended.
+        :return:
+        """
+        pass
+
     def on_message_delivered(self, response: IncomingMessageDeliveredEvent):
         pass
 

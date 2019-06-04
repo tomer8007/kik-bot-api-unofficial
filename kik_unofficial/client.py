@@ -563,6 +563,7 @@ class KikClient:
         log.debug("[!] Running main loop")
         self.loop.run_forever()
         log.debug("[!] Main loop ended.")
+        self.callback.on_disconnected()
 
     def _set_up_logging(self, log_level):
         log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')

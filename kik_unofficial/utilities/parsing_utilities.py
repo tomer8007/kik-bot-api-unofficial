@@ -23,7 +23,7 @@ class ParsingUtilities:
 
     @staticmethod
     def fix_base64_padding(data):
-        return f"{data}{'=' * (4-(len(data)) % 4)}"
+        return data + '=' * (-len(data) % 4)
 
     @staticmethod
     def byte_to_signed_int(byte):

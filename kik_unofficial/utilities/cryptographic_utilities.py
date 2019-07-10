@@ -1,4 +1,5 @@
 import uuid
+import time
 import hashlib
 import binascii
 import pbkdf2
@@ -18,7 +19,7 @@ class CryptographicUtils:
 
     @staticmethod
     def make_kik_timestamp():
-        j = 1562768994
+        j = int(round(time.time()))
 
         i1 = (-16777216 & j) >> 24
         i2 = (16711680 & j) >> 16

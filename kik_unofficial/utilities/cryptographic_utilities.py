@@ -17,6 +17,25 @@ class CryptographicUtils:
         pass
 
     @staticmethod
+    def make_kik_timestamp():
+        j = 1562768994
+
+        i1 = (-16777216 & j) >> 24
+        i2 = (16711680 & j) >> 16
+        i3 = (65280 & j) >> 8
+    
+        j2 = (30 & i1) ^ i2 ^ i3
+        j3 = (224 & j) >> 5
+        j4 = -255 & j
+    
+        if j2 % 4 == 0:
+            j3 = j3 // 3 * 3
+        else:
+            j3 = j3 // 2 * 2
+        
+        return j4 | (j3 << 5) | j2
+
+    @staticmethod
     def key_from_password(username, password):
         # kik's secret algorithm for encrypting passwords
         # relevant source file: classes1\kik\android\chat\fragment\KikLoginFragmentAbstract.java

@@ -1,4 +1,5 @@
 import uuid
+import time
 import hashlib
 import binascii
 import pbkdf2
@@ -15,6 +16,25 @@ class CryptographicUtils:
     """
     def __init__(self):
         pass
+
+    @staticmethod
+    def make_kik_timestamp():
+        j = int(round(time.time()))
+
+        i1 = (-16777216 & j) >> 24
+        i2 = (16711680 & j) >> 16
+        i3 = (65280 & j) >> 8
+    
+        j2 = (30 & i1) ^ i2 ^ i3
+        j3 = (224 & j) >> 5
+        j4 = -255 & j
+    
+        if j2 % 4 == 0:
+            j3 = j3 // 3 * 3
+        else:
+            j3 = j3 // 2 * 2
+        
+        return j4 | (j3 << 5) | j2
 
     @staticmethod
     def key_from_password(username, password):

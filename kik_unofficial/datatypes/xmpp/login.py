@@ -81,7 +81,7 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
     def serialize(self):
         jid = self.node + "@talk.kik.com"
         jid_with_resource = jid + "/CAN" + (self.device_id_override if self.device_id_override else device_id)
-        timestamp = CryptographicUtils.make_kik_timestamp()
+        timestamp = str(CryptographicUtils.make_kik_timestamp())
         sid = CryptographicUtils.make_kik_uuid()
 
         # some super secret cryptographic stuff

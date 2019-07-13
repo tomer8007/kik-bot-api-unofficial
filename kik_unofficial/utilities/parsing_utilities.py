@@ -1,4 +1,7 @@
 import base64
+from PIL import Image
+import math
+import pathlib
 
 
 class ParsingUtilities:
@@ -20,6 +23,30 @@ class ParsingUtilities:
         if missing_padding != 0:
             data += b'=' * (4 - missing_padding)
         return base64.decodebytes(data)
+
+    @staticmethod
+    def encode_base64(file_location):
+        with open(file_location, "rb") as image_file:
+            data = base64.b64encode(image_file.read())
+            return data.decode()
+
+    @staticmethod
+    def parse_image(file_location):
+        '''
+        Converts images to .jpg and compresses/upscales them so that large image files can be sent after compression.
+        '''
+        file_name = pathlib.PurePath(file_location).name
+        img = Image.open(file_location)
+        image_out = file_name.split('.')[0] + "_send.jpg"
+        width, height = img.size
+        if len(img.split()) == 4:
+            r, g, b, a = img.split()
+            img = Image.merge("RGB", (r, g, b))
+        larger_dim = height if height > width else width
+        ratio = larger_dim/900
+        image = img.resize((math.ceil(width / ratio), math.ceil(height / ratio)))
+        image.save(image_out)
+        return image_out
 
     @staticmethod
     def fix_base64_padding(data):

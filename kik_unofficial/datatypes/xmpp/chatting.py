@@ -54,11 +54,11 @@ class OutgoingChatImage(XMPPElement):
     """
    Represents an outgoing image chat message to another kik entity (member or group)
    """
-    def __init__(self, peer_jid, file_location, is_group=False, forward):
+    def __init__(self, peer_jid, file_location, is_group=False, forward=True):
         super().__init__()
         self.peer_jid = peer_jid
         self.file_location = ParsingUtilities.parse_image(file_location)
-        self.allow_forward = True
+        self.allow_forward = forward
         self.file_size = os.path.getsize(file_location)
         self.base64 = ParsingUtilities.encode_base64(self.file_location)
         self.is_group = is_group
@@ -92,8 +92,8 @@ class OutgoingGroupChatImage(OutgoingChatImage):
     """
     Represents an outgoing text chat message to a group
     """
-    def __init__(self, group_jid, forward, file_location):
-        super().__init__(group_jid, file_location, is_group=True, forward)
+    def __init__(self, group_jid, file_location, forward):
+        super().__init__(group_jid, file_location, is_group=True, forward=forward)
 
 
 class IncomingChatMessage(XMPPResponse):

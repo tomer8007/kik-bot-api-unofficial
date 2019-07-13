@@ -3,7 +3,7 @@ Defines classes for dealing with generic chatting (text messaging, read receipts
 """
 
 import time
-
+import os
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
@@ -48,6 +48,52 @@ class OutgoingGroupChatMessage(OutgoingChatMessage):
     """
     def __init__(self, group_jid, body, bot_mention_jid):
         super().__init__(group_jid, body, is_group=True, bot_mention_jid=bot_mention_jid)
+
+
+class OutgoingChatImage(XMPPElement):
+    """
+   Represents an outgoing image chat message to another kik entity (member or group)
+   """
+    def __init__(self, peer_jid, file_location, is_group=False, forward):
+        super().__init__()
+        self.peer_jid = peer_jid
+        self.file_location = ParsingUtilities.parse_image(file_location)
+        self.allow_forward = True
+        self.file_size = os.path.getsize(file_location)
+        self.base64 = ParsingUtilities.encode_base64(self.file_location)
+        self.is_group = is_group
+
+    def serialize(self):
+        timestamp = str(int(round(time.time() * 1000)))
+        message_type = "chat" if not self.is_group else "groupchat"
+        data = ('<message to="{0}" id="{1}" cts="{2}" type="{3}">'
+                '<kik timestamp="{2}" qos="true" push="true" />'
+                '<request xmlns="kik:message:receipt" d="true" r="true" />'
+                '<content id="{4}" v="2" app-id="com.kik.ext.gallery">'
+                '<strings>'
+                '<app-name>Gallery</app-name>'
+                '<file-size>{5}</file-size>'
+                '<allow-forward>{6}</allow-forward>'
+                '<file-name>{4}.jpg</file-name>'
+                '</strings>'
+                '<images>'
+                '<preview>{7}</preview>'
+                '</images>'
+                '</content>'
+                '</message>'
+                ).format(self.peer_jid, self.message_id, timestamp, message_type, self.content_id, self.file_size,
+                         str(self.allow_forward).lower(), self.base64)
+
+        packets =  [data[s:s+16384].encode() for s in range(0,len(data), 16384)]
+        return list(packets)
+
+
+class OutgoingGroupChatImage(OutgoingChatImage):
+    """
+    Represents an outgoing text chat message to a group
+    """
+    def __init__(self, group_jid, forward, file_location):
+        super().__init__(group_jid, file_location, is_group=True, forward)
 
 
 class IncomingChatMessage(XMPPResponse):

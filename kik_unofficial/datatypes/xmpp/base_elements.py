@@ -6,6 +6,7 @@ from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 class XMPPElement:
     def __init__(self):
         self.message_id = CryptographicUtils.make_kik_uuid()
+        self.content_id = CryptographicUtils.make_kik_uuid() #Creating a seprate uuid for content as kik does the same.
 
     def serialize(self) -> bytes:
         raise NotImplementedError

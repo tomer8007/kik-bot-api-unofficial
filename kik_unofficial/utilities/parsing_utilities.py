@@ -25,9 +25,9 @@ class ParsingUtilities:
         return base64.decodebytes(data)
 
     @staticmethod
-    def encode_base64(file_location):
-        with open(file_location, "rb") as image_file:
-            data = base64.b64encode(image_file.read())
+    def read_file_as_base64(file_location):
+        with open(file_location, "rb") as file:
+            data = base64.b64encode(file.read())
             return data.decode()
 
     @staticmethod

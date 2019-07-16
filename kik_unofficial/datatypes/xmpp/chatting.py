@@ -60,7 +60,7 @@ class OutgoingChatImage(XMPPElement):
         self.file_location = ParsingUtilities.parse_image(file_location)
         self.allow_forward = forward
         self.file_size = os.path.getsize(file_location)
-        self.base64 = ParsingUtilities.encode_base64(self.file_location)
+        self.base64 = ParsingUtilities.read_file_as_base64(self.file_location)
         self.is_group = is_group
 
     def serialize(self):
@@ -90,7 +90,7 @@ class OutgoingChatImage(XMPPElement):
 
 class OutgoingGroupChatImage(OutgoingChatImage):
     """
-    Represents an outgoing text chat message to a group
+    Represents an outgoing image chat message to a group
     """
     def __init__(self, group_jid, file_location, forward):
         super().__init__(group_jid, file_location, is_group=True, forward=forward)

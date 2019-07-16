@@ -453,6 +453,11 @@ class KikClient:
     # -----------------
 
     def _send_xmpp_element(self, message: XMPPElement):
+        """
+        Serializes and sends the given XMPP element to kik servers
+        :param xmpp_element: The XMPP element to send
+        :return: The UUID of the element that was sent
+        """
         while not self.connected:
             log.debug("[!] Waiting for connection.")
             time.sleep(0.1)

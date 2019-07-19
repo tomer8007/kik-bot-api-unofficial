@@ -166,6 +166,20 @@ class KikClient:
             log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
             return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))
 
+    def send_chat_image(self, peer_jid: str, file, forward=True):
+        """
+        Sends an image chat message to another person or a group with the given JID/username.
+        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
+                         If you don't know the JID of someone, you can also specify a kik username here.
+        :param file: Path of the file to send.
+        """
+        if self.is_group_jid(peer_jid):
+            log.info("[+] Sending chat image to group '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingGroupChatImage(peer_jid, file, forward))
+        else:
+            log.info("[+] Sending chat image to user '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingChatImage(peer_jid, file, False, forward))
+
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
         Sends a read receipt for a previously sent message, to a specific user or group.
@@ -438,19 +452,24 @@ class KikClient:
     # Internal methods
     # -----------------
 
-    def _send_xmpp_element(self, xmpp_element: XMPPElement):
+    def _send_xmpp_element(self, message: XMPPElement):
         """
         Serializes and sends the given XMPP element to kik servers
-
         :param xmpp_element: The XMPP element to send
         :return: The UUID of the element that was sent
         """
         while not self.connected:
             log.debug("[!] Waiting for connection.")
             time.sleep(0.1)
-
-        self.loop.call_soon_threadsafe(self.connection.send_raw_data, (xmpp_element.serialize()))
-        return xmpp_element.message_id
+        if type(message.serialize()) is list:
+            log.debug("[!] Sending multi packet data.")
+            packets = message.serialize()
+            for p in packets:
+                self.loop.call_soon_threadsafe(self.connection.send_raw_data, p)
+            return message.message_id
+        else:
+            self.loop.call_soon_threadsafe(self.connection.send_raw_data, message.serialize())
+            return message.message_id
 
     def _on_new_data_received(self, data: bytes):
         """

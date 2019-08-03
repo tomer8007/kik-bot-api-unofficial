@@ -40,7 +40,7 @@ Currently Supported Operations:
 - Search for groups and join them [Experimental]
 - Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
-- Sending images
+- Send images
 
 Sending videos or recordings is not suported yet.
 

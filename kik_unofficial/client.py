@@ -525,7 +525,7 @@ class KikClient:
 
         :param iq_element: The iq XML element we just received from kik.
         """
-        self._handle_xmlns(iq_element.query['xmlns'], iq_element)
+        self._handle_xmlns(iq_element.query['xmlns:'], iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """

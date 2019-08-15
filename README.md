@@ -41,8 +41,9 @@ Currently Supported Operations:
 - Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
 - Send images
+- Send gifs (add tenor API key to datatypes/xmpp/chatting.py getGIFData() function)
 
-Sending videos or recordings is not suported yet.
+Sending videos or recordings is not supported yet.
 
 ## Troubleshooting
-If you are on Windows and you are unable to install the lxml pacakge, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).
+If you are on Windows and you are unable to install the lxml package, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).

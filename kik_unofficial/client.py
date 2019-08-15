@@ -604,6 +604,21 @@ class KikClient:
 
         logging.getLogger('asyncio').setLevel(logging.WARNING)
 
+    def send_gif_image(self, peer_jid: str, search_term):
+        """
+        Sends a gif chat message to another person or a group with the given JID/username.
+        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
+        :param search_term: Search term for the gif
+        """
+        if self.is_group_jid(peer_jid):
+            log.info("[+] Sending chat gif to group '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
+        else:
+            log.info("[+] Sending chat gif to user '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
+
+
+
     @staticmethod
     def is_group_jid(jid):
         if '@talk.kik.com' in jid:

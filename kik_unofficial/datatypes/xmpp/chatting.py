@@ -413,3 +413,40 @@ class IncomingCardMessage(XMPPResponse):
         self.allow_forward = data.find('allow-forward').text if data.find('allow-forward') else None
         self.icon = data.find('icon').text if data.find('icon') else None
         self.uri = data.find('uri').text if data.find('uri') else None
+        
+class OutgoingGIFMessage(XMPPElement):
+	"""
+	Represents an outgoing gif message to another kik entity (member or group)
+	"""
+	def getGIFData(self, search_term):
+		apikey = "" # add api key from https://tenor.com/gifapi
+		r = requests.get("https://api.tenor.com/v1/search?q=%s&key=%s&limit=1" % (search_term, apikey))
+		if r.status_code == 200:
+			gif = json.loads(r.content.decode('ascii'))
+			response = requests.get(gif["results"][0]["media"][0]["nanomp4"]["preview"])
+			img = Image.open(BytesIO(response.content))
+			buffered = BytesIO()
+			
+			img.convert("RGB").save(buffered, format="JPEG")
+			img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
+			return img_str, gif["results"][0]["media"][0]
+		else:
+			return ""
+			
+	def __init__(self, peer_jid, search_term, is_group=True):
+		super().__init__()
+		self.peer_jid = peer_jid
+		self.allow_forward = True
+		self.is_group = is_group
+		self.gif_preview, self.gif_data = self.getGIFData(search_term)
+	
+	def serialize(self):
+		timestamp = str(int(round(time.time() * 1000)))
+		message_type = "chat" if not self.is_group else "groupchat"
+		data = ('<message cts="{0}" type="{1}" to="{12}" id="{2}" xmlns="jabber:client"><kik push="true" timestamp="{3}" qos="true"/><pb/><content id="{4}" v="2" app-id="com.kik.ext.gif"><strings><app-name>GIF</app-name><layout>video</layout><allow-forward>true</allow-forward><disallow-save>true</disallow-save><video-should-autoplay>true</video-should-autoplay><video-should-loop>true</video-should-loop><video-should-be-muted>true</video-should-be-muted></strings><images><icon>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</icon><preview>{5}</preview></images><uris><uri priority="0" type="video" file-content-type="video/mp4">{6}</uri><uri priority="1" type="video" file-content-type="video/webm">{7}</uri><uri priority="0" type="video" file-content-type="video/tinymp4">{8}</uri><uri priority="1" type="video" file-content-type="video/tinywebm">{9}</uri><uri priority="0" type="video" file-content-type="video/nanomp4">{10}</uri><uri priority="1" type="video" file-content-type="video/nanowebm">{11}</uri></uris></content><request r="true" d="true" xmlns="kik:message:receipt"/></message>'
+		).format(timestamp, message_type, self.message_id, timestamp, self.message_id,  self.gif_preview, self.gif_data["mp4"]["url"], self.gif_data["webm"]["url"], self.gif_data["tinymp4"]["url"], self.gif_data["tinywebm"]["url"], self.gif_data["nanomp4"]["url"], self.gif_data["nanowebm"]["url"], self.peer_jid)
+		
+		packets =  [data[s:s+16384].encode() for s in range(0,len(data), 16384)]
+		print(packets)
+		return list(packets)
+

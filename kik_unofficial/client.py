@@ -214,6 +214,20 @@ class KikClient:
         else:
             return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
+    def send_gif_image(self, peer_jid: str, search_term):
+        """
+        Sends a GIF image to another person or a group with the given JID/username.
+        The GIF is taken from tendor.com, based on search keywords.
+        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
+        :param search_term: The search term to use when searching GIF images on tendor.com
+        """
+        if self.is_group_jid(peer_jid):
+            log.info("[+] Sending a GIF message to group '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
+        else:
+            log.info("[+] Sending a GIF message to user '{}'...".format(peer_jid))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
+
     def request_info_of_jids(self, peer_jids: Union[str, List[str]]):
         """
         Requests basic information (username, display name, picture) of some peer JIDs.
@@ -603,21 +617,6 @@ class KikClient:
             kik_logger.addHandler(console_handler)
 
         logging.getLogger('asyncio').setLevel(logging.WARNING)
-
-    def send_gif_image(self, peer_jid: str, search_term):
-        """
-        Sends a gif chat message to another person or a group with the given JID/username.
-        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
-        :param search_term: Search term for the gif
-        """
-        if self.is_group_jid(peer_jid):
-            log.info("[+] Sending chat gif to group '{}'...".format(peer_jid))
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
-        else:
-            log.info("[+] Sending chat gif to user '{}'...".format(peer_jid))
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
-
-
 
     @staticmethod
     def is_group_jid(jid):

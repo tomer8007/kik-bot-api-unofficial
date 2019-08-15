@@ -40,8 +40,7 @@ Currently Supported Operations:
 - Search for groups and join them [Experimental]
 - Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
-- Send images
-- Send gifs (add tenor API key to datatypes/xmpp/chatting.py getGIFData() function)
+- Send images (including GIFs, using a tendor.com API key)
 
 Sending videos or recordings is not supported yet.
 

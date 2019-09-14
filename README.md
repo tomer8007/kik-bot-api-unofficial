@@ -24,7 +24,7 @@ class EchoBot(KikClientCallback):
         self.client = KikClient(self, "your_kik_username", "your_kik_password")
 
     def on_authenticated(self):
-        self.client.request_roster()
+        self.client.request_roster() # request list of chat partners
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         self.client.send_chat_message(chat_message.from_jid, "You said \"" + chat_message.body + "\"!")

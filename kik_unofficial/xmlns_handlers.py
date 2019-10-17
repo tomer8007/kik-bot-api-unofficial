@@ -30,7 +30,7 @@ class CheckUniqueHandler(XmlnsHandler):
         self.callback.on_username_uniqueness_received(UsernameUniquenessResponse(data))
 
 
-class RegisterHandler(XmlnsHandler):
+class RegisterOrLoginHandler(XmlnsHandler):
     def handle(self, data: BeautifulSoup):
         message_type = data['type']
 

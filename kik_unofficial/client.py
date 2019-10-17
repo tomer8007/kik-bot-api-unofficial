@@ -64,7 +64,7 @@ class KikClient:
 
         self.xml_namespace_handlers = {
             'kik:iq:check-unique': xmlns_handlers.CheckUniqueHandler(callback, self),
-            'jabber:iq:register': xmlns_handlers.RegisterHandler(callback, self),
+            'jabber:iq:register': xmlns_handlers.RegisterOrLoginHandler(callback, self),
             'jabber:iq:roster': xmlns_handlers.RosterHandler(callback, self),
             'jabber:client': xmlns_handlers.MessageHandler(callback, self),
             'kik:groups': xmlns_handlers.GroupMessageHandler(callback, self),
@@ -539,7 +539,9 @@ class KikClient:
 
         :param iq_element: The iq XML element we just received from kik.
         """
-        self._handle_xmlns(iq_element.query['xmlns:'], iq_element)
+        query = iq_element.query
+        xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
+        self._handle_xmlns(xml_namespace, iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """

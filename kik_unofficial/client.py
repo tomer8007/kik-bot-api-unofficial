@@ -62,17 +62,6 @@ class KikClient:
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
 
-        self.xml_namespace_handlers = {
-            'kik:iq:check-unique': xmlns_handlers.CheckUniqueHandler(callback, self),
-            'jabber:iq:register': xmlns_handlers.RegisterOrLoginHandler(callback, self),
-            'jabber:iq:roster': xmlns_handlers.RosterHandler(callback, self),
-            'jabber:client': xmlns_handlers.MessageHandler(callback, self),
-            'kik:groups': xmlns_handlers.GroupMessageHandler(callback, self),
-            'kik:iq:friend': xmlns_handlers.FriendMessageHandler(callback, self),
-            'kik:iq:friend:batch': xmlns_handlers.FriendMessageHandler(callback, self),
-            'kik:iq:xiphias:bridge': xmlns_handlers.XiphiasHandler(callback, self),
-        }
-
     def _connect(self):
         """
         Runs the kik connection thread, which creates an encrypted (SSL based) TCP connection
@@ -541,25 +530,61 @@ class KikClient:
         """
         query = iq_element.query
         xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
-        self._handle_xmlns(xml_namespace, iq_element)
+        self._handle_response(xml_namespace, iq_element)
+
+    def _handle_response(self, xmlns, iq_element):
+        """
+        Handles a response that we receive from kik after our initiated request.
+        Examples: response to a group search, response to fetching roster, etc.
+
+        :param xmlns: The XML namespace that helps us understand what type of response this is
+        :param iq_element: The actual XML element that contains the response
+        """
+        if xmlns == 'kik:iq:check-unique':
+            xmlns_handlers.CheckUniqueHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'jabber:iq:register':
+            xmlns_handlers.RegisterOrLoginHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'jabber:iq:roster':
+            xmlns_handlers.RosterHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:friend':
+            xmlns_handlers.FriendMessageHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:friend:batch':
+            xmlns_handlers.FriendMessageHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:xiphias:bridge':
+            xmlns_handlers.XiphiasHandler(self.callback, self).handle(iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """
         a XMPP 'message' in the case of Kik is the actual stanza we receive when someone sends us a message
         (weather groupchat or not), starts typing, stops typing, reads our message, etc.
         Examples: http://slixmpp.readthedocs.io/api/stanza/message.html
+
         :param xmpp_message: The XMPP 'message' element we received
         """
-        if 'xmlns' in xmpp_message.attrs:
-            self._handle_xmlns(xmpp_message['xmlns'], xmpp_message)
-        elif xmpp_message['type'] == 'receipt':
-            if xmpp_message.g:
-                self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_message))
+        self._handle_kik_event(xmpp_message)
+
+    def _handle_kik_event(self, xmpp_element):
+        """
+        Handles kik "push" events, like a new message that arrives.
+
+        :param xmpp_element: The XML element that we received with the information about the event
+        """
+        if 'xmlns' in xmpp_element.attrs:
+            xml_namespace = xmpp_element['xmlns']
+            if xml_namespace == 'jabber:client':
+                xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
+            elif xml_namespace == 'kik:groups':
+                xmlns_handlers.GroupMessageHandler(self.callback, self)
             else:
-                self.xml_namespace_handlers['jabber:client'].handle(xmpp_message)
+                pass
+        elif xmpp_element['type'] == 'receipt':
+            if xmpp_element.g:
+                self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_element))
+            else:
+                xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
         else:
             # iPads send messages without xmlns, try to handle it as jabber:client
-            self.xml_namespace_handlers['jabber:client'].handle(xmpp_message)
+            xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
 
     def _on_connection_lost(self):
         """

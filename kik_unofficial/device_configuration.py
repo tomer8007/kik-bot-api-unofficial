@@ -9,7 +9,7 @@ kik_version_14_info = {"kik_version": "14.0.0.11130",  "classes_dex_sha1_digest"
 kik_version_14_5_info = {"kik_version": "14.5.0.13136", "classes_dex_sha1_digest": "LuYEjtvBu4mG2kBBG0wA3Ki1PSE="}
 
 
-device_id = "62030843678b7376a707ca3d11e87837"  # random 16 bytes. you can set it to anything, but stick with it
+device_id = "62030843678b7376a707ca3d11e87836"  # random 16 bytes. you can set it to anything, but stick with it
 kik_version_info = kik_version_14_5_info        # a kik version that's not updated might cause a captcha on login
-android_id = "849d4ffb0c020de7"                 # random 8 bytes. you can set it to anything, but stick with it
+android_id = "849d4ffb0c020de6"                 # random 8 bytes. you can set it to anything, but stick with it
 

@@ -101,6 +101,8 @@ class MessageHandler(XmlnsHandler):
                 self.callback.on_message_read(IncomingMessageReadEvent(data))
         elif data['type'] == 'is-typing':
             self.callback.on_is_typing_event_received(IncomingIsTypingEvent(data))
+
+
         elif data['type'] == 'groupchat':
             if data.body:
                 self.callback.on_group_message_received(IncomingGroupChatMessage(data))

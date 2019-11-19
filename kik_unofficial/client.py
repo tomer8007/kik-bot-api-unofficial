@@ -574,7 +574,7 @@ class KikClient:
             if xml_namespace == 'jabber:client':
                 xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
             elif xml_namespace == 'kik:groups':
-                xmlns_handlers.GroupMessageHandler(self.callback, self)
+                xmlns_handlers.GroupMessageHandler(self.callback, self).handle(xmpp_element)
             else:
                 pass
         elif xmpp_element['type'] == 'receipt':

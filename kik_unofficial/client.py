@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 import time
-from threading import Thread
+from threading import Thread, Event
 from typing import Union, List, Tuple
 from asyncio import Transport, Protocol
 from bs4 import BeautifulSoup
@@ -16,6 +16,7 @@ import kik_unofficial.datatypes.xmpp.roster as roster
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
 from kik_unofficial.datatypes.xmpp import account, xiphias
+from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures
 
@@ -58,6 +59,9 @@ class KikClient:
         self.connection = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
+        self._known_users_information = set()
+        self._new_user_added_event = Event()
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
@@ -148,6 +152,8 @@ class KikClient:
         :param bot_mention_jid: If an official bot is referenced, their jid must be embedded as mention for them
         to respond.
         """
+        peer_jid = self.get_jid(peer_jid)
+
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
             return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, bot_mention_jid))
@@ -162,6 +168,8 @@ class KikClient:
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param file: Path of the file to send.
         """
+        peer_jid = self.get_jid(peer_jid)
+
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat image to group '{}'...".format(peer_jid))
             return self._send_xmpp_element(chatting.OutgoingGroupChatImage(peer_jid, file, forward))
@@ -217,18 +225,17 @@ class KikClient:
             log.info("[+] Sending a GIF message to user '{}'...".format(peer_jid))
             return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
 
-    def request_info_of_jids(self, peer_jids: Union[str, List[str]]):
+    def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """
-        Requests basic information (username, display name, picture) of some peer JIDs.
+        Requests basic information (username, JID, display name, picture) of some users.
         When the information arrives, the callback on_peer_info_received() will fire.
 
-        :param peer_jids: The JID(s) for which to request the information. If you want to request information for
-                          more than one JID, supply a list of strings. Otherwise, supply a string
+        :param peer_jids: The JID(s) or the username(s) for which to request the information.
+                          If you want to request information for more than one user, supply a list of strings.
+                          Otherwise, supply a string
         """
-        return self._send_xmpp_element(roster.BatchPeerInfoRequest(peer_jids))
+        return self._send_xmpp_element(roster.QueryUsersInfoRequest(peer_jids))
 
-    def request_info_of_username(self, username: str):
-        return self._send_xmpp_element(roster.FriendRequest(username))
 
     def add_friend(self, peer_jid):
         return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
@@ -474,6 +481,7 @@ class KikClient:
             self.loop.call_soon_threadsafe(self.connection.send_raw_data, message.serialize())
             return message.message_id
 
+    @run_in_new_thread
     def _on_new_data_received(self, data: bytes):
         """
         Gets called whenever we get a whole new XML element from kik's servers.
@@ -484,7 +492,7 @@ class KikClient:
             self.loop.call_soon_threadsafe(self.connection.send_raw_data, b' ')
             return
 
-        xml_element = BeautifulSoup(data.decode(), features='xml')
+        xml_element = BeautifulSoup(data.decode('utf-8'), features='xml')
         xml_element = next(iter(xml_element)) if len(xml_element) > 0 else xml_element
 
         # choose the handler based on the XML tag name
@@ -528,6 +536,9 @@ class KikClient:
 
         :param iq_element: The iq XML element we just received from kik.
         """
+        if iq_element.error and "bad-request" in dir(iq_element.error):
+            raise Exception("Received a Bad Request error for stanza with ID {}".format(iq_element.attrs['id']))
+
         query = iq_element.query
         xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
         self._handle_response(xml_namespace, iq_element)
@@ -541,21 +552,19 @@ class KikClient:
         :param iq_element: The actual XML element that contains the response
         """
         if xmlns == 'kik:iq:check-unique':
-            xmlns_handlers.CheckUniqueHandler(self.callback, self).handle(iq_element)
+            xmlns_handlers.CheckUsernameUniqueResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'jabber:iq:register':
-            xmlns_handlers.RegisterOrLoginHandler(self.callback, self).handle(iq_element)
+            xmlns_handlers.RegisterOrLoginResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'jabber:iq:roster':
-            xmlns_handlers.RosterHandler(self.callback, self).handle(iq_element)
-        elif xmlns == 'kik:iq:friend':
-            xmlns_handlers.FriendMessageHandler(self.callback, self).handle(iq_element)
-        elif xmlns == 'kik:iq:friend:batch':
-            xmlns_handlers.FriendMessageHandler(self.callback, self).handle(iq_element)
+            xmlns_handlers.RosterResponseHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:friend' or xmlns == 'kik:iq:friend:batch':
+            xmlns_handlers.PeersInfoResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'kik:iq:xiphias:bridge':
             xmlns_handlers.XiphiasHandler(self.callback, self).handle(iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """
-        a XMPP 'message' in the case of Kik is the actual stanza we receive when someone sends us a message
+        an XMPP 'message' in the case of Kik is the actual stanza we receive when someone sends us a message
         (weather groupchat or not), starts typing, stops typing, reads our message, etc.
         Examples: http://slixmpp.readthedocs.io/api/stanza/message.html
 
@@ -572,19 +581,19 @@ class KikClient:
         if 'xmlns' in xmpp_element.attrs:
             xml_namespace = xmpp_element['xmlns']
             if xml_namespace == 'jabber:client':
-                xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
+                xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
             elif xml_namespace == 'kik:groups':
-                xmlns_handlers.GroupMessageHandler(self.callback, self).handle(xmpp_element)
+                xmlns_handlers.GroupXMPPMessageHandler(self.callback, self).handle(xmpp_element)
             else:
                 pass
         elif xmpp_element['type'] == 'receipt':
             if xmpp_element.g:
                 self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_element))
             else:
-                xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
+                xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
         else:
             # iPads send messages without xmlns, try to handle it as jabber:client
-            xmlns_handlers.MessageHandler(self.callback, self).handle(xmpp_element)
+            xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
 
     def _on_connection_lost(self):
         """
@@ -594,12 +603,6 @@ class KikClient:
         """
         self.connected = False
         log.info("[-] The connection was lost")
-
-    def _handle_xmlns(self, xmlns: str, message: BeautifulSoup):
-        if xmlns not in self.xml_namespace_handlers:
-            log.warning("[-] Received unknown xml namespace: '{}', ignoring (to see full data, enable debug logs)".format(xmlns))
-            return
-        self.xml_namespace_handlers[xmlns].handle(message)
 
     def _kik_connection_thread_function(self):
         """
@@ -624,6 +627,32 @@ class KikClient:
         self.loop.run_forever()
         log.debug("[!] Main loop ended.")
         self.callback.on_disconnected()
+
+    def get_jid(self, username_or_jid):
+        if '@' in username_or_jid:
+            # this is already a JID.
+            return username_or_jid
+        else:
+            username = username_or_jid
+
+            # first search if we already have it
+            if self.get_jid_from_cache(username) is None:
+                # go request for it
+
+                self._new_user_added_event.clear()
+                self.request_info_of_users(username)
+                if not self._new_user_added_event.wait(5.0):
+                    raise TimeoutError("Could not get the JID for username {} in time".format(username))
+
+            return self.get_jid_from_cache(username)
+
+
+    def get_jid_from_cache(self, username):
+        for user in self._known_users_information:
+            if user.username.lower() == username.lower():
+                return user.jid
+
+        return None
 
     def _set_up_logging(self, log_level):
         log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')

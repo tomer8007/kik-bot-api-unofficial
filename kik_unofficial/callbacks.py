@@ -1,17 +1,15 @@
 from typing import Union
 
-from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
-    IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingGroupReceiptsEvent, IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGifMessage, \
-    IncomingVideoMessage, IncomingCardMessage
+from kik_unofficial.datatypes.xmpp.chatting import *
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 
 
 class KikClientCallback:
+
     def on_authenticated(self):
         """
         Gets called when the kik user is fully logged-in and authenticated as himself.
@@ -47,7 +45,7 @@ class KikClientCallback:
     def on_sign_up_ended(self, response: RegisterResponse):
         pass
 
-    def on_peer_info_received(self, response: PeerInfoResponse):
+    def on_peer_info_received(self, response: PeersInfoResponse):
         pass
 
     def on_friend_attribution(self, response: IncomingFriendAttribution):

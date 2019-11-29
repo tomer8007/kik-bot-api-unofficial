@@ -9,69 +9,30 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent
     IncomingVideoMessage, IncomingCardMessage
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse, GroupSearchResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 
 log = logging.getLogger('kik_unofficial')
 
 
-class XmlnsHandler:
-    def __init__(self, callback: KikClientCallback, api):
+class XmppHandler:
+    def __init__(self, callback: KikClientCallback, client):
         self.callback = callback
-        self.api = api
+        self.client = client
 
     def handle(self, data: BeautifulSoup):
         raise NotImplementedError
 
 
-class CheckUniqueHandler(XmlnsHandler):
-    def handle(self, data: BeautifulSoup):
-        self.callback.on_username_uniqueness_received(UsernameUniquenessResponse(data))
-
-
-class RegisterOrLoginHandler(XmlnsHandler):
-    def handle(self, data: BeautifulSoup):
-        message_type = data['type']
-
-        if message_type == "error":
-            if data.find('email'):
-                # sign up
-                sign_up_error = SignUpError(data)
-                log.info("[-] Register error: {}".format(sign_up_error))
-                self.callback.on_register_error(sign_up_error)
-
-            else:
-                login_error = LoginError(data)
-                log.info("[-] Login error: {}".format(login_error))
-                self.callback.on_login_error(login_error)
-
-        elif message_type == "result":
-            if data.find('node'):
-                self.api.node = data.find('node').text
-            if data.find('email'):
-                # login successful
-                response = LoginResponse(data)
-                log.info("[+] Logged in as {}".format(response.username))
-                self.callback.on_login_ended(response)
-                self.api._establish_authenticated_session(response.kik_node)
-            else:
-                # sign up successful
-                response = RegisterResponse(data)
-                log.info("[+] Registered.")
-                self.callback.on_sign_up_ended(response)
-                self.api._establish_authenticated_session(response.kik_node)
-
-
-class RosterHandler(XmlnsHandler):
-    def handle(self, data: BeautifulSoup):
-        self.callback.on_roster_received(FetchRosterResponse(data))
-
-
-class MessageHandler(XmlnsHandler):
+class XMPPMessageHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
         if data['type'] == 'chat':
-            # what kind of chat message is it?
+
+            #
+            # We received some sort of a chat message.
+            #
+
             if data.body and data.body.text:
                 # regular text message
                 self.callback.on_chat_message_received(IncomingChatMessage(data))
@@ -92,18 +53,32 @@ class MessageHandler(XmlnsHandler):
             else:
                 # what else? GIFs?
                 log.debug("[-] Received unknown chat message. contents: {}".format(str(data)))
+
         elif data['type'] == 'receipt':
+            #
+            # We received some sort of a receipt.
+            #
+
             if data.g:
                 self.callback.on_group_receipts_received(IncomingGroupReceiptsEvent(data))
             elif data.receipt['type'] == 'delivered':
                 self.callback.on_message_delivered(IncomingMessageDeliveredEvent(data))
             else:
                 self.callback.on_message_read(IncomingMessageReadEvent(data))
+
         elif data['type'] == 'is-typing':
+            #
+            # Some user started to type or stopped to type
+            #
+
             self.callback.on_is_typing_event_received(IncomingIsTypingEvent(data))
 
 
         elif data['type'] == 'groupchat':
+            #
+            # We received some sort of a group chat message.
+            #
+
             if data.body:
                 self.callback.on_group_message_received(IncomingGroupChatMessage(data))
             elif data.find('is-typing'):
@@ -118,7 +93,7 @@ class MessageHandler(XmlnsHandler):
             log.debug("[-] Received unknown message type. contents: {}".format(str(data)))
 
 
-class GroupMessageHandler(XmlnsHandler):
+class GroupXMPPMessageHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
         if data.body:
             self.callback.on_group_message_received(IncomingGroupChatMessage(data))
@@ -145,12 +120,62 @@ class GroupMessageHandler(XmlnsHandler):
             log.debug("[-] Received unknown group message. contents: {}".format(str(data)))
 
 
-class FriendMessageHandler(XmlnsHandler):
+class CheckUsernameUniqueResponseHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_peer_info_received(PeerInfoResponse(data))
+        self.callback.on_username_uniqueness_received(UsernameUniquenessResponse(data))
 
 
-class XiphiasHandler(XmlnsHandler):
+class RegisterOrLoginResponseHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        message_type = data['type']
+
+        if message_type == "error":
+            if data.find('email'):
+                # sign up
+                sign_up_error = SignUpError(data)
+                log.info("[-] Register error: {}".format(sign_up_error))
+                self.callback.on_register_error(sign_up_error)
+
+            else:
+                login_error = LoginError(data)
+                log.info("[-] Login error: {}".format(login_error))
+                self.callback.on_login_error(login_error)
+
+        elif message_type == "result":
+            if data.find('node'):
+                self.client.node = data.find('node').text
+            if data.find('email'):
+                # login successful
+                response = LoginResponse(data)
+                log.info("[+] Logged in as {}".format(response.username))
+                self.callback.on_login_ended(response)
+                self.client._establish_authenticated_session(response.kik_node)
+            else:
+                # sign up successful
+                response = RegisterResponse(data)
+                log.info("[+] Registered.")
+                self.callback.on_sign_up_ended(response)
+                self.client._establish_authenticated_session(response.kik_node)
+
+
+class RosterResponseHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        self.callback.on_roster_received(FetchRosterResponse(data))
+
+
+class PeersInfoResponseHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        peers_info = PeersInfoResponse(data)
+
+        # add this user to the list of known users if it wasn't encountered before
+        for peer_info in peers_info.users:
+            self.client._known_users_information.add(peer_info)
+        self.client._new_user_added_event.set()
+
+        self.callback.on_peer_info_received(peers_info)
+
+
+class XiphiasHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
         method = data.query['method']
         if method == 'GetUsers':

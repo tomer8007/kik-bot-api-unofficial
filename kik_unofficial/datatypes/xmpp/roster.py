@@ -37,28 +37,10 @@ class FetchRosterResponse(XMPPResponse):
             return User(element)
 
 
-class FriendRequest(XMPPElement):
-    def __init__(self, username):
-        super().__init__()
-        self.username = username
-
-    def serialize(self) -> bytes:
-        data = ('<iq type="get" id="{}">'
-                '<query xmlns="kik:iq:friend">'
-                '<item username="{}" />'
-                '</query>'
-                '</iq>').format(self.message_id, self.username)
-        return data.encode()
-
-
-class PeerInfoResponse(XMPPResponse):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        items = data.query.find_all('item')
-        self.users = [User(item) for item in items]
-
-
-class BatchPeerInfoRequest(XMPPElement):
+class QueryUsersInfoRequest(XMPPElement):
+    """
+    Represents a request to get basic information (display name, JID, etc.) of one or more users
+    """
     def __init__(self, peer_jids: Union[str, List[str]]):
         super().__init__()
         if isinstance(peer_jids, List):
@@ -67,13 +49,32 @@ class BatchPeerInfoRequest(XMPPElement):
             self.peer_jids = [peer_jids]
 
     def serialize(self) -> bytes:
-        items = ''.join(['<item jid="{}" />'.format(jid) for jid in self.peer_jids])
+        items = []
+        for jid in self.peer_jids:
+            if "@" in jid:
+                items.append('<item jid="{}" />'.format(jid))
+            else:
+                # this is in fact not a JID, but a username
+                items.append('<item username="{}" />'.format(jid))
+
+        xmlns = 'kik:iq:friend:batch' if len(items) > 1 else "kik:iq:friend"
+
         data = ('<iq type="get" id="{}">'
-                '<query xmlns="kik:iq:friend:batch">'
+                '<query xmlns="{}">'
                 '{}'
                 '</query>'
-                '</iq>').format(self.message_id, items)
+                '</iq>').format(self.message_id, xmlns, "".join(items))
+
         return data.encode()
+
+class PeersInfoResponse(XMPPResponse):
+    """
+    Represents the response to a peers query request, which contains the basic information of the peers
+    """
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        items = data.query.find_all('item')
+        self.users = [User(item) for item in items]
 
 
 class AddFriendRequest(XMPPElement):

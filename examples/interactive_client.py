@@ -45,7 +45,7 @@ class InteractiveChatClient(KikClientCallback):
         client.add_friend(response.from_jid)
 
     def on_group_status_received(self, response: IncomingGroupStatus):
-        client.request_info_of_jids(response.status_jid)
+        client.request_info_of_users(response.status_jid)
 
 
 def jid_to_username(jid):

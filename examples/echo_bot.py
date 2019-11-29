@@ -7,7 +7,7 @@ import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeerInfoResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
@@ -61,7 +61,7 @@ class EchoBot(KikClientCallback):
     def on_image_received(self, image_message: chatting.IncomingImageMessage):
         print("[+] Image message was received from {}".format(image_message.from_jid))
     
-    def on_peer_info_received(self, response: PeerInfoResponse):
+    def on_peer_info_received(self, response: PeersInfoResponse):
         print("[+] Peer info: " + str(response.users))
 
     def on_group_status_received(self, response: chatting.IncomingGroupStatus):

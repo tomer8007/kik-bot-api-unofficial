@@ -27,7 +27,7 @@ class EchoBot(KikClientCallback):
         self.client.request_roster() # request list of chat partners
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
-        self.client.send_chat_message(chat_message.from_jid, "You said \"" + chat_message.body + "\"!")
+        self.client.send_chat_message(chat_message.from_jid, 'You said "{}"!'.format(chat_message.body))
 ```
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).

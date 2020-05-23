@@ -3,8 +3,10 @@ import os
 from threading import Thread
 
 import requests
-from kik_unofficial.datatypes.exceptions import KikApiException
+from kik_unofficial.device_configuration import kik_version_info
+from kik_unofficial.datatypes.exceptions import KikApiException, KikUploadError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
+from kik_unofficial.utilities.parsing_utilities import get_file_bytes
 
 log = logging.getLogger('kik_unofficial')
 
@@ -26,15 +28,14 @@ def send(url, filename, jid, username, password):
     headers = {
         'x-kik-jid': jid,
         'x-kik-password': password_key,
-        'User-Agent': 'Kik/13.0.0.7521 (Android 7.1.2) Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 7 Build/NJH47F)',
+        'User-Agent': f'Kik/{kik_version_info["kik_version"]} (Android 7.1.2) Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 7 Build/NJH47F)',
     }
     Thread(target=picture_upload_thread, args=(url, filename, headers), name='KikProfilepics').start()
 
 
 def picture_upload_thread(url, filename, headers):
-    with open(filename, 'rb') as picture:
-        picture_data = picture.read()
+    picture_data = get_file_bytes(filename)
     log.debug('Uploading picture')
     r = requests.post(url, data=picture_data, headers=headers)
     if r.status_code != 200:
-        raise KikApiException(r.status_code)
+        raise KikUploadError(r.status_code, r.reason)

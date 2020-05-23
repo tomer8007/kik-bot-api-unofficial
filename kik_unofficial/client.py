@@ -15,10 +15,12 @@ import kik_unofficial.datatypes.xmpp.login as login
 import kik_unofficial.datatypes.xmpp.roster as roster
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
+from kik_unofficial.datatypes.xmpp.auth_stanza import AuthStanza
 from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.http import profile_pictures
+from kik_unofficial.http import profile_pictures, content
+
 
 HOST, PORT = "talk1110an.kik.com", 5223
 log = logging.getLogger('kik_unofficial')
@@ -29,8 +31,8 @@ class KikClient:
     The main kik class with which you're managing a kik connection and sending commands
     """
 
-    def __init__(self, callback: callbacks.KikClientCallback, kik_username=None, kik_password=None,
-                 kik_node=None, log_level=logging.INFO, device_id_override=None, andoid_id_override=None):
+    def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
+                 kik_node=None, log_level=logging.INFO, device_id_override=None, android_id_override=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -38,7 +40,7 @@ class KikClient:
         :param callback: a callback instance containing your callbacks implementation.
                          This way you'll get notified whenever certain event happen.
                          Look at the KikClientCallback class for more details
-        :param kik_username: the kik username to log in with.
+        :param kik_username: the kik username or email to log in with.
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
@@ -49,10 +51,12 @@ class KikClient:
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
+        self.kik_email = None
         self.device_id_override = device_id_override
-        self.android_id_override = andoid_id_override
+        self.android_id_override = android_id_override
 
         self.callback = callback
+        self.authenticator = AuthStanza(self)
 
         self.connected = False
         self.authenticated = False
@@ -108,7 +112,7 @@ class KikClient:
         """
         Sends a login request with the given kik username and password
 
-        :param username: Your kik username
+        :param username: Your kik username or email
         :param password: Your kik password
         :param captcha_result: If this parameter is provided, it is the answer to the captcha given in the previous
         login attempt.
@@ -116,8 +120,9 @@ class KikClient:
         self.username = username
         self.password = password
         login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
-        log.info("[+] Logging in with username '{}' and a given password..."
-                 .format(username, '*' * len(password)))
+        login_type = "email" if '@' in self.username else "username"
+        log.info("[+] Logging in with {} '{}' and a given password {}..."
+                 .format(login_type, username, '*' * len(password)))
         return self._send_xmpp_element(login_request)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
@@ -131,12 +136,12 @@ class KikClient:
         log.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
         return self._send_xmpp_element(register_message)
 
-    def request_roster(self):
+    def request_roster(self, big=True, timestamp=None):
         """
         Requests the list of chat partners (people and groups). This is called roster in XMPP terms.
         """
         log.info("[+] Requesting roster (list of chat partners)...")
-        return self._send_xmpp_element(roster.FetchRosterRequest())
+        return self._send_xmpp_element(roster.FetchRosterRequest(big=big, timestamp=timestamp))
 
     # -------------------------------
     # Common Messaging Operations
@@ -166,16 +171,18 @@ class KikClient:
         Sends an image chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
-        :param file: Path of the file to send.
+        :param file: The path of the file or it's bytes or an IOBase object to send.
         """
         peer_jid = self.get_jid(peer_jid)
 
         if self.is_group_jid(peer_jid):
             log.info("[+] Sending chat image to group '{}'...".format(peer_jid))
-            return self._send_xmpp_element(chatting.OutgoingGroupChatImage(peer_jid, file, forward))
+            imageRequest = chatting.OutgoingGroupChatImage(peer_jid, file, forward)
         else:
             log.info("[+] Sending chat image to user '{}'...".format(peer_jid))
-            return self._send_xmpp_element(chatting.OutgoingChatImage(peer_jid, file, False, forward))
+            imageRequest = chatting.OutgoingChatImage(peer_jid, file, False, forward)
+        content.upload_gallery_image(imageRequest, self.kik_node + '@talk.kik.com', self.username, self.password)
+        return self._send_xmpp_element(imageRequest)
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
@@ -236,9 +243,11 @@ class KikClient:
         """
         return self._send_xmpp_element(roster.QueryUsersInfoRequest(peer_jids))
 
-
     def add_friend(self, peer_jid):
         return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
+
+    def remove_friend(self, peer_jid):
+        return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))
 
     def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
         return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
@@ -394,7 +403,7 @@ class KikClient:
         """
         Sets the profile picture
 
-        :param filename: The filename on disk of the image to set
+        :param filename: The path of the file or it's bytes or an IOBase object to set
         """
         log.info("[+] Setting the profile picture to file '{}'".format(filename))
         profile_pictures.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
@@ -403,7 +412,7 @@ class KikClient:
         """
         Sets the background picture
 
-        :param filename: The filename on disk of the image to set
+        :param filename: The path of the file or it's bytes or an IOBase object to set
         """
         log.info("[+] Setting the background picture to filename '{}'".format(filename))
         profile_pictures.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
@@ -520,6 +529,7 @@ class KikClient:
                 # authenticated!
                 log.info("[+] Authenticated successfully.")
                 self.authenticated = True
+                self.authenticator.sendStanza()
                 self.callback.on_authenticated()
             elif self.should_login_on_connection:
                 self.login(self.username, self.password)
@@ -561,6 +571,8 @@ class KikClient:
             xmlns_handlers.PeersInfoResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'kik:iq:xiphias:bridge':
             xmlns_handlers.XiphiasHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:auth:cert':
+            self.authenticator.handle(iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """
@@ -579,10 +591,10 @@ class KikClient:
         :param xmpp_element: The XML element that we received with the information about the event
         """
         if 'xmlns' in xmpp_element.attrs:
-            xml_namespace = xmpp_element['xmlns']
-            if xml_namespace == 'jabber:client':
+            # The XML namespace is different for iOS and Android, handle the messages with their actual type
+            if xmpp_element['type'] == "chat":
                 xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            elif xml_namespace == 'kik:groups':
+            elif xmpp_element['type'] == "groupchat":
                 xmlns_handlers.GroupXMPPMessageHandler(self.callback, self).handle(xmpp_element)
             else:
                 pass

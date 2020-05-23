@@ -142,11 +142,12 @@ class RegisterOrLoginResponseHandler(XmppHandler):
                 self.callback.on_login_error(login_error)
 
         elif message_type == "result":
-            if data.find('node'):
-                self.client.node = data.find('node').text
             if data.find('email'):
                 # login successful
                 response = LoginResponse(data)
+                self.client.username = response.username
+                self.client.kik_node = response.kik_node
+                self.client.kik_email = response.email
                 log.info("[+] Logged in as {}".format(response.username))
                 self.callback.on_login_ended(response)
                 self.client._establish_authenticated_session(response.kik_node)

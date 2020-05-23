@@ -23,7 +23,10 @@ setup(
     ],
     keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
     packages=find_packages(exclude=['docs', 'test']),
-    install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests', 'pillow'],
+    install_requires=[
+        'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests', 'pillow', 'pyDes',
+        'blockhash @ git+https://github.com/kandnub/blockhash-python@organize-as-module'
+    ],
     extras_require={
         'dev': [],
         'test': [],

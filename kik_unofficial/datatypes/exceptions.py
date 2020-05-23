@@ -19,7 +19,7 @@ class KikErrorException(Exception):
 
 class KikCaptchaException(KikErrorException):
     def __init__(self, xml_error, message, captcha_url):
-        super(KikErrorException, self).__init__(xml_error, message)
+        super().__init__(xml_error, message)
         self.captcha_url = captcha_url
 
 
@@ -37,3 +37,17 @@ class KikEmptyResponseException(KikErrorException):
 
 class KikApiException(Exception):
     pass
+
+
+class KikUploadError(Exception):
+    def __init__(self, status_code, reason=None):
+        self.status_code = reason
+        self.reason = reason
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        if self.reason is None:
+            return self.status_code
+        return f"[{self.status_code}] {self.reason}"

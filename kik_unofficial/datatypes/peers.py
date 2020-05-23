@@ -65,7 +65,7 @@ class Group(Peer):
         self.code = xml_data.code.text if xml_data.code else None
         self.pic = xml_data.pic.text if xml_data.pic else None
         self.name = xml_data.n.text if xml_data.n else None
-        self.is_public = 'is-public' in xml_data and xml_data['is-public'] == "true"
+        self.is_public = xml_data.get('is-public') == "true"
 
     def __repr__(self):
         return "Group(jid={}, name={}, code={}, members={})".format(self.jid, self.name, self.code, len(self.members))

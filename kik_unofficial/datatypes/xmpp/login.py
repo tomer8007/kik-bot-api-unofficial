@@ -28,14 +28,20 @@ class LoginRequest(XMPPElement):
     def serialize(self) -> bytes:
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
         captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
+        if '@' in self.username:
+            tag = ('<email>{}</email>'
+                   '<passkey-e>{}</passkey-e>')
+        else:
+            tag = ('<username>{}</username>'
+                   '<passkey-u>{}</passkey-u>')
+
         data = ('<iq type="set" id="{}">'
                 '<query xmlns="jabber:iq:register">'
-                '<username>{}</username>'
-                '<passkey-u>{}</passkey-u>'
+                '{}'
                 '<device-id>{}</device-id>'
                 '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
-                '<operator>310260</operator>'
-                '<install-date>1494078709023</install-date>'
+                '<operator>unknown</operator>'
+                '<install-date>unknown</install-date>'
                 '<device-type>android</device-type>'
                 '<brand>generic</brand>'
                 '<logins-since-install>1</logins-since-install>'
@@ -48,7 +54,8 @@ class LoginRequest(XMPPElement):
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
                 '{}'
                 '</query>'
-                '</iq>').format(self.message_id, self.username, password_key, self.device_id_override if self.device_id_override else device_id,
+                '</iq>').format(self.message_id, tag.format(self.username, password_key),
+                                self.device_id_override if self.device_id_override else device_id,
                                 kik_version, self.android_id_override if self.android_id_override else android_id, captcha)
         return data.encode()
 

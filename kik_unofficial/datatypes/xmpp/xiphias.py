@@ -46,16 +46,49 @@ class UsersRequest(XiphiasRequest):
 
 
 class UsersResponseUser:
+    username = None
+    jid = None
+    alias_jid = None
+    display_name = None
+    creation_date_seconds = None
+    creation_date_nanos = None
+    bio = None
+    background_pic_full_sized = None
+    background_pic_thumbnail = None
+    background_pic_updated_seconds = None
+    interests = None
+    kin_user_id = None
+
     def __init__(self, user):
+        if user.private_profile:
+            # If a user hasn't enabled DMD, you will be able to see their username
+            self.username = user.private_profile.username.username
+            self.jid = user.private_profile.id.local_part + "@talk.kik.com"
+        if user.id.local_part:
+            self.jid = user.id.local_part + "@talk.kik.com"
+        if user.id.local_part.alias_jid:
+            self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
+
+        if user.public_group_member_profile:
+            # The attrs below are found in the member's profile
+            user = user.public_group_member_profile
+
+        if user.display_name:
+            self.display_name = user.display_name.display_name
         if user.registration_element:
             self.creation_date_seconds = user.registration_element.creation_date.seconds
+            self.creation_date_nanos = user.registration_element.creation_date.nanos
+        if user.bio_element:
+            self.bio = user.bio_element.bio
         if user.background_profile_pic_extension:
-            self.background_pic_full_sized = user.background_profile_pic_extension.extension_detail.pic.full_sized_url
-            self.background_pic_thumbnail = user.background_profile_pic_extension.extension_detail.pic.thumbnail_url
-            self.background_pic_updated_seconds = \
-                user.background_profile_pic_extension.extension_detail.pic.last_updated_timestamp.seconds
+            pic = user.background_profile_pic_extension.extension_detail.pic
+            self.background_pic_full_sized = pic.full_sized_url
+            self.background_pic_thumbnail = pic.thumbnail_url
+            self.background_pic_updated_seconds = pic.last_updated_timestamp.seconds
         if user.interests_element:
             self.interests = [element.localized_verbiage for element in user.interests_element.interests_element]
+        if user.kin_user_id_element:
+            self.kin_user_id = user.kin_user_id_element.kin_user_id.id
 
 
 class UsersResponse(XMPPResponse):

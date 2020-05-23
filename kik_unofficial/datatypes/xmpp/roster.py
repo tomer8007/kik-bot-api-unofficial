@@ -11,13 +11,18 @@ class FetchRosterRequest(XMPPElement):
     """
     Represents a request to get the chat partners list (the roster)
     """
-    def __init__(self):
+    def __init__(self, big=True, timestamp=None):
         super().__init__()
+        self.timestamp = timestamp
+        self.big = big
 
     def serialize(self) -> bytes:
-        data = ('<iq type="get" id="{}">'
-                '<query p="8" xmlns="jabber:iq:roster" />'
-                '</iq>').format(self.message_id)
+        ts = f' ts="{self.timestamp}" ' if self.timestamp else ' '
+        data = (
+            '<iq type="get" id="{}">'
+            '<query p="8"{}b="{}" xmlns="jabber:iq:roster" />'
+            '</iq>'
+        ).format(self.message_id, ts, str(int(self.big)))
         return data.encode()
 
 
@@ -28,6 +33,8 @@ class FetchRosterResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.peers = [self.parse_peer(element) for element in iter(data.query)]
+        self.more = data.query.get('more')
+        self.timestamp = data.query.get('ts')
 
     @staticmethod
     def parse_peer(element):
@@ -91,6 +98,25 @@ class AddFriendRequest(XMPPElement):
                '<add jid="{}" />' \
                '</query>' \
                '</iq>'.format(self.message_id, self.peer_jid)
+        return data.encode()
+
+
+class RemoveFriendRequest(XMPPElement):
+    """
+    Represents a request to remove some user (peer) as a friend
+    """
+    def __init__(self, peer_jid):
+        super().__init__()
+        self.peer_jid = peer_jid
+
+    def serialize(self):
+        data = (
+            '<iq type="set" id="{}">'
+            '<query xmlns="kik:iq:friend">'
+            '<remove jid="{}" />'
+            '</query>'
+            '</iq>'
+        ).format(self.message_id, self.peer_jid)
         return data.encode()
 
 

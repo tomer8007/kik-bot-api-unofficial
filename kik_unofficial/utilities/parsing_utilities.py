@@ -1,7 +1,26 @@
 import base64
-from PIL import Image
 import math
 import pathlib
+import io
+import os.path
+import hashlib
+from PIL import Image
+from blockhash import blockhash
+
+
+def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
+    if isinstance(file_location, (str, pathlib.Path)):
+        if not os.path.exists(file_location):
+            raise Exception('The file path %s does not exist', file_location)
+        with open(file_location, "rb") as f:
+            data = f.read()
+    elif isinstance(file_location, io.IOBase) or hasattr(file_location, 'getvalue'):
+        data = file_location.getvalue()
+    elif isinstance(file_location, bytes):
+        data = file_location
+    else:
+        raise ValueError('File cannot be a type of %s', type(file_location))
+    return data
 
 
 class ParsingUtilities:
@@ -26,27 +45,65 @@ class ParsingUtilities:
 
     @staticmethod
     def read_file_as_base64(file_location):
-        with open(file_location, "rb") as file:
-            data = base64.b64encode(file.read())
-            return data.decode()
+        data = base64.b64encode(get_file_bytes(file_location))
+        return data.decode()
 
     @staticmethod
-    def parse_image(file_location):
+    def read_file_as_sha1(file_location):
+        x = hashlib.sha1()
+        x.update(get_file_bytes(file_location))
+        return x.hexdigest()
+
+    @staticmethod
+    def parse_image(file_location: str or bytes or pathlib.Path or io.IOBase) -> dict:
         '''
         Converts images to .jpg and compresses/upscales them so that large image files can be sent after compression.
         '''
-        file_name = pathlib.PurePath(file_location).name
+        preview_out = io.BytesIO()
+        image_out = io.BytesIO()
+        image_out.name = "temp.jpg"
+
+        file_location = get_file_bytes(file_location)
+        if isinstance(file_location, bytes):
+            file_location = io.BytesIO(file_location)
+
         img = Image.open(file_location)
-        image_out = file_name.split('.')[0] + "_send.jpg"
         width, height = img.size
-        if len(img.split()) == 4:
-            r, g, b, a = img.split()
-            img = Image.merge("RGB", (r, g, b))
         larger_dim = height if height > width else width
-        ratio = larger_dim/900
-        image = img.resize((math.ceil(width / ratio), math.ceil(height / ratio)))
-        image.save(image_out)
-        return image_out
+        if img.mode != "RGB":
+            img = img.convert('RGB')
+        ratio = larger_dim/1600
+        image = img.resize((round(width / ratio), round(height / ratio)))
+        preview_ratio = larger_dim/400
+        preview_image = img.resize((round(width / preview_ratio), round(height / preview_ratio)))
+
+        image.save(image_out, format='JPEG')
+        preview_image.save(preview_out, format='JPEG')
+
+        size = image_out.tell()
+        final_og = image_out.getvalue()
+        final_pre = preview_out.getvalue()
+
+        base64 = ParsingUtilities.read_file_as_base64(final_pre)
+        sha1_og = ParsingUtilities.read_file_as_sha1(final_og)
+        sha1_scaled = ParsingUtilities.read_file_as_sha1(final_pre)
+        block_scaled = blockhash(preview_image, 16)
+        md5 = hashlib.md5(final_og).hexdigest()
+        image_out.close()
+        preview_out.close()
+        preview_image.close()
+        img.close()
+
+        final = {
+            'base64': base64,
+            'size': size,
+            'original': final_og,
+            'SHA1': sha1_og,
+            'SHA1Scaled': sha1_scaled,
+            'blockhash': block_scaled,
+            'MD5': md5
+        }
+        return final
 
     @staticmethod
     def fix_base64_padding(data):

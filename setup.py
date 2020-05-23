@@ -25,7 +25,6 @@ setup(
     packages=find_packages(exclude=['docs', 'test']),
     install_requires=[
         'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests', 'pillow', 'pyDes',
-        'blockhash @ git+https://github.com/kandnub/blockhash-python@organize-as-module'
     ],
     extras_require={
         'dev': [],

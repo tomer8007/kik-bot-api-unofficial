@@ -11,10 +11,10 @@ class FetchRosterRequest(XMPPElement):
     """
     Represents a request to get the chat partners list (the roster)
     """
-    def __init__(self, big=True, timestamp=None):
+    def __init__(self, is_big=True, timestamp=None):
         super().__init__()
         self.timestamp = timestamp
-        self.big = big
+        self.is_big = is_big
 
     def serialize(self) -> bytes:
         ts = f' ts="{self.timestamp}" ' if self.timestamp else ' '
@@ -22,7 +22,7 @@ class FetchRosterRequest(XMPPElement):
             '<iq type="get" id="{}">'
             '<query p="8"{}b="{}" xmlns="jabber:iq:roster" />'
             '</iq>'
-        ).format(self.message_id, ts, str(int(self.big)))
+        ).format(self.message_id, ts, str(int(self.is_big)))
         return data.encode()
 
 

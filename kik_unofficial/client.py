@@ -136,12 +136,12 @@ class KikClient:
         log.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
         return self._send_xmpp_element(register_message)
 
-    def request_roster(self, big=True, timestamp=None):
+    def request_roster(self, is_big=True, timestamp=None):
         """
         Requests the list of chat partners (people and groups). This is called roster in XMPP terms.
         """
         log.info("[+] Requesting roster (list of chat partners)...")
-        return self._send_xmpp_element(roster.FetchRosterRequest(big=big, timestamp=timestamp))
+        return self._send_xmpp_element(roster.FetchRosterRequest(is_big=is_big, timestamp=timestamp))
 
     # -------------------------------
     # Common Messaging Operations
@@ -171,7 +171,7 @@ class KikClient:
         Sends an image chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
-        :param file: The path of the file or it's bytes or an IOBase object to send.
+        :param file: The path to the image file OR its bytes OR an IOBase object to send.
         """
         peer_jid = self.get_jid(peer_jid)
 
@@ -401,18 +401,18 @@ class KikClient:
 
     def set_profile_picture(self, filename):
         """
-        Sets the profile picture
+        Sets the profile picture of the current user
 
-        :param filename: The path of the file or it's bytes or an IOBase object to set
+        :param filename: The path to the file OR its bytes OR an IOBase object to set
         """
         log.info("[+] Setting the profile picture to file '{}'".format(filename))
         profile_pictures.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
 
     def set_background_picture(self, filename):
         """
-        Sets the background picture
+        Sets the background picture of the current user
 
-        :param filename: The path of the file or it's bytes or an IOBase object to set
+        :param filename: The path to the image file OR its bytes OR an IOBase object to set
         """
         log.info("[+] Setting the background picture to filename '{}'".format(filename))
         profile_pictures.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)

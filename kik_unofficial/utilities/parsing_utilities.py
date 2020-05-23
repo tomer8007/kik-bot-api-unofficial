@@ -2,10 +2,10 @@ import base64
 import math
 import pathlib
 import io
-import os.path
+import os
 import hashlib
 from PIL import Image
-from blockhash import blockhash
+from kik_unofficial.utilities.blockhash import blockhash
 
 
 def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):

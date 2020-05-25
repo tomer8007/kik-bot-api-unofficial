@@ -74,11 +74,11 @@ class UsersResponseUser:
             # The attrs below are found in the member's profile
             user = user.public_group_member_profile
 
-        if user.display_name:
-            self.display_name = user.display_name.display_name
         if user.registration_element:
             self.creation_date_seconds = user.registration_element.creation_date.seconds
             self.creation_date_nanos = user.registration_element.creation_date.nanos
+        if hasattr(user, 'display_name'):
+            self.display_name = user.display_name.display_name
         if hasattr(user, 'bio_element'):
             self.bio = user.bio_element.bio
         if hasattr(user, 'background_profile_pic_extension'):

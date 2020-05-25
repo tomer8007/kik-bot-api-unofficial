@@ -60,16 +60,17 @@ class UsersResponseUser:
     kin_user_id = None
 
     def __init__(self, user):
-        if user.private_profile:
+        if hasattr(user, 'private_profile'):
             # If a user hasn't enabled DMD, you will be able to see their username
             self.username = user.private_profile.username.username
             self.jid = user.private_profile.id.local_part + "@talk.kik.com"
-        if user.id.local_part:
-            self.jid = user.id.local_part + "@talk.kik.com"
-        if user.id.local_part.alias_jid:
-            self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
+        if user.id:
+            if hasattr(user.id, 'local_part'):
+                self.jid = user.id.local_part + "@talk.kik.com"
+            if hasattr(user.id, 'alias_jid'):
+                self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
 
-        if user.public_group_member_profile:
+        if hasattr(user, 'public_group_member_profile'):
             # The attrs below are found in the member's profile
             user = user.public_group_member_profile
 
@@ -78,16 +79,16 @@ class UsersResponseUser:
         if user.registration_element:
             self.creation_date_seconds = user.registration_element.creation_date.seconds
             self.creation_date_nanos = user.registration_element.creation_date.nanos
-        if user.bio_element:
+        if hasattr(user, 'bio_element'):
             self.bio = user.bio_element.bio
-        if user.background_profile_pic_extension:
+        if hasattr(user, 'background_profile_pic_extension'):
             pic = user.background_profile_pic_extension.extension_detail.pic
             self.background_pic_full_sized = pic.full_sized_url
             self.background_pic_thumbnail = pic.thumbnail_url
             self.background_pic_updated_seconds = pic.last_updated_timestamp.seconds
-        if user.interests_element:
+        if hasattr(user, 'interests_element'):
             self.interests = [element.localized_verbiage for element in user.interests_element.interests_element]
-        if user.kin_user_id_element:
+        if hasattr(user, 'kin_user_id_element'):
             self.kin_user_id = user.kin_user_id_element.kin_user_id.id
 
 

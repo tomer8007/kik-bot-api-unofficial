@@ -590,19 +590,17 @@ class KikClient:
 
         :param xmpp_element: The XML element that we received with the information about the event
         """
-        if 'xmlns' in xmpp_element.attrs:
+        if "xmlns" in xmpp_element.attrs:
             # The XML namespace is different for iOS and Android, handle the messages with their actual type
             if xmpp_element['type'] == "chat":
                 xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
             elif xmpp_element['type'] == "groupchat":
                 xmlns_handlers.GroupXMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            else:
-                pass
-        elif xmpp_element['type'] == 'receipt':
-            if xmpp_element.g:
-                self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_element))
-            else:
-                xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
+            elif xmpp_element['type'] == "receipt":
+                if xmpp_element.g:
+                    self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_element))
+                else:
+                    xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
         else:
             # iPads send messages without xmlns, try to handle it as jabber:client
             xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)

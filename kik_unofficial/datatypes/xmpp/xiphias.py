@@ -46,6 +46,14 @@ class UsersRequest(XiphiasRequest):
 
 
 class UsersResponseUser:
+    """
+    Normal jids (used with client.xiphias_get_users):
+        Includes user data such as profile creation date and background picture URL.
+
+    Alias jids provided in public groups (used with client.xiphias_get_users_by_alias):
+        Includes all the private profile data (username, display_name, etc) of a user
+        if you're chatting with them, else it'll get the local jid and the creation date.
+    """
     username = None
     jid = None
     alias_jid = None
@@ -61,14 +69,17 @@ class UsersResponseUser:
 
     def __init__(self, user):
         if hasattr(user, 'private_profile'):
-            # If a user hasn't enabled DMD, you will be able to see their username
             self.username = user.private_profile.username.username
-            self.jid = user.private_profile.id.local_part + "@talk.kik.com"
+            if user.private_profile.id.local_part:
+                # The attribute seems to exist with an empty string
+                self.jid = user.private_profile.id.local_part + "@talk.kik.com"
         if user.id:
             if hasattr(user.id, 'local_part'):
-                self.jid = user.id.local_part + "@talk.kik.com"
+                if user.id.local_part:
+                    self.jid = user.id.local_part + "@talk.kik.com"
             if hasattr(user.id, 'alias_jid'):
-                self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
+                if user.id.alias_jid.local_part:
+                    self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
 
         if hasattr(user, 'public_group_member_profile'):
             # The attrs below are found in the member's profile
@@ -123,4 +134,4 @@ class UsersByAliasResponse(XMPPResponse):
         text = base64.urlsafe_b64decode(data.query.body.text.encode())
         response = GetUsersByAliasResponse()
         response.ParseFromString(text)
-        self.users = [UsersResponseUser(payload.public_group_member_profile) for payload in response.payloads]
+        self.users = [UsersResponseUser(payload) for payload in response.payloads]

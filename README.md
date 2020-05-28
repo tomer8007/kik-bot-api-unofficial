@@ -50,4 +50,4 @@ Before investigating the format of certain requests/responses, it's worth checki
 ## Troubleshooting
 If you are on Windows and you are unable to install the `lxml` package, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).
 
-If you are using [Termux](https://termux.com/), then use `pkg install libxml2 libxslt` to install `lxml`.
+If you are using [Termux](https://termux.com/), then use `pkg install libxml2 libxslt` to install `lxml` and `pkg install zlib libpng libjpeg-turbo` to install `pillow` dependencies.

@@ -99,6 +99,10 @@ class GroupXMPPMessageHandler(XmppHandler):
             self.callback.on_group_message_received(IncomingGroupChatMessage(data))
         elif data.find('is-typing'):
             self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
+        elif data.find('status'):
+            self.callback.on_group_status_received(IncomingGroupStatus(data))
+        elif data.find('sysmsg'):
+            self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
         elif data.content and 'app-id' in data.content.attrs:
             app_id = data.content['app-id']
             if app_id == 'com.kik.ext.stickers':

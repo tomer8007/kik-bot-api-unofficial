@@ -38,5 +38,6 @@ if __name__ == '__main__':
     last = input('Last name: ')
     email = input('Email: ')
     birthday = input('Birthday: (like 01-01-1990): ')
-    client = KikClient(callback=RegisterClient(), log_level=logging.DEBUG)
+    logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
+    client = KikClient(callback=RegisterClient())
     client.register(email, username, password, first, last, birthday)

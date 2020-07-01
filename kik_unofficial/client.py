@@ -25,14 +25,13 @@ from kik_unofficial.http import profile_pictures, content
 HOST, PORT = "talk1110an.kik.com", 5223
 log = logging.getLogger('kik_unofficial')
 
-
 class KikClient:
     """
     The main kik class with which you're managing a kik connection and sending commands
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, log_level=logging.INFO, device_id_override=None, android_id_override=None):
+                 kik_node=None, device_id_override=None, android_id_override=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -44,10 +43,7 @@ class KikClient:
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
-        :param log_level: logging level.
         """
-        self._set_up_logging(log_level)
-
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
@@ -664,25 +660,9 @@ class KikClient:
 
         return None
 
-    def _set_up_logging(self, log_level):
-        log_formatter = logging.Formatter('[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s')
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG)
-
-        kik_logger = logging.getLogger('kik_unofficial')
-
-        if len(kik_logger.handlers) == 0:
-            file_handler = logging.FileHandler("kik-debug.log")
-            file_handler.setFormatter(log_formatter)
-            file_handler.setLevel(logging.DEBUG)
-            kik_logger.addHandler(file_handler)
-
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setLevel(log_level)
-            console_handler.setFormatter(log_formatter)
-            kik_logger.addHandler(console_handler)
-
-        logging.getLogger('asyncio').setLevel(logging.WARNING)
+    @staticmethod
+    def log_format():
+        return '[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s'
 
     @staticmethod
     def is_group_jid(jid):

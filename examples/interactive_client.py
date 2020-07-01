@@ -76,5 +76,6 @@ def chat():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
     callback = InteractiveChatClient()
-    client = KikClient(callback=callback, kik_username=username, kik_password=password, log_level=logging.DEBUG)
+    client = KikClient(callback=callback, kik_username=username, kik_password=password)

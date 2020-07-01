@@ -3,6 +3,8 @@ A Kik bot that just logs every event that it gets (new message, message read, et
 and echos back whatever chat messages it receives.
 """
 
+import logging
+
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
@@ -16,6 +18,7 @@ password = 'your_kik_password'
 
 
 def main():
+    logging.basicConfig(format=KikClient.log_format(), level=logging.INFO)
     bot = EchoBot()
 
 

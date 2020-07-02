@@ -4,6 +4,7 @@ and echos back whatever chat messages it receives.
 """
 
 import logging
+import sys
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
@@ -13,8 +14,8 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoR
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
-username = 'your_kik_username'
-password = 'your_kik_password'
+username = sys.argv[1]
+password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 
 def main():

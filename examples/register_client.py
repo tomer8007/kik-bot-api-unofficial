@@ -1,3 +1,4 @@
+import argparse
 import logging
 
 from kik_unofficial.client import KikClient
@@ -23,7 +24,8 @@ class RegisterClient(KikClientCallback):
         if "captcha_url" in dir(response):
             print(response.captcha_url)
             result = input("Captcha result:")
-            client.register(email, username, password, first, last, birthday, result)
+            client.register(args.email, args.username, args.password,
+                    args.firstname, args.lastname, args.birthday, result)
         else:
             print("Unable to register! error information:\r\n{}".format(response))
 
@@ -32,13 +34,19 @@ class RegisterClient(KikClientCallback):
 
 
 if __name__ == '__main__':
-    username = input('Username: ')
-    password = input('Password: ')
-    first = input('First name: ')
-    last = input('Last name: ')
-    email = input('Email: ')
-    birthday = input('Birthday: (like 01-01-1990): ')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('username')
+    parser.add_argument('email')
+    parser.add_argument('-p', '--password')
+    parser.add_argument('--firstname', default='Not A')
+    parser.add_argument('--lastname', default='Human')
+    parser.add_argument('--birthday', default='01-01-1990')
+    args = parser.parse_args()
+    if args.password is None:
+        args.password = input('Password: ')
+
     logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
     client = KikClient(callback=RegisterClient(),
             kik_username=None, kik_password=None)
-    client.register(email, username, password, first, last, birthday)
+    client.register(args.email, args.username, args.password,
+            args.firstname, args.lastname, args.birthday)

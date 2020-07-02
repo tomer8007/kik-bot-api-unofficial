@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 A Kik bot that just logs every event that it gets (new message, message read, etc.),
 and echos back whatever chat messages it receives.

@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import logging
+import sys
 import time
 import threading
 
@@ -8,8 +11,8 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingChatMessage, Incoming
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
 from kik_unofficial.datatypes.xmpp.login import ConnectionFailedResponse
 
-username = 'your_kik_username'
-password = 'your_kik_password'
+username = sys.argv[1]
+password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 friends = {}
 

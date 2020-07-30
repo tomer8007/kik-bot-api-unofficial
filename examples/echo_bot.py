@@ -15,12 +15,19 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoR
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
-username = sys.argv[1]
+username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
 password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 
 def main():
-    logging.basicConfig(format=KikClient.log_format(), level=logging.INFO)
+    # set up logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(logging.Formatter(KikClient.log_format()))
+    logger.addHandler(stream_handler)
+
+    # create the bot
     bot = EchoBot()
 
 

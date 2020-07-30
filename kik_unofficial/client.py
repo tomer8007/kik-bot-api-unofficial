@@ -525,7 +525,7 @@ class KikClient:
                 # authenticated!
                 log.info("[+] Authenticated successfully.")
                 self.authenticated = True
-                self.authenticator.sendStanza()
+                self.authenticator.send_stanza()
                 self.callback.on_authenticated()
             elif self.should_login_on_connection:
                 self.login(self.username, self.password)

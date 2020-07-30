@@ -62,6 +62,7 @@ class Group(Peer):
             raise KikApiException("No jid in group xml")
         super().__init__(xml_data['jid'])
         self.members = [GroupMember(m) for m in xml_data.findAll('m')]
+        self.banned_members = [GroupMember(m) for m in xml_data.findAll('b')]
         self.code = xml_data.code.text if xml_data.code else None
         self.pic = xml_data.pic.text if xml_data.pic else None
         self.name = xml_data.n.text if xml_data.n else None

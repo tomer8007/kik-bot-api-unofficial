@@ -167,19 +167,30 @@ class OutgoingReadReceipt(XMPPElement):
 
 
 class OutgoingDeliveredReceipt(XMPPElement):
-    def __init__(self, peer_jid, receipt_message_id):
+    def __init__(self, peer_jid, receipt_message_id, group_jid=None):
         super().__init__()
+
+        self.group_jid = group_jid
         self.peer_jid = peer_jid
         self.receipt_message_id = receipt_message_id
 
     def serialize(self):
+        if self.group_jid and 'groups.kik.com' in self.group_jid:
+            g_tag = " g=\"{}\"".format(self.group_jid)
+        else:
+            g_tag = ''
+
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="receipt" id="{}" to="{}" cts="{}">'
-                '<kik push="false" qos="true" timestamp="{}" />'
-                '<receipt xmlns="kik:message:receipt" type="delivered">'
-                '<msgid id="{}" />'
-                '</receipt>'
-                '</message>').format(self.message_id, self.peer_jid, timestamp, timestamp, self.receipt_message_id)
+        data = ('<iq type="set" id="{}" cts="{}">'
+                '<query xmlns="kik:iq:QoS">'
+                '<msg-acks>'
+                '<sender jid="{}"{}>'
+                '<ack-id receipt="true">{}</ack-id>'
+                '</sender>'
+                '</msg-acks>'
+                '<history attach="false" />'
+                '</query>'
+                '</iq>').format(self.message_id, timestamp, self.peer_jid, g_tag, self.receipt_message_id)
         return data.encode()
 
 

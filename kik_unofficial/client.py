@@ -192,15 +192,16 @@ class KikClient:
         log.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
         return self._send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
-    def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str):
+    def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str, group_jid: str = None):
         """
         Sends a receipt indicating that a specific message was received, to another person.
 
         :param peer_jid: The other peer's JID to send to receipt to
         :param receipt_message_id: The message ID for which to generate the receipt
+        :param group_jid: The group's JID, in case the receipt is sent in a group (None otherwise)
         """
         log.info("[+] Sending delivered receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
-        return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id))
+        return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
         """

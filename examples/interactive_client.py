@@ -11,7 +11,7 @@ from kik_unofficial.datatypes.xmpp.chatting import IncomingChatMessage, Incoming
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
 from kik_unofficial.datatypes.xmpp.login import ConnectionFailedResponse
 
-username = sys.argv[1]
+username = sys.argv[1] if len(sys.argv) > 1 else input('Username: ')
 password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 friends = {}
@@ -23,8 +23,9 @@ class InteractiveChatClient(KikClientCallback):
         cli_thread.start()
 
     def on_roster_received(self, response: FetchRosterResponse):
-        for m in response.peers:
-            friends[m.jid] = m
+        for peer in response.peers:
+            friends[peer.jid] = peer
+
         print("-Peers-\n{}".format("\n".join([str(m) for m in response.peers])))
 
     def on_chat_message_received(self, chat_message: IncomingChatMessage):
@@ -79,6 +80,13 @@ def chat():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
+    # set up logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(logging.Formatter(KikClient.log_format()))
+    logger.addHandler(stream_handler)
+
+    # create the client
     callback = InteractiveChatClient()
     client = KikClient(callback=callback, kik_username=username, kik_password=password)

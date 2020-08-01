@@ -57,6 +57,7 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
+        self.is_expecting_connection_reset = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -462,6 +463,8 @@ class KikClient:
         """
         log.info("[!] Disconnecting.")
         self.connection.close()
+        self.is_expecting_connection_reset = True
+
         # self.loop.call_soon(self.loop.stop)
 
     # -----------------
@@ -604,12 +607,15 @@ class KikClient:
 
     def _on_connection_lost(self):
         """
-        Gets called when the connection to kik's servers is unexpectedly lost.
+        Gets called when the connection to kik's servers is (unexpectedly) lost.
         It could be that we received a connection reset packet for example.
         :return:
         """
         self.connected = False
-        log.info("[-] The connection was lost")
+        if not self.is_expecting_connection_reset:
+            log.info("[-] The connection was unexpectedly lost")
+
+        self.is_expecting_connection_reset = False
 
     def _kik_connection_thread_function(self):
         """

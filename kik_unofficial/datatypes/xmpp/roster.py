@@ -42,6 +42,9 @@ class FetchRosterResponse(XMPPResponse):
             return Group(element)
         elif element.name == "item":
             return User(element)
+        elif element.name == "removed":
+            # deleted accounts?
+            return User(element)
 
 
 class QueryUsersInfoRequest(XMPPElement):

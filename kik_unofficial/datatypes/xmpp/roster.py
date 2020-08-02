@@ -42,7 +42,7 @@ class FetchRosterResponse(XMPPResponse):
             return Group(element)
         elif element.name == "item":
             return User(element)
-        elif element.name == "removed":
+        elif element.name == "remove":
             # deleted accounts?
             return User(element)
 

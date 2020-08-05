@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group, User
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.protobuf import group_search_service_pb2
+from kik_unofficial.datatypes.exceptions import KikParsingException
 
 
 class FetchRosterRequest(XMPPElement):
@@ -43,8 +44,12 @@ class FetchRosterResponse(XMPPResponse):
         elif element.name == "item":
             return User(element)
         elif element.name == "remove":
-            # deleted accounts?
+            # deleted accounts / accounts no longer in the roster
             return User(element)
+        elif element.name == "remove-group":
+            return Group(element)
+        else:
+            raise KikParsingException("Unsupported peer element tag: {}".format(element.name))
 
 
 class QueryUsersInfoRequest(XMPPElement):

@@ -38,6 +38,9 @@ class KikEmptyResponseException(KikErrorException):
 class KikApiException(Exception):
     pass
 
+class KikParsingException(Exception):
+    pass
+
 
 class KikUploadError(Exception):
     def __init__(self, status_code, reason=None):

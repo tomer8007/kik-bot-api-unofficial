@@ -7,7 +7,7 @@ import base64
 from collections import OrderedDict
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 from kik_unofficial.device_configuration import kik_version_info
-
+from kik_unofficial.utilities.sorted_map import SortedMap, BaseOrdering, ExtendedOrdering
 
 class CryptographicUtils:
     """
@@ -129,6 +129,21 @@ class CryptographicUtils:
 
         payload += ">"
         return payload
+    
+    @staticmethod
+    def sort_kik_map_v2(the_map):
+        the_map = the_map.copy()
+        sorted_map = SortedMap(the_map, BaseOrdering)
+
+        hash_code = sorted_map.hash_code() % 29
+        if hash_code < 0:
+            hash_code += 29
+
+        spaces = ' ' * hash_code
+        sorted_map_2 = SortedMap(sorted_map, ExtendedOrdering)
+
+        opt = f'{spaces}<k {sorted_map_2.to_string()}>'
+        return opt
 
     @staticmethod
     def sort_kik_map(original_dictionary):

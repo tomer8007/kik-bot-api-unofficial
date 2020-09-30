@@ -24,7 +24,7 @@ setup(
     keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
     packages=find_packages(exclude=['docs', 'test']),
     install_requires=[
-        'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests', 'pillow', 'pyDes',
+        'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf', 'requests', 'pillow', 'pyDes', 'bitstring'
     ],
     extras_require={
         'dev': [],

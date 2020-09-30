@@ -82,6 +82,8 @@ class LoginResponse:
 
 class MakeAnonymousStreamInitTag(XMPPElement):
     # Translated from java decompiled with jadx.
+    
+    # This does not fix camera images, this is only part of the answer.
 
     def __init__(self, device_id_override=None, n=1):
         super().__init__()

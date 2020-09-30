@@ -5,7 +5,6 @@ class Mapping:
     """
     def __init__(self, map={}):
         self.map = OrderedDict(map) # for backwards compatability
-        # self.map = dict(map)
 
     def __setitem__(self, key, item):
         self.map[key] = item
@@ -67,9 +66,3 @@ class Mapping:
     def remove(self, key):
         if key in self.map:
             del self.map[key]
-
-    def bump(self, key):
-        if key in self.map:
-            val = self.map.get(key)
-            del self.map[key]
-            self.map[key] = val

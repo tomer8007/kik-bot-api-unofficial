@@ -2,9 +2,10 @@ from kik_unofficial.utilities.strong_hash_map import StrongHashMap
 from kik_unofficial.utilities.linked_hash_map import Mapping
 from collections import OrderedDict
 
+# from SortedMap.java
+
 BaseOrdering = 0
 ExtendedOrdering = 1
-
 
 class SortedMap(StrongHashMap):
     """
@@ -15,11 +16,12 @@ class SortedMap(StrongHashMap):
 
         map = OrderedDict(map)
 
-        arr = map.keys()
-        arr = sorted(arr)
+        keys = map.keys()
+        keys = sorted(keys)
+        
         new_map = Mapping(map)
-        for i in arr:
-            new_map[i] = map.get(i)
+        for key in keys:
+            new_map[key] = map.get(key)
 
         hash_code_base = -1964139357
         hash_code_offset = 7
@@ -38,8 +40,8 @@ class SortedMap(StrongHashMap):
 
             if shm.keys():
                 next_ = list(shm.keys())[0]
-                k = next_
-                v = shm.get(k)
+                key = next_
+                value = shm.get(key) # not used
 
                 hash_code = shm.hash_code()
 
@@ -48,7 +50,7 @@ class SortedMap(StrongHashMap):
                 if hash_code < 0:
                     indx = hash_code + len(shm)
 
-                remove = arr.pop(indx)
+                remove = keys.pop(indx)
                 self.put(remove, new_map.get(remove))
                 new_map.remove(remove)
 

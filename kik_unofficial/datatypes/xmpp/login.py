@@ -12,6 +12,14 @@ from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 captcha_element = '<challenge><response>{}</response></challenge>'
 kik_version = kik_version_info["kik_version"]
 
+private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
+    "/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT" \
+    "/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq" \
+    "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
+    "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
+    "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
+private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
+
 
 class LoginRequest(XMPPElement):
     """
@@ -72,6 +80,56 @@ class LoginResponse:
         self.first_name = data.query.first.text
         self.last_name = data.query.last.text
 
+class MakeAnonymousStreamInitTag(XMPPElement):
+    def __init__(self, device_id_override=None, n=1):
+        super().__init__()
+        self.device_id_override = device_id_override
+        self.n = n
+
+    def serialize(self):
+        can = 'CAN'  # XmppSocketV2.java line 180, 
+        
+        device = self.device_id_override if self.device_id_override else device_id
+        timestamp = str(CryptographicUtils.make_kik_timestamp())
+        sid = CryptographicUtils.make_kik_uuid()
+        
+        signature = rsa.sign("{}:{}:{}:{}".format(can + device, kik_version, timestamp, sid).encode(), private_key, 'SHA-256')
+        signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
+
+        hmac_data = timestamp + ":" + can + device
+        hmac_secret_key = CryptographicUtils.build_hmac_key()
+        cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode(), hashlib.sha1).digest()).decode()
+
+        the_map = {
+            'signed': signature,
+            'lang': 'en_US',
+            'sid': sid,
+            'anon': '1',
+            'ts': timestamp, 
+            'v': kik_version, 
+            'cv': cv, 
+            'conn': 'WIFI', 
+            'dev': can+device,
+            }
+        
+        # Test data to confirm the sort_kik_map function returns the correct result.
+        # the_map = { 
+        #     'signed': 'signature',
+        #     'lang': 'en_US',
+        #     'sid': 'sid',
+        #     'anon': '1',
+        #     'ts': 'timestamp',
+        #     'v': 'kik_version',
+        #     'cv': 'cv',
+        #     'conn': 'WIFI',
+        #     'dev': 'can+device',
+        # }
+
+        if self.n > 0:
+            the_map['n'] = self.n
+        
+        packet = CryptographicUtils.make_connection_payload(*CryptographicUtils.sort_kik_map(the_map))
+        return packet.encode()
 
 class EstablishAuthenticatedSessionRequest(XMPPElement):
     """
@@ -92,15 +150,9 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
         sid = CryptographicUtils.make_kik_uuid()
 
         # some super secret cryptographic stuff
-        private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
-                          "/C3tX2bcNgLTnGFs8yA2m2p7hKoFLoxh64vZx5fZykCAwEAAQJAT" \
-                          "/hC1iC3iHDbQRIdH6E4M9WT72vN326Kc3MKWveT603sUAWFlaEa5T80GBiP/qXt9PaDoJWcdKHr7RqDq" \
-                          "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
-                          "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
-                          "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
-        private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
+        
         signature = rsa.sign("{}:{}:{}:{}".format(jid, kik_version, timestamp, sid).encode(), private_key, 'SHA-256')
-        signature = base64.b64encode(signature, '-_'.encode()).decode()[:-2]
+        signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
         hmac_data = timestamp + ":" + jid
         hmac_secret_key = CryptographicUtils.build_hmac_key()
         cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode(), hashlib.sha1).digest()).decode()
@@ -109,8 +161,8 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
 
         the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': kik_version,
                    'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
-        packet = CryptographicUtils.make_connection_payload(CryptographicUtils.sort_kik_map(the_map)).encode()
-        return packet
+        packet = CryptographicUtils.make_connection_payload(*CryptographicUtils.sort_kik_map(the_map))
+        return packet.encode()
 
 
 class ConnectionFailedResponse:

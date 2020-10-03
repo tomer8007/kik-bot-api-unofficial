@@ -121,14 +121,14 @@ class CryptographicUtils:
         return (int((((1 << i)) & j))) >> i
 
     @staticmethod
-    def make_connection_payload(ordered_map):
+    def make_connection_payload(ordered_map, spaces):
         payload = "<k"
         for key in ordered_map.keys():
             payload += " "
-            payload += key + "=\"" + ordered_map[key] + "\""
+            payload += key + "=\"" + str(ordered_map[key]) + "\""
 
         payload += ">"
-        return payload
+        return spaces + payload
 
     @staticmethod
     def sort_kik_map(original_dictionary):
@@ -142,8 +142,14 @@ class CryptographicUtils:
         original_length = len(dictionary)
         keys = list(dictionary.keys())
         keys.sort()
+        
+        hash_code_for_spaces = CryptographicUtils.kik_map_hash_code(dictionary, -310256979, 13) 
+        hash_code_for_spaces = hash_code_for_spaces % 29
+        if hash_code_for_spaces < 0:
+            hash_code_for_spaces += 29
+        
         for i in range(0, original_length):
-            hash_code = CryptographicUtils.kik_map_hash_code(dictionary)
+            hash_code = CryptographicUtils.kik_map_hash_code(dictionary, -1964139357, 7)
             hash_code = (hash_code % len(dictionary) if hash_code > 0 else hash_code % -len(dictionary))
             if hash_code < 0:
                 hash_code += len(dictionary)
@@ -152,18 +158,18 @@ class CryptographicUtils:
             new_map[selected_key] = dictionary[selected_key]
             del dictionary[selected_key]
 
-        return new_map
+        return new_map, ' '*hash_code_for_spaces
 
     @staticmethod
-    def kik_map_hash_code(dictionary):
+    def kik_map_hash_code(dictionary, hash_code_base, hash_code_offset):
         keys = list(dictionary.keys())
         keys.sort()
         string1 = ""
         for key in keys:
-            string1 += key + dictionary[key]
+            string1 += key + str(dictionary[key])
         string2 = ""
         for key in reversed(keys):
-            string2 += key + dictionary[key]
+            string2 += key + str(dictionary[key])
         bytes1 = string1.encode('UTF-8')
         bytes2 = string2.encode('UTF-8')
         array = [CryptographicUtils.kik_hash_code_sub_func(0, bytes1),
@@ -172,8 +178,7 @@ class CryptographicUtils:
                  CryptographicUtils.kik_hash_code_sub_func(0, bytes2),
                  CryptographicUtils.kik_hash_code_sub_func(1, bytes2),
                  CryptographicUtils.kik_hash_code_sub_func(2, bytes2)]
-        hash_code_base = -1964139357
-        hash_code_offset = 7
+
         return (((hash_code_base ^ (ParsingUtilities.sign_extend_with_mask(array[0] << hash_code_offset))) ^ (
             ParsingUtilities.sign_extend_with_mask(array[5] << (hash_code_offset * 2)))) ^ (
                     ParsingUtilities.sign_extend_with_mask(array[1] << hash_code_offset))) ^ array[0]

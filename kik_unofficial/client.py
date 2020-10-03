@@ -87,7 +87,8 @@ class KikClient:
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
             self.initial_connection_payload = message.serialize()
         else:
-            self.initial_connection_payload = '<k anon="">'.encode()
+            message = login.MakeAnonymousStreamInitTag(self.device_id_override, n = 1)
+            self.initial_connection_payload = message.serialize()
 
         self.connection.send_raw_data(self.initial_connection_payload)
 

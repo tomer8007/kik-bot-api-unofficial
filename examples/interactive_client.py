@@ -30,6 +30,7 @@ class InteractiveChatClient(KikClientCallback):
 
     def on_chat_message_received(self, chat_message: IncomingChatMessage):
         print("{}: {}".format(jid_to_username(chat_message.from_jid), chat_message.body))
+
         if chat_message.from_jid not in friends:
             print("New friend: {}".format(jid_to_username(chat_message.from_jid)))
             client.send_chat_message(chat_message.from_jid, "Hi!")
@@ -39,7 +40,7 @@ class InteractiveChatClient(KikClientCallback):
 
     def on_group_message_received(self, chat_message: IncomingGroupChatMessage):
         print("{} - {}: {}".format(friends[chat_message.group_jid].name, jid_to_username(chat_message.from_jid),
-                                   jid_to_username(chat_message.body)))
+                                   chat_message.body))
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
         print("Connection failed")

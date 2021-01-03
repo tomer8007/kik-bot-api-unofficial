@@ -9,7 +9,7 @@ setup(
     name='kik_unofficial',
     version='0.3',
     description='Python API for writing unoffical kik bots that act like humans',
-    # long_description=long_description,
+    # long_description="",
     url='https://github.com/tomer8007/kik-bot-api-unofficial',
     download_url="https://github.com/tomer8007/kik-bot-api-unofficial/tarball/master",
     author='Tomer',
@@ -17,7 +17,6 @@ setup(
     license='MIT',
     classifiers=[
         'Development Status :: 3 - Alpha',
-
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
     ],

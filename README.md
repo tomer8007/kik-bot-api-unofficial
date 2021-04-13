@@ -1,53 +1,58 @@
 # Kik Bot API #
-Use this library to develop bots for [Kik Messenger](https://www.kik.com) that are essentially automated humans.
 
-It basically lets you do the same things as the offical Kik app by pretending to be a real smartphone client; It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
+This is a modification to kik-bot-api-unofficial and can be used as a spam bot.
 
-This is the new branch of this project and is recommended.
 ## Installation and dependencies ##
-First, make sure you are using **Python 3.6+**, not python 2.7. Second, just install it directly from GitHub:
-```
-git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
-pip3 install ./kik-bot-api-unofficial
-```
-## Usage ##
-Examples are a great way to understand things. A good place to start is the `examples/` directory. 
 
-It is as simple as:
-```python
-from kik_unofficial.client import KikClient
-from kik_unofficial.callbacks import KikClientCallback
-import kik_unofficial.datatypes.xmpp.chatting as chatting
+First, make sure you are using **Python 3.6+**, not python 2.7 or python 3.9. 
 
-class EchoBot(KikClientCallback):
-    def __init__(self):
-        self.client = KikClient(self, "your_kik_username", "your_kik_password")
 
-    def on_authenticated(self):
-        self.client.request_roster() # request list of chat partners
-
-    def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
-        self.client.send_chat_message(chat_message.from_jid, 'You said "{}"!'.format(chat_message.body))
-```
-Currently Supported Operations:
-- Log in with kik username and password, retrieve user information (such as email, name, etc).
-- Fetch chat partners information
-- Send text messages to users/groups and listen for incoming messages
-- Send and receive 'is-typing' status
-- Send and receive read receipts
-- Fetch group information (name, participants, etc.)
-- Admin groups (add, remove or ban members, etc)
-- Search for groups and join them [Experimental]
-- Receive media content: camera, gallery, stickers
-- Add a kik user as a friend
-- Send images (including GIFs, using a tendor.com API key)
-
-Sending videos or recordings is not supported yet.
-
-## More functionality
-Before investigating the format of certain requests/responses, it's worth checking if they are already documented in the [Message Formats](https://github.com/tomer8007/kik-bot-api-unofficial/wiki/Message-Formats) wiki page.
-
-## Troubleshooting
-If you are on Windows and you are unable to install the `lxml` package, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).
+** (Do this before installing the api/more on how to get python 3.8 below.)
 
 If you are using [Termux](https://termux.com/), then use `pkg install libxml2 libxslt` to install `lxml` and `pkg install zlib libpng libjpeg-turbo` to install `pillow` dependencies.
+
+## Installation ## (this may take a while so be patient)
+
+$ git clone -b new https://github.com/Sitiaro/Spambot **
+
+$ pip3 install ./Spambot
+
+## Usage ##
+
+$ cd Spambot
+
+$ python spambot.py
+
+Login with the username and password of your spam account, add it to your friend list by typing 'friend' in the bot's dms and add it to the chat you want to spam. Once you do so, use .spam (no. of messages) to spam the chat.
+
+## For educational purposes only. This may lead to your account getting banned from kik so use it at your own expense. ##
+
+
+## Replacing python 3.9 with 3.8 ##
+
+(Termux)
+
+Uninstall python -
+
+$ pkg uninstall python
+
+Check the arch of your device cpu using -
+
+$ uname -m
+
+Go to https://github.com/Termux-pod/termux-pod and find the file corresponding to your device's CPU. You should try python_3.8.6_.deb first and then the static version if there is any error.
+
+Download the raw .deb file in termux using web-get.
+
+Make sure you add ?raw=true to the end of the url, or else you'll end up downloading the html file. So 
+it'll be something like this -
+
+$ wget https://github.com/Termux-pod/termux-pod/blob/main/arm/python/python_3.8.6_<CPU_ARCH.>.deb?raw=true
+
+(replace <CPU_ARCH.> with your device's cpu)
+
+Finally, execute the following command in termux -
+
+$ dpkg -i ./python_3.8.6_<CPU_ARCH.>.deb
+
+Once again, replacing <CPU_ARCH.> with your cpu's architecture (for me it was arm).

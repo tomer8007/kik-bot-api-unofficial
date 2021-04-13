@@ -25,6 +25,8 @@ $ python spambot.py
 
 Login with the username and password of your spam account, add it to your friend list by typing 'friend' in the bot's dms and add it to the chat you want to spam. Once you do so, use .spam (no. of messages) to spam the chat.
 
+You can send 'Disconnect' in dms to stop the bot from spamming incase it gets removed from a chat but the spam doesn't stop (in your Terminal). Either this, or you can simply restart the bot and login with different creds since most owners/admins tend to ban such bots.
+
 ## For educational purposes only. This may lead to your account getting banned from kik so use it at your own expense. ##
 
 

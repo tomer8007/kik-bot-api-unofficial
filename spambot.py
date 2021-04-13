@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-A Kik bot that just logs every event that it gets (new message, message read, etc.),
-and echos back whatever chat messages it receives.
+A Kik bot that can log messages and spam group chats
 """
 
 import logging

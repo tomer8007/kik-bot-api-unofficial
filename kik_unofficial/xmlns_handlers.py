@@ -12,6 +12,8 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
+from kik_unofficial.datatypes.xmpp.history import HistoryResponse
+
 
 log = logging.getLogger('kik_unofficial')
 
@@ -123,6 +125,10 @@ class GroupXMPPMessageHandler(XmppHandler):
         else:
             log.debug("[-] Received unknown group message. contents: {}".format(str(data)))
 
+
+class HistoryHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        self.callback.on_message_history_response(HistoryResponse(data))
 
 class CheckUsernameUniqueResponseHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):

@@ -13,6 +13,7 @@ import kik_unofficial.datatypes.xmpp.chatting as chatting
 import kik_unofficial.datatypes.xmpp.group_adminship as group_adminship
 import kik_unofficial.datatypes.xmpp.login as login
 import kik_unofficial.datatypes.xmpp.roster as roster
+import kik_unofficial.datatypes.xmpp.history as history
 import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
 from kik_unofficial.datatypes.xmpp.auth_stanza import AuthStanza
@@ -20,6 +21,7 @@ from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
+
 
 
 HOST, PORT = "talk1110an.kik.com", 5223
@@ -378,6 +380,21 @@ class KikClient:
     # Other Operations
     # ----------------------
 
+    def send_ack(self, sender_jid, is_receipt: bool, message_id, group_jid = None):
+        """
+        Sends an acknowledgement for a provided message ID
+        """
+        log.info("[+] Sending acknowledgement for message ID {}".format(message_id))
+        return self._send_xmpp_element(history.OutgoingAcknowledgement(sender_jid, is_receipt, message_id, group_jid))
+
+    def request_messaging_history(self):
+        """
+        Requests the account's messaging history.
+        Results will be returned using the on_message_history_response() callback
+        """
+        log.info("[+] Requesting messaging history")
+        return self._send_xmpp_element(history.OutgoingHistoryRequest())
+
     def search_group(self, search_query):
         """
         Searches for public groups using a query
@@ -574,6 +591,8 @@ class KikClient:
             xmlns_handlers.XiphiasHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'kik:auth:cert':
             self.authenticator.handle(iq_element)
+        elif xmlns == 'kik:iq:QoS':
+            xmlns_handlers.HistoryHandler(self.callback, self).handle(iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """

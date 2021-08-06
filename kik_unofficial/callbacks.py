@@ -6,6 +6,8 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedR
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
+from kik_unofficial.datatypes.xmpp.history import HistoryResponse
+
 
 
 class KikClientCallback:
@@ -39,6 +41,13 @@ class KikClientCallback:
         Gets called after a call to check_username_uniqueness(), indicating whether or not a requested username was
         found available for registration
         :param response: a UsernameUniquenessResponse instance whose 'unique' member is True or False
+        """
+        pass
+
+    def on_message_history_response(self, response: HistoryResponse):
+        """
+        Gets called when a messaging history response is received.
+        :param response: The messaging history received
         """
         pass
 

@@ -36,6 +36,7 @@ Currently Supported Operations:
 - Send and receive 'is-typing' status
 - Send and receive read receipts
 - Fetch group information (name, participants, etc.)
+- Fetch past message history
 - Admin groups (add, remove or ban members, etc)
 - Search for groups and join them [Experimental]
 - Receive media content: camera, gallery, stickers

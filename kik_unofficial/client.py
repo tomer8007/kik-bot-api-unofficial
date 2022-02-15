@@ -445,6 +445,13 @@ class KikClient:
         log.info("[+] Trying to solve a captcha with result: '{}'".format(captcha_result))
         return self._send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
 
+    def get_my_profile(self):
+        """
+        Fetches your own profile details
+        """
+        log.info("[+] Requesting self profile")
+        return self._send_xmpp_element(account.GetMyProfileRequest())
+
     def change_display_name(self, first_name, last_name):
         """
         Changes the display name
@@ -593,6 +600,8 @@ class KikClient:
             self.authenticator.handle(iq_element)
         elif xmlns == 'kik:iq:QoS':
             xmlns_handlers.HistoryHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:user-profile':
+            xmlns_handlers.UserProfileHandler(self.callback, self).handle(iq_element)
 
     def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
         """

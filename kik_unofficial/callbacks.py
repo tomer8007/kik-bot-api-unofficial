@@ -1,5 +1,6 @@
 from typing import Union
 
+from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
 from kik_unofficial.datatypes.xmpp.chatting import *
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
@@ -48,6 +49,13 @@ class KikClientCallback:
         """
         Gets called when a messaging history response is received.
         :param response: The messaging history received
+        """
+        pass
+
+    def on_get_my_profile_response(self, response: GetMyProfileResponse):
+        """
+        Gets called when a response is received after requesting your own profile information.
+        :param response: The user profile data received (will be for the account currently authenticated)
         """
         pass
 

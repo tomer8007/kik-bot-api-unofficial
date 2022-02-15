@@ -3,6 +3,7 @@ import logging
 from bs4 import BeautifulSoup
 
 from kik_unofficial.callbacks import KikClientCallback
+from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
 from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
     IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
     IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent, IncomingGifMessage, \
@@ -129,6 +130,15 @@ class GroupXMPPMessageHandler(XmppHandler):
 class HistoryHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
         self.callback.on_message_history_response(HistoryResponse(data))
+
+
+class UserProfileHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        # this will ignore results for other requests
+        # like email change that also use the kik:iq:user-profile namespace
+        if data.username:
+            self.callback.on_get_my_profile_response(GetMyProfileResponse(data))
+
 
 class CheckUsernameUniqueResponseHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):

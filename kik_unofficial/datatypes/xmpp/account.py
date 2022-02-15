@@ -48,12 +48,16 @@ class GetMyProfileResponse(XMPPResponse):
         else:
             self.pic_url = None
 
+    # Once the session token is expired, call get_my_profile again to get the new token
     def is_valid_token(self):
         if self.session_token is None or self.session_token_expiration is None:
             return False
         now = datetime.datetime.now()
-        expire_time = datetime.datetime.strptime(self.session_token_expiration, "%Y-%m-%dT%H:%M:%S.%fZ")
-        # print(f'now={now}, expire_time={expire_time}')
+        try:
+            expire_time = datetime.datetime.strptime(self.session_token_expiration, "%Y-%m-%dT%H:%M:%S.%fZ")
+        except ValueError:
+            return False
+
         return now < expire_time
 
     def __str__(self):

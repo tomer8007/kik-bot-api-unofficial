@@ -8,4 +8,4 @@ This directory contains most of kik's protobuf datatypes in both source (`.proto
 ## Organization ##
 The source files are stored in the `probuf_source` directory. Other directories contain the auto-generated python classes.
 
-An additional bash script `compile_protobuf.sh` in this directory is provided to automaticlly compile new extracted `.proto` files from the Android `apk` file.
+An additional bash script `compile_protobuf.sh` in this directory is provided to automatically compile new extracted `.proto` files from the Android `apk` file.

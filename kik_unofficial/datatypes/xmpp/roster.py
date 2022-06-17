@@ -4,7 +4,7 @@ from typing import List, Union
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group, User
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.protobuf import group_search_service_pb2
+from kik_unofficial.protobuf.groups.v1 import group_search_service_pb2
 from kik_unofficial.datatypes.exceptions import KikParsingException
 
 

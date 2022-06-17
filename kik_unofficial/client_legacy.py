@@ -14,7 +14,7 @@ from kik_unofficial.datatypes.exceptions import *
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
-from kik_unofficial.protobuf import group_search_service_pb2
+from kik_unofficial.protobuf.groups.v1 import group_search_service_pb2
 
 HOST, PORT = "talk1110an.kik.com", 5223
 

@@ -76,6 +76,7 @@ class KikClient:
         """
         self.kik_connection_thread = Thread(target=self._kik_connection_thread_function, name="Kik Connection")
         self.kik_connection_thread.start()
+        self.kik_connection_thread.join()
 
     def _on_connection_made(self):
         """

@@ -7,7 +7,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='kik_unofficial',
-    version='0.4',
+    version='0.5',
     description='Python API for writing unoffical kik bots that act like humans',
     # long_description="",
     url='https://github.com/tomer8007/kik-bot-api-unofficial',

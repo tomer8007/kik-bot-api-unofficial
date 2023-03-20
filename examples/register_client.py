@@ -52,3 +52,4 @@ if __name__ == '__main__':
             kik_username=None, kik_password=None)
     client.register(args.email, args.username, args.password,
             args.firstname, args.lastname, args.birthday)
+    client.wait_for_messages()

@@ -91,3 +91,4 @@ if __name__ == '__main__':
     # create the client
     callback = InteractiveChatClient()
     client = KikClient(callback=callback, kik_username=username, kik_password=password)
+    client.wait_for_messages()

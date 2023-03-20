@@ -34,6 +34,7 @@ def main():
 class EchoBot(KikClientCallback):
     def __init__(self):
         self.client = KikClient(self, username, password)
+        self.client.wait_for_messages()
 
     def on_authenticated(self):
         print("Now I'm Authenticated, let's request roster")

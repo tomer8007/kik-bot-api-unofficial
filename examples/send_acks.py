@@ -32,6 +32,7 @@ def main():
 class AckBot(KikClientCallback):
     def __init__(self):
         self.client = KikClient(self, username, password)
+        self.client.wait_for_messages()
 
     def on_authenticated(self):
         print("Authenticated, requesting messaging history")

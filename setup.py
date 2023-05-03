@@ -7,7 +7,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='kik_unofficial',
-    version='0.5',
+    version='0.4',
     description='Python API for writing unoffical kik bots that act like humans',
     # long_description="",
     url='https://github.com/tomer8007/kik-bot-api-unofficial',
@@ -23,7 +23,7 @@ setup(
     keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
     packages=find_packages(exclude=['docs', 'test']),
     install_requires=[
-        'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf>=4.21.0', 'requests', 'pillow', 'pyDes',
+        'pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf>=4.21.0', 'requests', 'pillow', 'pyDes', 'python-dotenv'
     ],
     extras_require={
         'dev': [],

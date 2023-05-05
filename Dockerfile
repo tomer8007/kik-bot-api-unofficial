@@ -9,6 +9,6 @@ COPY setup* /app/
 RUN pip install /app
 
 COPY . /app
-COPY ./kik_unofficial/utilities/docker_bootstrapper.py /app/bootstrap.py
+COPY examples/echo_bot.py /app/bot.py
 
-CMD python bootstrap.py
+CMD python bot.py

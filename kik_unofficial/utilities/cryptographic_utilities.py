@@ -24,16 +24,12 @@ class CryptographicUtils:
         i1 = (-16777216 & j) >> 24
         i2 = (16711680 & j) >> 16
         i3 = (65280 & j) >> 8
-    
+
         j2 = (30 & i1) ^ i2 ^ i3
         j3 = (224 & j) >> 5
         j4 = -255 & j
-    
-        if j2 % 4 == 0:
-            j3 = j3 // 3 * 3
-        else:
-            j3 = j3 // 2 * 2
-        
+
+        j3 = j3 // 3 * 3 if j2 % 4 == 0 else j3 // 2 * 2
         return j4 | (j3 << 5) | j2
 
     @staticmethod
@@ -41,7 +37,7 @@ class CryptographicUtils:
         # kik's secret algorithm for encrypting passwords
         # relevant source file: classes1\kik\android\chat\fragment\KikLoginFragmentAbstract.java
         sha1_password = binascii.hexlify(hashlib.sha1(password.encode('UTF-8')).digest())
-        salt = username.lower() + "niCRwL7isZHny24qgLvy"
+        salt = f"{username.lower()}niCRwL7isZHny24qgLvy"
         key = pbkdf2.PBKDF2(sha1_password, salt, 8192).read(16)  # 128-bit key
         return binascii.hexlify(key).decode('UTF-8')
 
@@ -100,12 +96,10 @@ class CryptographicUtils:
             (65280 & most_significant_bits) >> 8)
         i2 = (CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
             CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
-        i4 = 0
-        while i4 < 6:
+        for i4 in range(6):
             i = (i + (i2 * 7)) % 60
             least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | (
                 (CryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
-            i4 += 1
         mstb = binascii.hexlify(
             (most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
         lstb = binascii.hexlify(
@@ -140,15 +134,13 @@ class CryptographicUtils:
         dictionary = original_dictionary.copy()
         new_map = OrderedDict()
         original_length = len(dictionary)
-        keys = list(dictionary.keys())
-        keys.sort()
-        
-        hash_code_for_spaces = CryptographicUtils.kik_map_hash_code(dictionary, -310256979, 13) 
+        keys = sorted(dictionary.keys())
+        hash_code_for_spaces = CryptographicUtils.kik_map_hash_code(dictionary, -310256979, 13)
         hash_code_for_spaces = hash_code_for_spaces % 29
         if hash_code_for_spaces < 0:
             hash_code_for_spaces += 29
-        
-        for i in range(0, original_length):
+
+        for _ in range(original_length):
             hash_code = CryptographicUtils.kik_map_hash_code(dictionary, -1964139357, 7)
             hash_code = (hash_code % len(dictionary) if hash_code > 0 else hash_code % -len(dictionary))
             if hash_code < 0:
@@ -162,14 +154,9 @@ class CryptographicUtils:
 
     @staticmethod
     def kik_map_hash_code(dictionary, hash_code_base, hash_code_offset):
-        keys = list(dictionary.keys())
-        keys.sort()
-        string1 = ""
-        for key in keys:
-            string1 += key + str(dictionary[key])
-        string2 = ""
-        for key in reversed(keys):
-            string2 += key + str(dictionary[key])
+        keys = sorted(dictionary.keys())
+        string1 = "".join(key + str(dictionary[key]) for key in keys)
+        string2 = "".join(key + str(dictionary[key]) for key in reversed(keys))
         bytes1 = string1.encode('UTF-8')
         bytes2 = string2.encode('UTF-8')
         array = [CryptographicUtils.kik_hash_code_sub_func(0, bytes1),

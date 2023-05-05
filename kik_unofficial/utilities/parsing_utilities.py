@@ -30,9 +30,7 @@ class ParsingUtilities:
     @staticmethod
     def sign_extend_with_mask(x):
         x &= 0xffffffff
-        if x & (1 << (32 - 1)):  # is the highest bit (sign) set?
-            return x - (1 << 32)  # 2s complement
-        return x
+        return x - (1 << 32) if x & (1 << (32 - 1)) else x
 
     @staticmethod
     def decode_base64(data):
@@ -69,7 +67,7 @@ class ParsingUtilities:
 
         img = Image.open(file_location)
         width, height = img.size
-        larger_dim = height if height > width else width
+        larger_dim = max(height, width)
         if img.mode != "RGB":
             img = img.convert('RGB')
         ratio = larger_dim/1600
@@ -94,16 +92,15 @@ class ParsingUtilities:
         preview_image.close()
         img.close()
 
-        final = {
+        return {
             'base64': base64,
             'size': size,
             'original': final_og,
             'SHA1': sha1_og,
             'SHA1Scaled': sha1_scaled,
             'blockhash': block_scaled,
-            'MD5': md5
+            'MD5': md5,
         }
-        return final
 
     @staticmethod
     def fix_base64_padding(data):
@@ -111,10 +108,7 @@ class ParsingUtilities:
 
     @staticmethod
     def byte_to_signed_int(byte):
-        if byte > 127:
-            return (256 - byte) * (-1)
-        else:
-            return byte
+        return (256 - byte) * (-1) if byte > 127 else byte
 
     @staticmethod
     def print_dictionary(dictionary):
@@ -122,7 +116,7 @@ class ParsingUtilities:
             return
         for x in dictionary:
             data = dictionary[x]
-            info = (data[:50] + '...') if isinstance(data, str) and len(data) > 50 else data
+            info = f'{data[:50]}...' if isinstance(data, str) and len(data) > 50 else data
             print("\t" + x + ':', info)
 
     @staticmethod

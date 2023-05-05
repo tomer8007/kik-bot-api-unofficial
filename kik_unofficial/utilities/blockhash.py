@@ -23,10 +23,7 @@ def median(data):
 
 def total_value_rgba(im, data, x, y):
     r, g, b, a = data[y * im.size[0] + x]
-    if a == 0:
-        return 765
-    else:
-        return r + g + b
+    return 765 if a == 0 else r + g + b
 
 def total_value_rgb(im, data, x, y):
     r, g, b = data[y * im.size[0] + x]
@@ -61,7 +58,7 @@ def blockhash_even(im, bits):
     elif im.mode == 'RGB':
         total_value = total_value_rgb
     else:
-        raise RuntimeError('Unsupported image mode: {}'.format(im.mode))
+        raise RuntimeError(f'Unsupported image mode: {im.mode}')
 
     data = im.getdata()
     width, height = im.size
@@ -91,7 +88,7 @@ def blockhash(im, bits):
     elif im.mode == 'RGB':
         total_value = total_value_rgb
     else:
-        raise RuntimeError('Unsupported image mode: {}'.format(im.mode))
+        raise RuntimeError(f'Unsupported image mode: {im.mode}')
 
     data = im.getdata()
     width, height = im.size
@@ -200,14 +197,14 @@ if __name__ == '__main__':
             size = args.size.split('x')
             size = (int(size[0]), int(size[1]))
             im = im.resize(size, interpolation)
-
-        hash = method(im, args.bits)
-
-        print('{hash}  {fn}'.format(fn=fn, hash=hash))
+            
+        hash_ = method(im, args.bits)
+        
+        print('{hash}  {fn}'.format(fn=fn, hash=hash_))
 
         if args.debug:
-            bin_hash = '{:0{width}b}'.format(int(hash, 16), width=args.bits ** 2)
-            map = [bin_hash[i:i+args.bits] for i in range(0, len(bin_hash), args.bits)]
+            bin_hash = '{:0{width}b}'.format(int(hash_, 16), width=args.bits ** 2)
+            map_ = [bin_hash[i:i+args.bits] for i in range(0, len(bin_hash), args.bits)]
             print("")
-            print("\n".join(map))
+            print("\n".join(map_))
             print("")

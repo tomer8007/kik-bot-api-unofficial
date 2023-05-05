@@ -87,14 +87,12 @@ class KikClient:
         """
         if self.username is not None and self.password is not None and self.kik_node is not None:
             # we have all required credentials, we can authenticate
-            log.info("[+] Establishing authenticated connection using kik node '{}'...".format(self.kik_node))
+            log.info(f"[+] Establishing authenticated connection using kik node '{self.kik_node}'...")
 
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
-            self.initial_connection_payload = message.serialize()
         else:
             message = login.MakeAnonymousStreamInitTag(self.device_id_override, n = 1)
-            self.initial_connection_payload = message.serialize()
-
+        self.initial_connection_payload = message.serialize()
         self.connection.send_raw_data(self.initial_connection_payload)
 
     def _establish_authenticated_session(self, kik_node):
@@ -124,8 +122,7 @@ class KikClient:
         self.password = password
         login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
         login_type = "email" if '@' in self.username else "username"
-        log.info("[+] Logging in with {} '{}' and a given password {}..."
-                 .format(login_type, username, '*' * len(password)))
+        log.info(f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
@@ -136,7 +133,7 @@ class KikClient:
         self.password = password
         register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
                                                    self.device_id_override, self.android_id_override)
-        log.info("[+] Sending sign up request (name: {} {}, email: {})...".format(first_name, last_name, email))
+        log.info(f"[+] Sending sign up request (name: {first_name} {last_name}, email: {email})...")
         return self._send_xmpp_element(register_message)
 
     def request_roster(self, is_big=True, timestamp=None):
@@ -163,10 +160,10 @@ class KikClient:
         peer_jid = self.get_jid(peer_jid)
 
         if self.is_group_jid(peer_jid):
-            log.info("[+] Sending chat message '{}' to group '{}'...".format(message, peer_jid))
+            log.info(f"[+] Sending chat message '{message}' to group '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, bot_mention_jid))
         else:
-            log.info("[+] Sending chat message '{}' to user '{}'...".format(message, peer_jid))
+            log.info(f"[+] Sending chat message '{message}' to user '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))
 
     def send_chat_image(self, peer_jid: str, file, forward=True):
@@ -179,12 +176,17 @@ class KikClient:
         peer_jid = self.get_jid(peer_jid)
 
         if self.is_group_jid(peer_jid):
-            log.info("[+] Sending chat image to group '{}'...".format(peer_jid))
+            log.info(f"[+] Sending chat image to group '{peer_jid}'...")
             imageRequest = chatting.OutgoingGroupChatImage(peer_jid, file, forward)
         else:
-            log.info("[+] Sending chat image to user '{}'...".format(peer_jid))
+            log.info(f"[+] Sending chat image to user '{peer_jid}'...")
             imageRequest = chatting.OutgoingChatImage(peer_jid, file, False, forward)
-        content.upload_gallery_image(imageRequest, self.kik_node + '@talk.kik.com', self.username, self.password)
+        content.upload_gallery_image(
+            imageRequest,
+            f'{self.kik_node}@talk.kik.com',
+            self.username,
+            self.password,
+        )
         return self._send_xmpp_element(imageRequest)
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
@@ -196,7 +198,7 @@ class KikClient:
         :param group_jid If the receipt is sent for a message that was sent in a group,
                          this parameter should contain the group's JID
         """
-        log.info("[+] Sending read receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
+        log.info(f"[+] Sending read receipt to JID {peer_jid} for message ID {receipt_message_id}")
         return self._send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str, group_jid: str = None):
@@ -207,7 +209,7 @@ class KikClient:
         :param receipt_message_id: The message ID for which to generate the receipt
         :param group_jid: The group's JID, in case the receipt is sent in a group (None otherwise)
         """
-        log.info("[+] Sending delivered receipt to JID {} for message ID {}".format(peer_jid, receipt_message_id))
+        log.info(f"[+] Sending delivered receipt to JID {peer_jid} for message ID {receipt_message_id}")
         return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
@@ -230,10 +232,10 @@ class KikClient:
         :param search_term: The search term to use when searching GIF images on tendor.com
         """
         if self.is_group_jid(peer_jid):
-            log.info("[+] Sending a GIF message to group '{}'...".format(peer_jid))
+            log.info(f"[+] Sending a GIF message to group '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
         else:
-            log.info("[+] Sending a GIF message to user '{}'...".format(peer_jid))
+            log.info(f"[+] Sending a GIF message to user '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
@@ -284,7 +286,7 @@ class KikClient:
         :param group_jid: The JID of the group whose name should be changed
         :param new_name: The new name to give to the group
         """
-        log.info("[+] Requesting a group name change for JID {} to '{}'".format(group_jid, new_name))
+        log.info(f"[+] Requesting a group name change for JID {group_jid} to '{new_name}'")
         return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
     def add_peer_to_group(self, group_jid, peer_jid):
@@ -294,7 +296,7 @@ class KikClient:
         :param group_jid: The JID of the group into which to add a user
         :param peer_jid: The JID of the user to add
         """
-        log.info("[+] Requesting to add user {} into the group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Requesting to add user {peer_jid} into the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 
     def remove_peer_from_group(self, group_jid, peer_jid):
@@ -304,7 +306,7 @@ class KikClient:
         :param group_jid: The group JID from which to remove the user
         :param peer_jid: The JID of the user to remove
         """
-        log.info("[+] Requesting removal of user {} from group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Requesting removal of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
 
     def ban_member_from_group(self, group_jid, peer_jid):
@@ -314,7 +316,7 @@ class KikClient:
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to ban
         """
-        log.info("[+] Requesting ban of user {} from group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Requesting ban of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
 
     def unban_member_from_group(self, group_jid, peer_jid):
@@ -324,7 +326,7 @@ class KikClient:
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to un-ban from the gorup
         """
-        log.info("[+] Requesting un-banning of user {} from the group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Requesting un-banning of user {peer_jid} from the group {group_jid}")
         return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
@@ -336,7 +338,7 @@ class KikClient:
         :param join_token: a token that can be extracted in the callback on_group_search_response, after calling
                            search_group()
         """
-        log.info("[+] Trying to join the group '{}' with JID {}".format(group_hashtag, group_jid))
+        log.info(f"[+] Trying to join the group '{group_hashtag}' with JID {group_jid}")
         return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
     def leave_group(self, group_jid):
@@ -345,7 +347,7 @@ class KikClient:
 
         :param group_jid: The JID of the group to leave
         """
-        log.info("[+] Leaving group {}".format(group_jid))
+        log.info(f"[+] Leaving group {group_jid}")
         return self._send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
     def promote_to_admin(self, group_jid, peer_jid):
@@ -355,7 +357,7 @@ class KikClient:
         :param group_jid: The group JID for which the member will become an admin
         :param peer_jid: The JID of user to turn into an admin
         """
-        log.info("[+] Promoting user {} to admin in group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Promoting user {peer_jid} to admin in group {group_jid}")
         return self._send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
 
     def demote_admin(self, group_jid, peer_jid):
@@ -366,7 +368,7 @@ class KikClient:
         :param peer_jid: The admin user to demote
         :return:
         """
-        log.info("[+] Demoting user {} to a regular member in group {}".format(peer_jid, group_jid))
+        log.info(f"[+] Demoting user {peer_jid} to a regular member in group {group_jid}")
         return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
     def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
@@ -376,7 +378,7 @@ class KikClient:
         :param group_jid: The group into which to join the users
         :param peer_jids: a list (or a single string) of JIDs to add to the group
         """
-        log.info("[+] Adding some members to the group {}".format(group_jid))
+        log.info(f"[+] Adding some members to the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
 
     # ----------------------
@@ -387,7 +389,7 @@ class KikClient:
         """
         Sends an acknowledgement for a provided message ID
         """
-        log.info("[+] Sending acknowledgement for message ID {}".format(message_id))
+        log.info(f"[+] Sending acknowledgement for message ID {message_id}")
         return self._send_xmpp_element(history.OutgoingAcknowledgement(sender_jid, is_receipt, message_id, group_jid))
 
     def request_messaging_history(self):
@@ -405,7 +407,7 @@ class KikClient:
 
         :param search_query: The query that contains some of the desired groups' name.
         """
-        log.info("[+] Initiating a search for groups using the query '{}'".format(search_query))
+        log.info(f"[+] Initiating a search for groups using the query '{search_query}'")
         return self._send_xmpp_element(roster.GroupSearchRequest(search_query))
 
     def check_username_uniqueness(self, username):
@@ -415,7 +417,7 @@ class KikClient:
 
         :param username: The username to check for its existence
         """
-        log.info("[+] Checking for Uniqueness of username '{}'".format(username))
+        log.info(f"[+] Checking for Uniqueness of username '{username}'")
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
     def set_profile_picture(self, filename):
@@ -424,8 +426,10 @@ class KikClient:
 
         :param filename: The path to the file OR its bytes OR an IOBase object to set
         """
-        log.info("[+] Setting the profile picture to file '{}'".format(filename))
-        profile_pictures.set_profile_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
+        log.info(f"[+] Setting the profile picture to file '{filename}'")
+        profile_pictures.set_profile_picture(
+            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
+        )
 
     def set_background_picture(self, filename):
         """
@@ -433,8 +437,10 @@ class KikClient:
 
         :param filename: The path to the image file OR its bytes OR an IOBase object to set
         """
-        log.info("[+] Setting the background picture to filename '{}'".format(filename))
-        profile_pictures.set_background_picture(filename, self.kik_node + '@talk.kik.com', self.username, self.password)
+        log.info(f"[+] Setting the background picture to filename '{filename}'")
+        profile_pictures.set_background_picture(
+            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
+        )
 
     def send_captcha_result(self, stc_id, captcha_result):
         """
@@ -445,7 +451,7 @@ class KikClient:
         :param stc_id: The stc_id from the CaptchaElement that was encountered
         :param captcha_result: The answer to the captcha (which was generated after solved by a human)
         """
-        log.info("[+] Trying to solve a captcha with result: '{}'".format(captcha_result))
+        log.info(f"[+] Trying to solve a captcha with result: '{captcha_result}'")
         return self._send_xmpp_element(login.CaptchaSolveRequest(stc_id, captcha_result))
 
     def get_my_profile(self):
@@ -462,7 +468,7 @@ class KikClient:
         :param first_name: The first name
         :param last_name: The last name
         """
-        log.info("[+] Changing the display name to '{} {}'".format(first_name, last_name))
+        log.info(f"[+] Changing the display name to '{first_name} {last_name}'")
         return self._send_xmpp_element(account.ChangeNameRequest(first_name, last_name))
 
     def change_password(self, new_password, email):
@@ -482,7 +488,7 @@ class KikClient:
         :param old_email: The current email
         :param new_email: The new email to set
         """
-        log.info("[+] Changing account email to '{}'".format(new_email))
+        log.info(f"[+] Changing account email to '{new_email}'")
         return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
     def disconnect(self):
@@ -513,10 +519,10 @@ class KikClient:
             packets = message.serialize()
             for p in packets:
                 self.loop.call_soon_threadsafe(self.connection.send_raw_data, p)
-            return message.message_id
         else:
             self.loop.call_soon_threadsafe(self.connection.send_raw_data, message.serialize())
-            return message.message_id
+
+        return message.message_id
 
     @run_in_new_thread
     def _on_new_data_received(self, data: bytes):
@@ -575,7 +581,8 @@ class KikClient:
         :param iq_element: The iq XML element we just received from kik.
         """
         if iq_element.error and "bad-request" in dir(iq_element.error):
-            raise Exception("Received a Bad Request error for stanza with ID {}".format(iq_element.attrs['id']))
+            # TODO: specify error type
+            raise Exception(f"Received a Bad Request error for stanza with ID {iq_element.attrs['id']}")
 
         query = iq_element.query
         xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
@@ -595,7 +602,7 @@ class KikClient:
             xmlns_handlers.RegisterOrLoginResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'jabber:iq:roster':
             xmlns_handlers.RosterResponseHandler(self.callback, self).handle(iq_element)
-        elif xmlns == 'kik:iq:friend' or xmlns == 'kik:iq:friend:batch':
+        elif xmlns in ['kik:iq:friend', 'kik:iq:friend:batch']:
             xmlns_handlers.PeersInfoResponseHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'kik:iq:xiphias:bridge':
             xmlns_handlers.XiphiasHandler(self.callback, self).handle(iq_element)
@@ -678,19 +685,18 @@ class KikClient:
         if '@' in username_or_jid:
             # this is already a JID.
             return username_or_jid
-        else:
-            username = username_or_jid
+        username = username_or_jid
 
             # first search if we already have it
-            if self.get_jid_from_cache(username) is None:
-                # go request for it
+        if self.get_jid_from_cache(username) is None:
+            # go request for it
 
-                self._new_user_added_event.clear()
-                self.request_info_of_users(username)
-                if not self._new_user_added_event.wait(5.0):
-                    raise TimeoutError("Could not get the JID for username {} in time".format(username))
+            self._new_user_added_event.clear()
+            self.request_info_of_users(username)
+            if not self._new_user_added_event.wait(5.0):
+                raise TimeoutError(f"Could not get the JID for username {username} in time")
 
-            return self.get_jid_from_cache(username)
+        return self.get_jid_from_cache(username)
 
 
     def get_jid_from_cache(self, username):
@@ -737,14 +743,13 @@ class KikConnection(Protocol):
                 start_tag, is_closing = self.parse_start_tag(data)
                 self.partial_data_start_tag = start_tag
                 self.partial_data = data
+        elif self.ends_with_tag(self.partial_data_start_tag, data):
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, self.partial_data + data)
+            self.partial_data = None
+            self.partial_data_start_tag = None
         else:
-            if self.ends_with_tag(self.partial_data_start_tag, data):
-                self.loop.call_soon_threadsafe(self.api._on_new_data_received, self.partial_data + data)
-                self.partial_data = None
-                self.partial_data_start_tag = None
-            else:
-                log.debug("[!] Waiting for another packet, size={}".format(len(self.partial_data)))
-                self.partial_data += data
+            log.debug(f"[!] Waiting for another packet, size={len(self.partial_data)}")
+            self.partial_data += data
 
     @staticmethod
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:

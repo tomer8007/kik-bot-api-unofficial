@@ -31,7 +31,7 @@ class EchoBot(KikClientCallback):
 ```
 
 ### Docker ###
-After creating your own bot, you can bootstrap it to run in a Docker container. This section assumes you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
+After creating a bot, you can bootstrap it to run in a Docker container. This section assumes you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
 
 1. Set up your environment variables. Copy the example file to a new file called `.env`:
     ```shell
@@ -39,18 +39,18 @@ After creating your own bot, you can bootstrap it to run in a Docker container. 
     ```
     <sub>**Note:** You will need to edit the new `.env` file to include your bot's device ID, android ID, username, password, and JID (if you know it).</sub>
 
+2. Update the [Dockerfile](Dockerfile) to copy your `bot.py` file into the container. Change the following line like so:
+   ```diff
+   - COPY examples/echo_bot.py /app/bot.py
+   + COPY path/to/your/bot.py /app/bot.py
+   ```
+   <sub>**Note:** You can also copy your bot's dependencies into the container by adding a `COPY` line for each dependency.</sub>
 
-2. Build the image:
+3. Deploy the container:
     ```shell
-    docker build -t kik-bot-api-unofficial .
+    docker compose up --build
     ```
-    <sub>**Note**: You only need to build when you first clone the repo, or if you make changes to the code.</sub>
-
-   
-3. Run the container:
-    ```shell
-    docker run --env-file .env --rm -it kik-bot-api-unofficial
-    ```
+    <sub>**Note**: You only need to use `--build` when you first clone the repo, or if you make changes to the code.</sub>
 
 Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).

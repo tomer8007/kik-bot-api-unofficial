@@ -87,9 +87,7 @@ class KikClient:
         """
         if self.username is not None and self.password is not None and self.kik_node is not None:
             # we have all required credentials, we can authenticate
-            log.info(
-                f"[+] Establishing authenticated connection using kik node '{self.kik_node}'..."
-            )
+            log.info(f"[+] Establishing authenticated connection using kik node '{self.kik_node}'...")
 
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
         else:
@@ -124,9 +122,7 @@ class KikClient:
         self.password = password
         login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
         login_type = "email" if '@' in self.username else "username"
-        log.info(
-            f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}..."
-        )
+        log.info(f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
     def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
@@ -137,9 +133,7 @@ class KikClient:
         self.password = password
         register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
                                                    self.device_id_override, self.android_id_override)
-        log.info(
-            f"[+] Sending sign up request (name: {first_name} {last_name}, email: {email})..."
-        )
+        log.info(f"[+] Sending sign up request (name: {first_name} {last_name}, email: {email})...")
         return self._send_xmpp_element(register_message)
 
     def request_roster(self, is_big=True, timestamp=None):
@@ -204,9 +198,7 @@ class KikClient:
         :param group_jid If the receipt is sent for a message that was sent in a group,
                          this parameter should contain the group's JID
         """
-        log.info(
-            f"[+] Sending read receipt to JID {peer_jid} for message ID {receipt_message_id}"
-        )
+        log.info(f"[+] Sending read receipt to JID {peer_jid} for message ID {receipt_message_id}")
         return self._send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str, group_jid: str = None):
@@ -217,9 +209,7 @@ class KikClient:
         :param receipt_message_id: The message ID for which to generate the receipt
         :param group_jid: The group's JID, in case the receipt is sent in a group (None otherwise)
         """
-        log.info(
-            f"[+] Sending delivered receipt to JID {peer_jid} for message ID {receipt_message_id}"
-        )
+        log.info(f"[+] Sending delivered receipt to JID {peer_jid} for message ID {receipt_message_id}")
         return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id, group_jid))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
@@ -296,9 +286,7 @@ class KikClient:
         :param group_jid: The JID of the group whose name should be changed
         :param new_name: The new name to give to the group
         """
-        log.info(
-            f"[+] Requesting a group name change for JID {group_jid} to '{new_name}'"
-        )
+        log.info(f"[+] Requesting a group name change for JID {group_jid} to '{new_name}'")
         return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
     def add_peer_to_group(self, group_jid, peer_jid):
@@ -338,9 +326,7 @@ class KikClient:
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to un-ban from the gorup
         """
-        log.info(
-            f"[+] Requesting un-banning of user {peer_jid} from the group {group_jid}"
-        )
+        log.info(f"[+] Requesting un-banning of user {peer_jid} from the group {group_jid}")
         return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
     def join_group_with_token(self, group_hashtag, group_jid, join_token):
@@ -352,9 +338,7 @@ class KikClient:
         :param join_token: a token that can be extracted in the callback on_group_search_response, after calling
                            search_group()
         """
-        log.info(
-            f"[+] Trying to join the group '{group_hashtag}' with JID {group_jid}"
-        )
+        log.info(f"[+] Trying to join the group '{group_hashtag}' with JID {group_jid}")
         return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
     def leave_group(self, group_jid):
@@ -384,9 +368,7 @@ class KikClient:
         :param peer_jid: The admin user to demote
         :return:
         """
-        log.info(
-            f"[+] Demoting user {peer_jid} to a regular member in group {group_jid}"
-        )
+        log.info(f"[+] Demoting user {peer_jid} to a regular member in group {group_jid}")
         return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
     def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
@@ -425,9 +407,7 @@ class KikClient:
 
         :param search_query: The query that contains some of the desired groups' name.
         """
-        log.info(
-            f"[+] Initiating a search for groups using the query '{search_query}'"
-        )
+        log.info(f"[+] Initiating a search for groups using the query '{search_query}'")
         return self._send_xmpp_element(roster.GroupSearchRequest(search_query))
 
     def check_username_uniqueness(self, username):
@@ -602,9 +582,7 @@ class KikClient:
         """
         if iq_element.error and "bad-request" in dir(iq_element.error):
             # TODO: specify error type
-            raise Exception(
-                f"Received a Bad Request error for stanza with ID {iq_element.attrs['id']}"
-            )
+            raise Exception(f"Received a Bad Request error for stanza with ID {iq_element.attrs['id']}")
 
         query = iq_element.query
         xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']

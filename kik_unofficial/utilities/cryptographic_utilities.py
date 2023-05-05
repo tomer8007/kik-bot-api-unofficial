@@ -37,7 +37,7 @@ class CryptographicUtils:
         # kik's secret algorithm for encrypting passwords
         # relevant source file: classes1\kik\android\chat\fragment\KikLoginFragmentAbstract.java
         sha1_password = binascii.hexlify(hashlib.sha1(password.encode('UTF-8')).digest())
-        salt = f"{username.lower()}niCRwL7isZHny24qgLvy"
+        salt = username.lower() + "niCRwL7isZHny24qgLvy"
         key = pbkdf2.PBKDF2(sha1_password, salt, 8192).read(16)  # 128-bit key
         return binascii.hexlify(key).decode('UTF-8')
 

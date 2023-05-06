@@ -48,7 +48,7 @@ After creating a bot, you can bootstrap it to run in a Docker container. This se
 
 3. Deploy the container:
     ```shell
-    docker compose up --build
+    docker compose up --build -d && docker attach kik-bot-api-unofficial
     ```
     <sub>**Note**: You only need to use `--build` when you first clone the repo, or if you make changes to the code.</sub>
 

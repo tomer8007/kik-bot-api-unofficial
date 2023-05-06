@@ -24,13 +24,13 @@ password = env.get("BOT_PASSWORD", None)
 node = env.get("BOT_NODE_JID", None)
 
 
-if username == "" or username is None:
+if not username:
     username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
 
-if password == "" or password is None:
+if not password:
     password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
-if node == "":
+if not node:
     node = None
 
 

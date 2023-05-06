@@ -31,6 +31,22 @@ class EchoBot(KikClientCallback):
         self.client.send_chat_message(chat_message.from_jid, 'You said "{}"!'.format(chat_message.body))
 ```
 
+Currently Supported Operations:
+- Log in with kik username and password, retrieve user information (such as email, name, etc).
+- Fetch chat partners information
+- Send text messages to users/groups and listen for incoming messages
+- Send and receive 'is-typing' status
+- Send and receive read receipts
+- Fetch group information (name, participants, etc.)
+- Fetch past message history
+- Admin groups (add, remove or ban members, etc)
+- Search for groups and join them [Experimental]
+- Receive media content: camera, gallery, stickers
+- Add a kik user as a friend
+- Send images (including GIFs, using a [Tenor](https://tenor.com/gifapi) API key)
+
+Sending videos or recordings is not supported yet.
+
 ### Docker ###
 After creating a bot, you can bootstrap it to run in a Docker container. This section assumes you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
 
@@ -52,22 +68,6 @@ After creating a bot, you can bootstrap it to run in a Docker container. This se
     docker compose up --build -d && docker attach kik-bot-api-unofficial
     ```
     <sub>**Note**: You only need to use `--build` when you first clone the repo, or if you make changes to the code.</sub>
-
-Currently Supported Operations:
-- Log in with kik username and password, retrieve user information (such as email, name, etc).
-- Fetch chat partners information
-- Send text messages to users/groups and listen for incoming messages
-- Send and receive 'is-typing' status
-- Send and receive read receipts
-- Fetch group information (name, participants, etc.)
-- Fetch past message history
-- Admin groups (add, remove or ban members, etc)
-- Search for groups and join them [Experimental]
-- Receive media content: camera, gallery, stickers
-- Add a kik user as a friend
-- Send images (including GIFs, using a [Tenor](https://tenor.com/gifapi) API key)
-
-Sending videos or recordings is not supported yet.
 
 ## More functionality
 Before investigating the format of certain requests/responses, it's worth checking if they are already documented in the [Message Formats](https://github.com/tomer8007/kik-bot-api-unofficial/wiki/Message-Formats) wiki page.

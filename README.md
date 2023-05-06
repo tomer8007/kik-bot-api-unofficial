@@ -22,6 +22,7 @@ import kik_unofficial.datatypes.xmpp.chatting as chatting
 class EchoBot(KikClientCallback):
     def __init__(self):
         self.client = KikClient(self, "your_kik_username", "your_kik_password")
+        self.client.wait_for_messages()
 
     def on_authenticated(self):
         self.client.request_roster() # request list of chat partners

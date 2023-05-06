@@ -19,19 +19,19 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedR
 # /// ENVIRONMENT VARIABLES /// #
 # Create your own `.env` file to store the environment variables if running with Docker.
 # See `.env.example` for an example. You can also just set the environment variables manually.
-BOT_USERNAME = env.get("BOT_USERNAME", None)
-BOT_PASSWORD = env.get("BOT_PASSWORD", None)
-BOT_NODE_JID = env.get("BOT_NODE_JID", None)
+username = env.get("BOT_USERNAME", None)
+password = env.get("BOT_PASSWORD", None)
+node = env.get("BOT_NODE_JID", None)
 
 
-if BOT_USERNAME == "" or BOT_USERNAME is None:
-    BOT_USERNAME = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
+if username == "" or username is None:
+    username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
 
-if BOT_PASSWORD == "" or BOT_PASSWORD is None:
-    BOT_PASSWORD = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
+if password == "" or password is None:
+    password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
-if BOT_NODE_JID == "":
-    BOT_NODE_JID = None
+if node == "":
+    node = None
 
 
 def main():
@@ -48,7 +48,7 @@ def main():
 
 class EchoBot(KikClientCallback):
     def __init__(self):
-        self.client = KikClient(self, BOT_USERNAME, BOT_PASSWORD, BOT_NODE_JID)
+        self.client = KikClient(self, username, password, node)
         self.client.wait_for_messages()
 
     def on_authenticated(self):

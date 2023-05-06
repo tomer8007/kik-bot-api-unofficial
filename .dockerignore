@@ -1,0 +1,12 @@
+# IntelliJ project files
+.idea
+*.iml
+
+# Distribution / packaging
+build/
+lib/
+*.egg-info/
+
+# Environments
+venv/
+.env*

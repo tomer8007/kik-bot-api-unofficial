@@ -5,3 +5,5 @@ services:
     env_file:
       - .env
     container_name: kik-bot-api-unofficial
+    tty: true
+    stdin_open: true

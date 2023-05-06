@@ -16,8 +16,6 @@ from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniq
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 from kik_unofficial.utilities.credential_utilities import get_credentials_from_env_or_prompt
 
-username, password, node = get_credentials_from_env_or_prompt()
-
 
 def main():
     # set up logging
@@ -33,6 +31,7 @@ def main():
 
 class EchoBot(KikClientCallback):
     def __init__(self):
+        username, password, node = get_credentials_from_env_or_prompt()
         self.client = KikClient(self, username, password, node)
         self.client.wait_for_messages()
 

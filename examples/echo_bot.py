@@ -10,28 +10,13 @@ import sys
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
-from kik_unofficial.configuration import env
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
+from kik_unofficial.utilities.credential_utilities import get_credentials_from_env_or_prompt
 
-# /// ENVIRONMENT VARIABLES /// #
-# Create your own `.env` file to store the environment variables if running with Docker.
-# See `.env.example` for an example. You can also just set the environment variables manually.
-username = env.get("BOT_USERNAME", None)
-password = env.get("BOT_PASSWORD", None)
-node = env.get("BOT_NODE_JID", None)
-
-
-if not username:
-    username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
-
-if not password:
-    password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
-
-if not node:
-    node = None
+username, password, node = get_credentials_from_env_or_prompt()
 
 
 def main():

@@ -14,9 +14,7 @@ from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
-
-username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
-password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
+from kik_unofficial.utilities.credential_utilities import get_credentials_from_env_or_prompt
 
 
 def main():
@@ -33,7 +31,8 @@ def main():
 
 class EchoBot(KikClientCallback):
     def __init__(self):
-        self.client = KikClient(self, username, password)
+        username, password, node = get_credentials_from_env_or_prompt()
+        self.client = KikClient(self, username, password, node)
         self.client.wait_for_messages()
 
     def on_authenticated(self):

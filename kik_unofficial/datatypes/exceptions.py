@@ -9,12 +9,11 @@ class KikErrorException(Exception):
     def __repr__(self):
         if self.message is not None:
             return self.message
+        elif "prettify" in dict(self.xml_error):
+            error_string = self.xml_error.prettify()
         else:
-            if "prettify" in dict(self.xml_error):
-                error_string = self.xml_error.prettify()
-            else:
-                error_string = self.xml_error
-            return "Kik error: \r\n" + error_string
+            error_string = self.xml_error
+        return "Kik error: \r\n" + error_string
 
 
 class KikCaptchaException(KikErrorException):
@@ -26,7 +25,7 @@ class KikCaptchaException(KikErrorException):
 class KikLoginException(KikErrorException):
     pass
 
-
+ 
 class KikInvalidAckException(KikErrorException):
     pass
 

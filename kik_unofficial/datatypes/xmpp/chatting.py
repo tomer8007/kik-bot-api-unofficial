@@ -69,35 +69,34 @@ class OutgoingChatImage(XMPPElement):
         timestamp = str(int(round(self.timestamp * 1000)))
         message_type = "groupchat" if self.is_group else "chat"
         data = (
-            '<message to="{0}" id="{1}" cts="{2}" type="{3}" xmlns="jabber:client">'
-            '<kik timestamp="{2}" qos="true" push="true"/>'
+            f'<message to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}" type="{message_type}" xmlns="jabber:client">'
+            f'<kik timestamp="{timestamp}" qos="true" push="true"/>'
             '<request xmlns="kik:message:receipt" d="true" r="true" />'
-            '<content id="{4}" v="2" app-id="com.kik.ext.gallery">'
+            f'<content id="{self.content_id}" v="2" app-id="com.kik.ext.gallery">'
             '<strings>'
             '<app-name>Gallery</app-name>'
-            '<file-size>{5}</file-size>'
-            '<allow-forward>{6}</allow-forward>'
+            f'<file-size>{self.parsed["size"]}</file-size>'
+            f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'
             '<disallow-save>false</disallow-save>'
             '<file-content-type>image/jpeg</file-content-type>'
-            '<file-name>{4}.jpg</file-name>'
+            f'<file-name>{self.content_id}.jpg</file-name>'
             '</strings>'
             '<extras />'
             '<hashes>'
-            '<sha1-original>{8}</sha1-original>'
-            '<sha1-scaled>{9}</sha1-scaled>'
-            '<blockhash-scaled>{10}</blockhash-scaled>'
+            f'<sha1-original>{self.parsed["SHA1"]}</sha1-original>'
+            f'<sha1-scaled>{self.parsed["SHA1Scaled"]}</sha1-scaled>'
+            f'<blockhash-scaled>{self.parsed["blockhash"]}</blockhash-scaled>'
             '</hashes>'
             '<images>'
-            '<preview>{7}</preview>'
+            f'<preview>{self.parsed["base64"]}</preview>'
             '<icon></icon>'
             '</images>'
             '<uris />'
             '</content>'
             '</message>'
-        ).format(self.peer_jid, self.message_id, timestamp, message_type, self.content_id,
-                 self.parsed['size'], str(self.allow_forward).lower(), self.parsed['base64'], self.parsed['SHA1'], 
-                 self.parsed['SHA1Scaled'], self.parsed['blockhash'])
+        )
 
+        
         packets =  [data[s:s+16384].encode() for s in range(0, len(data), 16384)]
         return list(packets)
 

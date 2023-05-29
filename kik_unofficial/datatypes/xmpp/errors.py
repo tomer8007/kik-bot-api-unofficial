@@ -13,7 +13,7 @@ class KikError(XMPPResponse):
         self.message = str(self.errors)
 
     def __str__(self):
-        return "IqError code={} type={} errors={}".format(self.error_code, self.type, ",".join(self.errors))
+        return f'IqError code={self.error_code} type={self.type} errors={",".join(self.errors)}'
 
 
 class SignUpError(KikError):
@@ -30,7 +30,7 @@ class SignUpError(KikError):
 
         if data.find('captcha-url'):
             self.captcha_url = data.find('captcha-url').text + "&callback_url=https://kik.com/captcha-url"
-            self.message = "a Captcha is required to sign up; URL: " + self.captcha_url
+            self.message = f"a Captcha is required to sign up; URL: {self.captcha_url}"
 
     def __str__(self):
         return self.message
@@ -50,9 +50,8 @@ class LoginError(KikError):
                 self.message = "a Captcha is required to continue"
             else:
                 self.message = "Password mismatch"
-        else:
-            if self.error_code in self.error_messages:
-                self.message = self.error_messages[self.error_code]
+        elif self.error_code in self.error_messages:
+            self.message = self.error_messages[self.error_code]
 
     def is_captcha(self):
         return self.raw_element.find('captcha-url')
@@ -60,7 +59,7 @@ class LoginError(KikError):
     def solve_captcha_wizard(self, kik_client):
         if not self.is_captcha():
             return
-        print("To continue, complete the captcha in this URL using a browser: " + self.captcha_url)
+        print(f"To continue, complete the captcha in this URL using a browser: {self.captcha_url}")
         captcha_response = input("Next, intercept the request starting with 'https://kik.com/captcha-url' using F12, "
                                  "and paste the response parameter here: ")
         kik_client.login(kik_client.username, kik_client.password, captcha_response)

@@ -29,18 +29,17 @@ class InteractiveChatClient(KikClientCallback):
         print("-Peers-\n{}".format("\n".join([str(m) for m in response.peers])))
 
     def on_chat_message_received(self, chat_message: IncomingChatMessage):
-        print("{}: {}".format(jid_to_username(chat_message.from_jid), chat_message.body))
+        print(f"{jid_to_username(chat_message.from_jid)}: {chat_message.body}")
 
         if chat_message.from_jid not in friends:
-            print("New friend: {}".format(jid_to_username(chat_message.from_jid)))
+            print(f"New friend: {jid_to_username(chat_message.from_jid)}")
             client.send_chat_message(chat_message.from_jid, "Hi!")
             time.sleep(1)
             client.add_friend(chat_message.from_jid)
             client.request_roster()
 
     def on_group_message_received(self, chat_message: IncomingGroupChatMessage):
-        print("{} - {}: {}".format(friends[chat_message.group_jid].name, jid_to_username(chat_message.from_jid),
-                                   chat_message.body))
+        print(f"{friends[chat_message.group_jid].name} - {jid_to_username(chat_message.from_jid)}: {chat_message.body}")
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
         print("Connection failed")
@@ -54,7 +53,7 @@ class InteractiveChatClient(KikClientCallback):
 
 
 def jid_to_username(jid):
-    return jid.split('@')[0][0:-4]
+    return jid.split('@')[0][:-4]
 
 
 def chat():
@@ -70,14 +69,13 @@ def chat():
             if action == 'c' and len(message) > 3:
                 for jid in friends:
                     if jid.startswith(message[3:]):
-                        print("Chatting with {}".format(jid_to_username(jid)))
+                        print(f"Chatting with {jid_to_username(jid)}")
                         peer_jid = jid
                         break
             elif action == 'f':
                 client.request_roster()
-        else:
-            if peer_jid and message:
-                client.send_chat_message(peer_jid, message)
+        elif peer_jid and message:
+            client.send_chat_message(peer_jid, message)
 
 
 if __name__ == '__main__':

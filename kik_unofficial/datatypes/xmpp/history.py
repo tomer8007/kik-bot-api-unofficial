@@ -22,26 +22,26 @@ class OutgoingAcknowledgement(XMPPElement):
         timestamp = str(int(round(time.time() * 1000)))
 
         user_ack_data = (
-                        '<sender jid="{}">'
-                        '<ack-id receipt="{}">{}</ack-id>'
-                        '</sender>'
-                        ).format(self.sender_jid, str(self.is_receipt).lower(), self.ack_id)
+            f'<sender jid="{self.sender_jid}">'
+            f'<ack-id receipt="{str(self.is_receipt).lower()}">{self.ack_id}</ack-id>'
+            '</sender>'
+        )
 
         group_ack_data = (
-                         '<sender jid="{}" g="{}">'
-                         '<ack-id receipt="{}">{}</ack-id>'
-                         '</sender>'
-                         ).format(self.sender_jid, self.group_jid, str(self.is_receipt).lower(), self.ack_id)
+            f'<sender jid="{self.sender_jid}" g="{self.group_jid}">'
+            f'<ack-id receipt="{str(self.is_receipt).lower()}">{self.ack_id}</ack-id>'
+            '</sender>'
+        )
 
-        data = ('<iq type="set" id="{}" cts="{}">'
+        data = (f'<iq type="set" id="{self.message_id}" cts="{timestamp}">'
                 '<query xmlns="kik:iq:QoS">'
                 '<msg-acks>'
-                '{}'
+                f'{user_ack_data if self.group_jid is None else group_ack_data}'
                 '</msg-acks>'
                 '<history attach="false" />'
                 '</query>'
                 '</iq>'
-                ).format(self.message_id, timestamp, user_ack_data if self.group_jid != None else group_ack_data)
+        )
         return data.encode()
 
 class OutgoingHistoryRequest(XMPPElement):
@@ -54,13 +54,13 @@ class OutgoingHistoryRequest(XMPPElement):
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
 
-        data = ('<iq type="set" id="{}" cts="{}">'
+        data = (f'<iq type="set" id="{self.message_id}" cts="{timestamp}">'
                 '<query xmlns="kik:iq:QoS">'
-                '<msg-acks />'
+                f'<msg-acks />'
                 '<history attach="true" />'
                 '</query>'
                 '</iq>'
-                ).format(self.message_id, timestamp,)
+        )
         return data.encode()
 
 class HistoryResponse(XMPPResponse):

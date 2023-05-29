@@ -179,16 +179,13 @@ if __name__ == '__main__':
     elif args.interpolation == 4:
         interpolation = Image.ANTIALIAS
 
-    if args.quick:
-        method = blockhash_even
-    else:
-        method = blockhash
-
+    method = blockhash_even if args.quick else blockhash
+    
     for fn in args.filenames:
         im = Image.open(fn)
 
         # convert indexed/grayscale images to RGB
-        if im.mode == '1' or im.mode == 'L' or im.mode == 'P':
+        if im.mode in ['1', 'L', 'P']:
             im = im.convert('RGB')
         elif im.mode == 'LA':
             im = im.convert('RGBA')
@@ -197,10 +194,10 @@ if __name__ == '__main__':
             size = args.size.split('x')
             size = (int(size[0]), int(size[1]))
             im = im.resize(size, interpolation)
-            
+
         hash_ = method(im, args.bits)
-        
-        print('{hash}  {fn}'.format(fn=fn, hash=hash_))
+
+        print(f'{hash_}  {fn}')
 
         if args.debug:
             bin_hash = '{:0{width}b}'.format(int(hash_, 16), width=args.bits ** 2)

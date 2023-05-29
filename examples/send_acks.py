@@ -39,7 +39,7 @@ class AckBot(KikClientCallback):
         self.client.request_messaging_history()
 
     def on_login_ended(self, response: LoginResponse):
-        print("Full name: {} {}".format(response.first_name, response.last_name))
+        print(f"Full name: {response.first_name} {response.last_name}")
 
     def on_message_history_response(self, response: HistoryResponse):
         if hasattr(response, 'messages'):
@@ -58,17 +58,17 @@ class AckBot(KikClientCallback):
                 self.client.request_messaging_history()
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
-        print("[+] '{}' says: {}".format(chat_message.from_jid, chat_message.body))
+        print(f"[+] '{chat_message.from_jid}' says: {chat_message.body}")
         self.client.send_ack(chat_message.from_jid, False, chat_message.message_id)
 
     def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
-        print("[+] '{}' from group ID {} says: {}".format(chat_message.from_jid, chat_message.group_jid, chat_message.body))
+        print(f"[+] '{chat_message.from_jid}' from group ID {chat_message.group_jid} says: {chat_message.body}")
         self.client.send_ack(chat_message.from_jid, False, chat_message.message_id, chat_message.group_jid)
 
     # Error handling
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
-        print("[-] Connection failed: " + response.message)
+        print(f"[-] Connection failed: {response.message}")
 
     def on_login_error(self, login_error: LoginError):
         if login_error.is_captcha():

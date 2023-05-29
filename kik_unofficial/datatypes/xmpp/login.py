@@ -43,28 +43,27 @@ class LoginRequest(XMPPElement):
             tag = ('<username>{}</username>'
                    '<passkey-u>{}</passkey-u>')
 
-        data = ('<iq type="set" id="{}">'
-                '<query xmlns="jabber:iq:register">'
-                '{}'
-                '<device-id>{}</device-id>'
-                '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
-                '<operator>unknown</operator>'
-                '<install-date>unknown</install-date>'
-                '<device-type>android</device-type>'
-                '<brand>generic</brand>'
-                '<logins-since-install>1</logins-since-install>'
-                '<version>{}</version>'
-                '<lang>en_US</lang>'
-                '<android-sdk>19</android-sdk>'
-                '<registrations-since-install>0</registrations-since-install>'
-                '<prefix>CAN</prefix>'
-                '<android-id>{}</android-id>'
-                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
-                '{}'
-                '</query>'
-                '</iq>').format(self.message_id, tag.format(self.username, password_key),
-                                self.device_id_override if self.device_id_override else device_id,
-                                kik_version, self.android_id_override if self.android_id_override else android_id, captcha)
+        data = (f'<iq type="set" id="{self.message_id}">' 
+                f'<query xmlns="jabber:iq:register">' 
+                f'{tag.format(self.username, password_key)}' 
+                f'<device-id>{self.device_id_override or device_id}</device-id>' 
+                '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>' 
+                '<operator>unknown</operator>' 
+                '<install-date>unknown</install-date>' 
+                '<device-type>android</device-type>' 
+                '<brand>generic</brand>' 
+                '<logins-since-install>1</logins-since-install>' 
+                f'<version>{kik_version}</version>' 
+                '<lang>en_US</lang>' 
+                '<android-sdk>19</android-sdk>' 
+                '<registrations-since-install>0</registrations-since-install>' 
+                '<prefix>CAN</prefix>' \
+                f'<android-id>{self.android_id_override or android_id}</android-id>' 
+                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>' 
+                f'{captcha}' \
+                '</query>' 
+                '</iq>')
+
         return data.encode()
 
 

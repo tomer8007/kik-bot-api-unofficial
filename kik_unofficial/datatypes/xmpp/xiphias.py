@@ -21,21 +21,18 @@ class XiphiasRequest(XMPPElement):
     def serialize(self):
         payload = self.get_protobuf_payload()
         protobuf_data = base64.b64encode(payload.SerializeToString()).decode()
-        data = ('<iq type="set" id="{}">'
-                '<query xmlns="kik:iq:xiphias:bridge" service="mobile.entity.v1.Entity" method="{}">'
-                '<body>{}</body>'
+        data = (f'<iq type="set" id="{self.message_id}">'
+                f'<query xmlns="kik:iq:xiphias:bridge" service="mobile.entity.v1.Entity" method="{self.method}">'
+                f'<body>{protobuf_data}</body>'
                 '</query>'
-                '</iq>').format(self.message_id, self.method, protobuf_data)
+                '</iq>')
         return data.encode()
 
 
 class UsersRequest(XiphiasRequest):
     def __init__(self, peer_jids):
         super().__init__('GetUsers')
-        if isinstance(peer_jids, List):
-            self.peer_jids = peer_jids
-        else:
-            self.peer_jids = [peer_jids]
+        self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
     def get_protobuf_payload(self):
         request = GetUsersRequest()
@@ -72,14 +69,12 @@ class UsersResponseUser:
             self.username = user.private_profile.username.username
             if user.private_profile.id.local_part:
                 # The attribute seems to exist with an empty string
-                self.jid = user.private_profile.id.local_part + "@talk.kik.com"
+                self.jid = f"{user.private_profile.id.local_part}@talk.kik.com"
         if user.id:
-            if hasattr(user.id, 'local_part'):
-                if user.id.local_part:
-                    self.jid = user.id.local_part + "@talk.kik.com"
-            if hasattr(user.id, 'alias_jid'):
-                if user.id.alias_jid.local_part:
-                    self.alias_jid = user.id.alias_jid.local_part + "@talk.kik.com"
+            if hasattr(user.id, 'local_part') and user.id.local_part:
+                self.jid = f"{user.id.local_part}@talk.kik.com"
+            if hasattr(user.id, 'alias_jid') and user.id.alias_jid.local_part:
+                self.alias_jid = f"{user.id.alias_jid.local_part}@talk.kik.com"
 
         if hasattr(user, 'public_group_member_profile'):
             # The attrs below are found in the member's profile
@@ -115,10 +110,7 @@ class UsersResponse(XMPPResponse):
 class UsersByAliasRequest(XiphiasRequest):
     def __init__(self, alias_jids):
         super().__init__('GetUsersByAlias')
-        if isinstance(alias_jids, List):
-            self.alias_jids = alias_jids
-        else:
-            self.alias_jids = [alias_jids]
+        self.alias_jids = alias_jids if isinstance(alias_jids, List) else [alias_jids]
 
     def get_protobuf_payload(self):
         request = GetUsersByAliasRequest()

@@ -13,14 +13,14 @@ from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse
 
 class RegisterClient(KikClientCallback):
     def on_sign_up_ended(self, response: RegisterResponse):
-        print("Registered on node {}.".format(response.kik_node))
+        print(f"Registered on node {response.kik_node}.")
 
     def on_authenticated(self):
         print("Authorized connection initiated.")
         client.request_roster()
 
     def on_login_ended(self, response: LoginResponse):
-        print("Logged in as {}.".format(response.username))
+        print(f"Logged in as {response.username}.")
 
     def on_register_error(self, response: SignUpError):
         if "captcha_url" in dir(response):
@@ -29,10 +29,10 @@ class RegisterClient(KikClientCallback):
             client.register(args.email, args.username, args.password,
                     args.firstname, args.lastname, args.birthday, result)
         else:
-            print("Unable to register! error information:\r\n{}".format(response))
+            print(f"Unable to register! error information:\r\n{response}")
 
     def on_roster_received(self, response: FetchRosterResponse):
-        print("Friends: {}".format(response.peers))
+        print(f"Friends: {response.peers}")
 
 
 if __name__ == '__main__':

@@ -355,8 +355,8 @@ class IncomingStatusResponse(XMPPResponse):
 class IncomingImageMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.requets_read_receipt = data.request['r'] == 'true'
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
         self.image_url = data.find('file-url').get_text() if data.find('file-url') else None
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
@@ -395,8 +395,8 @@ class IncomingGifMessage(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.requets_read_receipt = data.request['r'] == 'true'
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
@@ -483,8 +483,8 @@ class OutgoingGIFMessage(XMPPElement):
 class IncomingVideoMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.requets_read_receipt = data.request['r'] == 'true'
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
         self.duration_milliseconds = data.find('duration').text if data.find('duration') else None
@@ -497,8 +497,8 @@ class IncomingVideoMessage(XMPPResponse):
 class IncomingCardMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true'
-        self.request_read_receipt = data.request['r'] == 'true'
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
         self.from_jid = data['from']
         self.to_jid = data['to']
         self.group_jid = data.g['jid']

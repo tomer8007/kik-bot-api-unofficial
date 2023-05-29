@@ -20,7 +20,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     url='https://github.com/tomer8007/kik-bot-api-unofficial',
-    download_url="https://github.com/tomer8007/kik-bot-api-unofficial/tarball/master",
+    download_url="https://github.com/tomer8007/kik-bot-api-unofficial/tarball/new",
     license='MIT',
     classifiers=[
         'Development Status :: 3 - Alpha',

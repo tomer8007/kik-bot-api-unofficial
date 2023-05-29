@@ -110,9 +110,11 @@ class CryptographicUtils:
 
     @staticmethod
     def kik_uuid_sub_func(j, i):
-        if i > 32:
-            return (int(((j >> 32) & ((1 << i))))) >> i
-        return (int((((1 << i)) & j))) >> i
+        return (
+            (int(((j >> 32) & ((1 << i))))) >> i
+            if i > 32
+            else (int((((1 << i)) & j))) >> i
+        )
 
     @staticmethod
     def make_connection_payload(ordered_map, spaces):

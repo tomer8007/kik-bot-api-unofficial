@@ -14,7 +14,7 @@ SALT = "YA=57aSA!ztajE5"
 
 
 def upload_gallery_image(OutgoingChatImage, jid, username, password):
-    url = "https://platform.kik.com/content/files/" + OutgoingChatImage.content_id
+    url = f"https://platform.kik.com/content/files/{OutgoingChatImage.content_id}"
     send(url, OutgoingChatImage, jid, username, password)
 
 

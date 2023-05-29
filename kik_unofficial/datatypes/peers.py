@@ -22,12 +22,12 @@ class User(Peer):
     """
     def __init__(self, xml_data: BeautifulSoup):
         if 'jid' not in xml_data.attrs:
-            raise KikApiException("No jid in user xml {}".format(xml_data))
+            raise KikApiException(f"No jid in user xml {xml_data}")
         super().__init__(xml_data['jid'])
         self.username = xml_data.username.text if xml_data.username else None
         self.display_name = xml_data.find('display-name').text if xml_data.find('display-name') else None
         self.pic = xml_data.pic.text if xml_data.pic else None
-        self.verified = True if xml_data.verified else False
+        self.verified = bool(xml_data.verified)
         if xml_data.entity:
             self._parse_entity(xml_data.entity.text)
 
@@ -46,10 +46,10 @@ class User(Peer):
             self.interests = [element.localized_verbiage for element in user.interests_element.interests_element]
 
     def __str__(self):
-        return "{} ({})".format(self.display_name, self.username)
+        return f"{self.display_name} ({self.username})"
 
     def __repr__(self):
-        return "User(jid={}, username={}, display_name={})".format(self.jid, self.username, self.display_name)
+        return f"User(jid={self.jid}, username={self.username}, display_name={self.display_name})"
 
 
 class Group(Peer):
@@ -69,7 +69,7 @@ class Group(Peer):
         self.is_public = xml_data.get('is-public') == "true"
 
     def __repr__(self):
-        return "Group(jid={}, name={}, code={}, members={})".format(self.jid, self.name, self.code, len(self.members))
+        return f"Group(jid={self.jid}, name={self.name}, code={self.code}, members={len(self.members)})"
 
 
 class GroupMember(Peer):

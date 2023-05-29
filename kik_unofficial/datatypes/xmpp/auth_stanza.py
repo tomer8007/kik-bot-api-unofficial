@@ -57,12 +57,12 @@ class AuthStanza():
         urlattr = f' url="{self.cert_url}"' if self.cert_url else ''
 
         query = (
-            '<iq type="set" id="{}"><query xmlns="kik:auth:cert"{}>'
+            f'<iq type="set" id="{UUID}"><query xmlns="kik:auth:cert"{urlattr}>'
             '<key type="rsa">'
-            '<der>{}</der><signature>{}</signature>'
+            f'<der>{der}</der><signature>{signature}</signature>'
             '</key>'
             '</query></iq>'
-        ).format(UUID, urlattr, der, signature)
+        )
         return query.encode()
 
     def generate_keys(self) -> None:

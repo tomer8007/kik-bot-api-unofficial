@@ -1,9 +1,10 @@
 import sys
 
 from kik_unofficial.configuration import env
+from typing import Tuple, Union
 
 
-def get_credentials_from_env_or_prompt() -> (str, str, str or None):
+def get_credentials_from_env_or_prompt() -> Union[Tuple[str, str, str], None]:
     # /// ENVIRONMENT VARIABLES /// #
     # Create your own `.env` file to store the environment variables if running with Docker.
     # See `.env.example` for an example. You can also just set the environment variables manually.

@@ -28,18 +28,18 @@ class RegisterRequest(XMPPElement):
         passkey_e = CryptographicUtils.key_from_password(self.email, self.password)
         passkey_u = CryptographicUtils.key_from_password(self.username, self.password)
         captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="jabber:iq:register">'
-                '<email>{}</email>'
-                '<passkey-e>{}</passkey-e>'
-                '<passkey-u>{}</passkey-u>'
-                '<device-id>{}</device-id>'
-                '<username>{}</username>'
-                '<first>{}</first>'
-                '<last>{}</last>'
-                '<birthday>{}</birthday>'
-                '{}'
-                '<version>{}</version>'
+                f'<email>{self.email}</email>'
+                f'<passkey-e>{passkey_e}</passkey-e>'
+                f'<passkey-u>{passkey_u}</passkey-u>'
+                f'<device-id>{self.device_id_override or device_id}</device-id>'
+                f'<username>{self.username}</username>'
+                f'<first>{self.first_name}</first>'
+                f'<last>{self.last_name}</last>'
+                f'<birthday>{self.birthday}</birthday>'
+                f'{captcha}'
+                f'<version>{kik_version_info["kik_version"]}</version>'
                 '<device-type>android</device-type>'
                 '<model>Nexus 7</model>'
                 '<android-sdk>25</android-sdk>'
@@ -49,11 +49,10 @@ class RegisterRequest(XMPPElement):
                 '<prefix>CAN</prefix>'
                 '<lang>en_US</lang>'
                 '<brand>google</brand>'
-                '<android-id>{}</android-id>'
+                f'<android-id>{self.android_id_override or android_id}</android-id>'
                 '</query>'
-                '</iq>').format(self.message_id, self.email, passkey_e, passkey_u, self.device_id_override if self.device_id_override else device_id,
-                                self.username, self.first_name, self.last_name, self.birthday, captcha, kik_version_info["kik_version"],
-                                self.android_id_override if self.android_id_override else android_id)
+                '</iq>')
+
 
         return data.encode()
 
@@ -73,11 +72,11 @@ class CheckUsernameUniquenessRequest(XMPPElement):
         self.username = username
 
     def serialize(self) -> bytes:
-        data = ('<iq type="get" id="{}">'
+        data = (f'<iq type="get" id="{self.message_id}">'
                 '<query xmlns="kik:iq:check-unique">'
-                '<username>{}</username>'
+                f'<username>{self.username}</username>'
                 '</query>'
-                '</iq>').format(self.message_id, self.username)
+                '</iq>')
 
         return data.encode()
 
@@ -86,5 +85,5 @@ class UsernameUniquenessResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         username_element = data.find('username')
-        self.unique = True if username_element['is-unique'] == "true" else False
+        self.unique = username_element['is-unique'] == "true"
         self.username = username_element.text

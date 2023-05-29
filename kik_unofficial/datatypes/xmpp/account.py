@@ -12,9 +12,9 @@ class GetMyProfileRequest(XMPPElement):
         super().__init__()
 
     def serialize(self) -> bytes:
-        data = ('<iq type="get" id="{}">'
+        data = (f'<iq type="get" id="{self.message_id}">'
                 '<query xmlns="kik:iq:user-profile" />'
-                '</iq>').format(self.message_id)
+                '</iq>')
         return data.encode()
 
 
@@ -33,20 +33,15 @@ class GetMyProfileResponse(XMPPResponse):
         # When the token expires, requesting your profile information again
         # should return the new session token.
         self.session_token_expiration = get_text_safe(data, "session-token-expiration")
-        self.notify_new_people = True if get_text_safe(data, "notify-new-people") == "true" else False
-        self.verified = True if data.verified else False
+        self.notify_new_people = get_text_safe(data, "notify-new-people") == "true"
+        self.verified = bool(data.verified)
         if data.find("email"):
             self.email = data.find("email").text
-            self.email_is_confirmed = "true" == data.find("email").get("confirmed")
+            self.email_is_confirmed = data.find("email").get("confirmed") == "true"
         else:
             self.email = None
             self.email_is_confirmed = False
-        if data.find("pic"):
-            # append /orig.jpg for the full resolution
-            # append /thumb.jpg for a smaller resolution
-            self.pic_url = data.find("pic").text
-        else:
-            self.pic_url = None
+        self.pic_url = data.find("pic").text if data.find("pic") else None
 
     # Once the session token is expired, call get_my_profile again to get the new token
     def is_valid_token(self):
@@ -68,15 +63,9 @@ class GetMyProfileResponse(XMPPResponse):
                f'\nPic: {self.pic_url + "/orig.jpg" if self.pic_url else "none"}'
 
     def __repr__(self):
-        return "GetMyProfileResponse(first_name={}, last_name={}, username={}, birthday={}, " \
-               "session_token={}, session_token_expiration={}, notify_new_people={}, " \
-               "verified={}, email={}, email_is_confirmed={}, pic_url={})".format(self.first_name, self.last_name,
-                                                                                  self.username, self.birthday,
-                                                                                  self.session_token,
-                                                                                  self.session_token_expiration,
-                                                                                  self.notify_new_people, self.verified,
-                                                                                  self.email, self.email_is_confirmed,
-                                                                                  self.pic_url)
+        return f"GetMyProfileResponse(first_name={self.first_name}, last_name={self.last_name}, username={self.username}, birthday={self.birthday}, " \
+               f"session_token={self.session_token}, session_token_expiration={self.session_token_expiration}, notify_new_people={self.notify_new_people}, " \
+               f"verified={self.verified}, email={self.email}, email_is_confirmed={self.email_is_confirmed}, pic_url={self.pic_url})"
 
 
 def get_text_safe(data: BeautifulSoup, tag: str):
@@ -90,12 +79,12 @@ class ChangeNameRequest(XMPPElement):
         self.last_name = last_name
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:iq:user-profile">'
-                '<first>{}</first>'
-                '<last>{}</last>'
+                f'<first>{self.first_name}</first>'
+                f'<last>{self.last_name}</last>'
                 '</query>'
-                '</iq>').format(self.message_id, self.first_name, self.last_name)
+                '</iq>')
         return data.encode()
 
 
@@ -110,12 +99,12 @@ class ChangePasswordRequest(XMPPElement):
     def serialize(self):
         passkey_e = CryptographicUtils.key_from_password(self.email, self.old_password)
         passkey_u = CryptographicUtils.key_from_password(self.username, self.new_password)
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:iq:user-profile">'
-                '<passkey-e>{}</passkey-e>'
-                '<passkey-u>{}</passkey-u>'
+                f'<passkey-e>{passkey_e}</passkey-e>'
+                f'<passkey-u>{passkey_u}</passkey-u>'
                 '</query>'
-                '</iq>').format(self.message_id, passkey_e, passkey_u)
+                '</iq>')
         return data.encode()
 
 
@@ -128,10 +117,10 @@ class ChangeEmailRequest(XMPPElement):
 
     def serialize(self):
         passkey_e = CryptographicUtils.key_from_password(self.old_email, self.password)
-        data = ('<iq type="set" id="{}">'
-                '<query xmlns="kik:iq:user-profile">'
-                '<email>{}</email>'
-                '<passkey-e>{}</passkey-e>'
-                '</query>'
-                '</iq>').format(self.message_id, self.new_email, passkey_e)
+        data = (f'<iq type="set" id="{self.message_id}">'
+                f'<query xmlns="kik:iq:user-profile">'
+                f'<email>{self.new_email}</email>'
+                f'<passkey-e>{passkey_e}</passkey-e>'
+                f'</query>'
+                f'</iq>')
         return data.encode()

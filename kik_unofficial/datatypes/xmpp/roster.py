@@ -20,10 +20,10 @@ class FetchRosterRequest(XMPPElement):
     def serialize(self) -> bytes:
         ts = f' ts="{self.timestamp}" ' if self.timestamp else ' '
         data = (
-            '<iq type="get" id="{}">'
-            '<query p="8"{}b="{}" xmlns="jabber:iq:roster" />'
+            f'<iq type="get" id="{self.message_id}">'
+            f'<query p="8"{ts}b="{int(self.is_big)}" xmlns="jabber:iq:roster" />'
             '</iq>'
-        ).format(self.message_id, ts, str(int(self.is_big)))
+        )
         return data.encode()
 
 

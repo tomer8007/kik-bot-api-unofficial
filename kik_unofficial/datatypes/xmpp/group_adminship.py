@@ -10,13 +10,13 @@ class AddToGroupRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<m>{}</m>'
+                f'<g jid="{self.group_jid}">'
+                f'<m>{self.peer_jid}</m>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
         return data.encode()
 
 class ChangeGroupNameRequest(XMPPElement):
@@ -26,13 +26,13 @@ class ChangeGroupNameRequest(XMPPElement):
         self.new_name = new_name
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<n>{}</n>'
+                f'<g jid="{self.group_jid}">'
+                f'<n>{self.new_name}</n>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.new_name)
+                '</iq>')
         return data.encode()
 
 class RemoveFromGroupRequest(XMPPElement):
@@ -42,13 +42,13 @@ class RemoveFromGroupRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<m r="1">{}</m>'
+                f'<g jid="{self.group_jid}">'
+                f'<m r="1">{self.peer_jid}</m>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
         return data.encode()
 
 
@@ -59,13 +59,14 @@ class UnbanRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<b r="1">{}</b>'
+                f'<g jid="{self.group_jid}">'
+                f'<b r="1">{self.peer_jid}</b>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
+
         return data.encode()
 
 
@@ -76,13 +77,13 @@ class BanMemberRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<b>{}</b>'
+                f'<g jid="{self.group_jid}">'
+                f'<b>{self.peer_jid}</b>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
         return data.encode()
 
 
@@ -92,13 +93,13 @@ class LeaveGroupRequest(XMPPElement):
         self.group_jid = group_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
+                f'<g jid="{self.group_jid}">'
                 '<l />'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid)
+                '</iq>')
         return data.encode()
 
 
@@ -109,13 +110,13 @@ class PromoteToAdminRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<m a="1">{}</m>'
+                f'<g jid="{self.group_jid}">'
+                f'<m a="1">{self.peer_jid}</m>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
         return data.encode()
 
 
@@ -126,13 +127,13 @@ class DemoteAdminRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '<m a="0">{}</m>'
+                f'<g jid="{self.group_jid}">'
+                f'<m a="0">{self.peer_jid}</m>'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, self.peer_jid)
+                '</iq>')
         return data.encode()
 
 
@@ -140,18 +141,15 @@ class AddMembersRequest(XMPPElement):
     def __init__(self, group_jid, peer_jids: Union[str, List[str]]):
         super().__init__()
         self.group_jid = group_jid
-        if isinstance(peer_jids, List):
-            self.peer_jids = peer_jids
-        else:
-            self.peer_jids = [peer_jids]
+        self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
     def serialize(self) -> bytes:
-        items = ''.join(['<m>{}</m>'.format(jid) for jid in self.peer_jids])
-        data = ('<iq type="set" id="{}">'
+        items = ''.join([f'<m>{jid}</m>' for jid in self.peer_jids])
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}">'
-                '{}'
+                f'<g jid="{self.group_jid}">'
+                f'{items}'
                 '</g>'
                 '</query>'
-                '</iq>').format(self.message_id, self.group_jid, items)
+                '</iq>')
         return data.encode()

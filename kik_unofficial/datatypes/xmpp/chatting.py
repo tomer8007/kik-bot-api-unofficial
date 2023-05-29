@@ -28,22 +28,20 @@ class OutgoingChatMessage(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        message_type = "chat" if not self.is_group else "groupchat"
-        bot_mention_data = ('<mention>'
-                            '<bot>{}</bot>'
-                            '</mention>').format(self.bot_mention_jid) if self.bot_mention_jid else ''
-        data = ('<message type="{}" to="{}" id="{}" cts="{}">'
-                '<body>{}</body>'
-                '{}'
-                '<preview>{}</preview>'
-                '<kik push="true" qos="true" timestamp="{}" />'
+        message_type = "groupchat" if self.is_group else "chat"
+        bot_mention_data = (
+            f'<mention><bot>{self.bot_mention_jid}</bot></mention>'
+            if self.bot_mention_jid
+            else ''
+        )
+        data = (f'<message type="{message_type}" to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}">'
+                f'<body>{ParsingUtilities.escape_xml(self.body)}</body>'
+                f'{bot_mention_data}'
+                f'<preview>{ParsingUtilities.escape_xml(self.body[:20])}</preview>'
+                f'<kik push="true" qos="true" timestamp="{timestamp}" />'
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
                 '<ri></ri>'
-                '</message>'
-                ).format(message_type, self.peer_jid, self.message_id, timestamp,
-                         ParsingUtilities.escape_xml(self.body), bot_mention_data,
-                         ParsingUtilities.escape_xml(self.body[0:20]),
-                         timestamp)
+                '</message>')
         return data.encode()
 
 
@@ -69,7 +67,7 @@ class OutgoingChatImage(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(self.timestamp * 1000)))
-        message_type = "chat" if not self.is_group else "groupchat"
+        message_type = "groupchat" if self.is_group else "chat"
         data = (
             '<message to="{0}" id="{1}" cts="{2}" type="{3}" xmlns="jabber:client">'
             '<kik timestamp="{2}" qos="true" push="true"/>'
@@ -153,16 +151,16 @@ class OutgoingReadReceipt(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        group_line = "<g jid=\"{}\" />".format(self.group_jid)
-        data = ('<message type="receipt" id="{}" to="{}" cts="{}">'
-                '<kik push="false" qos="true" timestamp="{}" />'
+        group_line = f'<g jid=\"{self.group_jid}\" />'
+        data = (f'<message type="receipt" id="{self.message_id}" to="{self.peer_jid}" cts="{timestamp}">'
+                f'<kik push="false" qos="true" timestamp="{timestamp}" />'
                 '<receipt xmlns="kik:message:receipt" type="read">'
-                '<msgid id="{}" />'
-                '</receipt>').format(self.message_id, self.peer_jid, timestamp, timestamp, self.receipt_message_id)
+                f'<msgid id="{self.receipt_message_id}" />'
+                '</receipt>')
         if 'groups' in group_line:
             data = data + group_line + '</message>'
         else:
-            data = data + '</message>'
+            data = f'{data}</message>'
         return data.encode()
 
 
@@ -176,21 +174,21 @@ class OutgoingDeliveredReceipt(XMPPElement):
 
     def serialize(self):
         if self.group_jid and 'groups.kik.com' in self.group_jid:
-            g_tag = " g=\"{}\"".format(self.group_jid)
+            g_tag = f' g=\"{self.group_jid}\"'
         else:
             g_tag = ''
 
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<iq type="set" id="{}" cts="{}">'
+        data = (f'<iq type="set" id="{self.message_id}" cts="{timestamp}">'
                 '<query xmlns="kik:iq:QoS">'
                 '<msg-acks>'
-                '<sender jid="{}"{}>'
-                '<ack-id receipt="true">{}</ack-id>'
+                f'<sender jid="{self.peer_jid}"{g_tag}>'
+                f'<ack-id receipt="true">{self.receipt_message_id}</ack-id>'
                 '</sender>'
                 '</msg-acks>'
                 '<history attach="false" />'
                 '</query>'
-                '</iq>').format(self.message_id, timestamp, self.peer_jid, g_tag, self.receipt_message_id)
+                '</iq>')
         return data.encode()
 
 
@@ -202,10 +200,10 @@ class OutgoingIsTypingEvent(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="chat" to="{}" id="{}">'
-                '<kik push="false" qos="false" timestamp="{}" />'
-                '<is-typing val="{}" />'
-                '</message>').format(self.peer_jid, self.message_id, timestamp, str(self.is_typing).lower())
+        data = (f'<message type="chat" to="{self.peer_jid}" id="{self.message_id}">'
+                f'<kik push="false" qos="false" timestamp="{timestamp}" />'
+                f'<is-typing val="{str(self.is_typing).lower()}" />'
+                '</message>')
         return data.encode()
 
 
@@ -217,11 +215,11 @@ class OutgoingGroupIsTypingEvent(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message type="groupchat" to="{}" id="{}">'
+        data = (f'<message type="groupchat" to="{self.peer_jid}" id="{self.message_id}">'
                 '<pb></pb>'
-                '<kik push="false" qos="false" timestamp="{}" />'
-                '<is-typing val="{}" />'
-                '</message>').format(self.peer_jid, self.message_id, timestamp, str(self.is_typing).lower())
+                f'<kik push="false" qos="false" timestamp="{timestamp}" />'
+                f'<is-typing val="{str(self.is_typing).lower()}" />'
+                '</message>')
         return data.encode()
 
 
@@ -237,16 +235,17 @@ class OutgoingLinkShareEvent(XMPPElement):
     def serialize(self):
         message_type = 'type="groupchat" xmlns="kik:groups"' if 'group' in self.peer_jid else 'type="chat"'
         timestamp = str(int(round(time.time() * 1000)))
-        data = ('<message {0} to="{1}" id="{2}" cts="{3}">'
+        
+        data = (f'<message {message_type} to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}">'
                 '<pb></pb>'
-                '<kik push="true" qos="true" timestamp="{3}" />'
+                f'<kik push="true" qos="true" timestamp="{timestamp}" />'
                 '<request xmlns="kik:message:receipt" r="true" d="true" />'
-                '<content id="{2}" app-id="com.kik.cards" v="2">'
+                f'<content id="{self.message_id}" app-id="com.kik.cards" v="2">'
                 '<strings>'
-                '<app-name>{4}</app-name>'
+                f'<app-name>{self.app_name}</app-name>'
                 '<layout>article</layout>'
-                '<title>{5}</title>'
-                '<text>{6}</text>'
+                f'<title>{self.title}</title>'
+                f'<text>{self.text}</text>'
                 '<allow-forward>true</allow-forward>'
                 '</strings>'
                 '<extras />'
@@ -254,13 +253,13 @@ class OutgoingLinkShareEvent(XMPPElement):
                 '<images>'
                 '</images>'
                 '<uris>'
-                '<uri platform="cards">{7}</uri>'
+                f'<uri platform="cards">{self.link}</uri>'
                 '<uri></uri>'
                 '<uri>http://cdn.kik.com/cards/unsupported.html</uri>'
                 '</uris>'
                 '</content>'
-                '</message>').format(message_type, self.peer_jid, self.message_id, timestamp, self.app_name, self.title,
-                                     self.text, self.link)
+                '</message>')
+        
         return data.encode()
 
 
@@ -378,8 +377,7 @@ class IncomingGroupSticker(XMPPResponse):
         self.sticker_source = extras_map['sticker_source'] if 'sticker_source' in extras_map else None
         self.png_preview = content.images.find('png-preview').text if content.images.find('png-preview') else None
         self.uris = []
-        for uri in content.uris:
-            self.uris.append(self.Uri(uri))
+        self.uris.extend(self.Uri(uri) for uri in content.uris)
 
     class Uri:
         def __init__(self, uri):
@@ -388,10 +386,7 @@ class IncomingGroupSticker(XMPPResponse):
 
     @staticmethod
     def parse_extras(extras):
-        extras_map = {}
-        for item in extras.findAll('item'):
-            extras_map[item.key.string] = item.val.text
-        return extras_map
+        return {item.key.string: item.val.text for item in extras.findAll('item')}
 
 
 class IncomingGifMessage(XMPPResponse):
@@ -428,7 +423,7 @@ class OutgoingGIFMessage(XMPPElement):
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
-        message_type = "chat" if not self.is_group else "groupchat"
+        message_type = "groupchat" if self.is_group else "chat"
         data = (
             '<message cts="{0}" type="{1}" to="{12}" id="{2}" xmlns="jabber:client">'
             '<kik push="true" timestamp="{3}" qos="true"/>'
@@ -468,10 +463,10 @@ class OutgoingGIFMessage(XMPPElement):
 
     def get_gif_data(self, search_term):
         apikey = ""  # add api key from https://tenor.com/gifapi
-        if apikey == "":
+        if not apikey:
             raise Exception("A tendor.com API key is required to search for GIFs images. please get one and change it")
 
-        r = requests.get("https://api.tenor.com/v1/search?q=%s&key=%s&limit=1" % (search_term, apikey))
+        r = requests.get(f"https://api.tenor.com/v1/search?q={search_term}&key={apikey}&limit=1")
         if r.status_code == 200:
             gif = json.loads(r.content.decode('ascii'))
             response = requests.get(gif["results"][0]["media"][0]["nanomp4"]["preview"])

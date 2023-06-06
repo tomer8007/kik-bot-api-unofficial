@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import yaml
 
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
@@ -9,7 +10,7 @@ from kik_unofficial.datatypes.xmpp.errors import SignUpError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse
-
+from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 
 class RegisterClient(KikClientCallback):
     def on_sign_up_ended(self, response: RegisterResponse):
@@ -43,13 +44,28 @@ if __name__ == '__main__':
     parser.add_argument('--firstname', default='Not A')
     parser.add_argument('--lastname', default='Human')
     parser.add_argument('--birthday', default='01-01-1990')
+    parser.add_argument('--credentials-file', default='new_creds.yaml')
     args = parser.parse_args()
     if args.password is None:
         args.password = input('Password: ')
 
+    device_id = random_device_id()
+    android_id = random_android_id()
     logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
     client = KikClient(callback=RegisterClient(),
-            kik_username=None, kik_password=None)
+                       kik_username=None, kik_password=None, 
+                       device_id=device_id, android_id=android_id)
     client.register(args.email, args.username, args.password,
             args.firstname, args.lastname, args.birthday)
+
+    file_obj = {
+            'device_id': device_id,
+            'android_id': android_id,
+            'username': args.username,
+            'password': args.password,
+            'node': client.kik_node,
+            }
+    with open(args.credentials_file, 'w') as f:
+        yaml.dump(file_obj, f)
+
     client.wait_for_messages()

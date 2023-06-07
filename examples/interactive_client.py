@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import logging
 import sys
 import time
@@ -10,9 +11,6 @@ from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.chatting import IncomingChatMessage, IncomingGroupChatMessage, IncomingStatusResponse, IncomingGroupStatus
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse
 from kik_unofficial.datatypes.xmpp.login import ConnectionFailedResponse
-
-username = sys.argv[1] if len(sys.argv) > 1 else input('Username: ')
-password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 friends = {}
 
@@ -77,8 +75,21 @@ def chat():
         elif peer_jid and message:
             client.send_chat_message(peer_jid, message)
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    args = parser.parse_args()
+    
+    with open(args.credentials) as f:
+        creds = yaml.safe_load(f)
+    device_id = creds['device_id']
+    android_id = creds['android_id']
+    username = creds['username']
+    node = creds.get('node')
+    password = creds.get('password')
+    if not password:
+        password = input('Password: ')
 
-if __name__ == '__main__':
     # set up logging
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -88,5 +99,8 @@ if __name__ == '__main__':
 
     # create the client
     callback = InteractiveChatClient()
-    client = KikClient(callback=callback, kik_username=username, kik_password=password)
+    client = KikClient(callback=callback, kik_username=username, kik_password=password, kik_node=node, device_id=device_id, android_id=android_id)
     client.wait_for_messages()
+
+if __name__ == '__main__':
+    main()

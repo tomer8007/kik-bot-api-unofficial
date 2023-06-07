@@ -33,7 +33,7 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, device_id_override=None, android_id_override=None):
+                 kik_node=None, device_id=None, android_id=None):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -50,8 +50,11 @@ class KikClient:
         self.password = kik_password
         self.kik_node = kik_node
         self.kik_email = None
-        self.device_id_override = device_id_override
-        self.android_id_override = android_id_override
+        self.device_id = device_id
+        self.android_id = android_id
+
+        if self.device_id is None or self.android_id is None:
+            raise ValueError("Both device_id and android_id must be set")
 
         self.callback = callback
         self.authenticator = AuthStanza(self)
@@ -89,9 +92,9 @@ class KikClient:
             # we have all required credentials, we can authenticate
             log.info(f"[+] Establishing authenticated connection using kik node '{self.kik_node}'...")
 
-            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id_override)
+            message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id)
         else:
-            message = login.MakeAnonymousStreamInitTag(self.device_id_override, n = 1)
+            message = login.MakeAnonymousStreamInitTag(self.device_id, n = 1)
         self.initial_connection_payload = message.serialize()
         self.connection.send_raw_data(self.initial_connection_payload)
 
@@ -120,7 +123,7 @@ class KikClient:
         """
         self.username = username
         self.password = password
-        login_request = login.LoginRequest(username, password, captcha_result, self.device_id_override, self.android_id_override)
+        login_request = login.LoginRequest(username, password, captcha_result, self.device_id, self.android_id)
         login_type = "email" if '@' in self.username else "username"
         log.info(f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
@@ -132,7 +135,7 @@ class KikClient:
         self.username = username
         self.password = password
         register_message = sign_up.RegisterRequest(email, username, password, first_name, last_name, birthday, captcha_result,
-                                                   self.device_id_override, self.android_id_override)
+                                                   self.device_id, self.android_id)
         log.info(f"[+] Sending sign up request (name: {first_name} {last_name}, email: {email})...")
         return self._send_xmpp_element(register_message)
 

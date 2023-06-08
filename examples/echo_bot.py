@@ -4,8 +4,10 @@ A Kik bot that just logs every event that it gets (new message, message read, et
 and echos back whatever chat messages it receives.
 """
 
+import argparse
 import logging
 import sys
+import yaml
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
@@ -14,10 +16,15 @@ from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
-from kik_unofficial.utilities.credential_utilities import get_credentials_from_env_or_prompt
-
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    args = parser.parse_args()
+
+    with open(args.credentials) as f:
+        creds = yaml.safe_load(f)
+
     # set up logging
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -26,13 +33,20 @@ def main():
     logger.addHandler(stream_handler)
 
     # create the bot
-    bot = EchoBot()
+    bot = EchoBot(creds)
 
 
 class EchoBot(KikClientCallback):
-    def __init__(self):
-        username, password, node = get_credentials_from_env_or_prompt()
-        self.client = KikClient(self, username, password, node)
+    def __init__(self, creds):
+        device_id = creds['device_id']
+        android_id = creds['android_id']
+        username = creds['username']
+        node = creds.get('node')
+        password = creds.get('password')
+        if not password:
+            password = input('Password: ')
+        
+        self.client = KikClient(self, username, password, node, device_id=device_id, android_id=android_id)
         self.client.wait_for_messages()
 
     def on_authenticated(self):

@@ -1,8 +1,14 @@
 import sys
+import os
 
 from kik_unofficial.configuration import env
 from typing import Tuple, Union
 
+def random_device_id():
+    return os.urandom(16).hex()
+
+def random_android_id():
+    return os.urandom(8).hex()
 
 def get_credentials_from_env_or_prompt() -> Union[Tuple[str, str, str], None]:
     # /// ENVIRONMENT VARIABLES /// #

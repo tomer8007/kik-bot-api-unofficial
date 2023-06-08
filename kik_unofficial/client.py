@@ -21,7 +21,7 @@ from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
-
+from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 
 
 HOST, PORT = "talk1110an.kik.com", 5223
@@ -33,7 +33,7 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, device_id=None, android_id=None):
+                 kik_node=None, device_id=random_device_id(), android_id=random_android_id()):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -52,9 +52,6 @@ class KikClient:
         self.kik_email = None
         self.device_id = device_id
         self.android_id = android_id
-
-        if self.device_id is None or self.android_id is None:
-            raise ValueError("Both device_id and android_id must be set")
 
         self.callback = callback
         self.authenticator = AuthStanza(self)

@@ -19,16 +19,9 @@ from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 
-creds = {
-    'kik_username': 'your_kik_username',
-    'kik_password': 'your_kik_password',
-    'device_id': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    'android_id': 'bbbbbbbbbbbbbbbb',
-}
-
 class EchoBot(KikClientCallback):
     def __init__(self):
-        self.client = KikClient(self, **creds)
+        self.client = KikClient(self, "your_kik_username", "your_kik_password")
         self.client.wait_for_messages()
 
     def on_authenticated(self):

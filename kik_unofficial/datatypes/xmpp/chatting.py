@@ -115,8 +115,8 @@ class IncomingChatMessage(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if 'd' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
         self.preview = data.preview.text if data.preview else None
 
@@ -298,8 +298,8 @@ class IncomingGroupStatus(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.status = data.status.text if data.status else None
@@ -312,8 +312,8 @@ class IncomingGroupSysmsg(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
@@ -354,13 +354,13 @@ class IncomingStatusResponse(XMPPResponse):
 class IncomingImageMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.image_url = data.find('file-url').get_text() if data.find('file-url') else None
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid'] if data.g else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
 
 
 class IncomingGroupSticker(XMPPResponse):
@@ -394,8 +394,8 @@ class IncomingGifMessage(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
@@ -482,8 +482,8 @@ class OutgoingGIFMessage(XMPPElement):
 class IncomingVideoMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
         self.duration_milliseconds = data.find('duration').text if data.find('duration') else None
@@ -496,8 +496,8 @@ class IncomingVideoMessage(XMPPResponse):
 class IncomingCardMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.from_jid = data['from']
         self.to_jid = data['to']
         self.group_jid = data.g['jid']

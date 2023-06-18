@@ -366,10 +366,10 @@ class IncomingImageMessage(XMPPResponse):
 class IncomingGroupSticker(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        content = data.content
+        content = data.content or data
         extras_map = self.parse_extras(content.extras)
-        self.from_jid = data['from']
-        self.group_jid = data.g['jid']
+        self.from_jid = data['from'] if data else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.sticker_pack_id = extras_map['sticker_pack_id'] if 'sticker_pack_id' in extras_map else None
         self.sticker_url = extras_map['sticker_url'] if 'sticker_url' in extras_map else None
         self.sticker_id = extras_map['sticker_id'] if 'sticker_id' in extras_map else None
@@ -397,9 +397,9 @@ class IncomingGifMessage(XMPPResponse):
         self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
         self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
-        self.from_jid = data['from']
-        self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.from_jid = data['from'] if data else None
+        self.to_jid = data['to'] if data else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.uris = [self.Uri(uri) for uri in data.content.uris]
 
     class Uri:
@@ -490,7 +490,7 @@ class IncomingVideoMessage(XMPPResponse):
         self.file_size = data.find('file-size').text
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
 
 
 class IncomingCardMessage(XMPPResponse):
@@ -500,7 +500,7 @@ class IncomingCardMessage(XMPPResponse):
         self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.app_name = data.find('app-name').text if data.find('app-name') else None
         self.card_icon = data.find('card-icon').text if data.find('card-icon') else None
         self.layout = data.find('layout').text if data.find('layout') else None

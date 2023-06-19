@@ -7,7 +7,6 @@ import pyDes
 import rsa
 import time
 
-from kik_unofficial.device_configuration import device_id
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 
@@ -86,7 +85,7 @@ class AuthStanza():
         The secret Kik uses for the DESKeySpec
         """
         username = self.client.username
-        device = self.client.device_id_override or device_id
+        device = self.client.device_id
         data = (device + '-' + username).encode()
         return hashlib.sha1(data).digest()
 

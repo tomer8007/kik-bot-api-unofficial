@@ -14,6 +14,3 @@ kik_version_15_49_info = {'kik_version': '15.49.0.27501', 'classes_dex_sha1_dige
 
 kik_version_info = kik_version_15_49_info        # a kik version that's not updated will cause a captcha on login
 
-# grab instance variables from the environment, OR use the default values as a fallback
-device_id = env.get('DEVICE_ID', '62030843678b7376a707ca3d11e87836')  # 32 characters. Should be unique per account
-android_id = env.get('ANDROID_ID', '849d4ffb0c020de6')                # 16 characters. Should be unique per account

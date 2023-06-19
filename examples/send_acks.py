@@ -3,6 +3,7 @@
 A bot that sends acknowledgements for every message in the account's past messaging history
 """
 
+import argparse
 import logging
 import sys
 
@@ -18,6 +19,15 @@ password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    args = parser.parse_args()
+    
+    with open(args.credentials) as f:
+        creds = yaml.safe_load(f)
+    if not creds.get('password'):
+        creds['password'] = input('Password: ')
+    
     # set up logging
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
@@ -26,12 +36,12 @@ def main():
     logger.addHandler(stream_handler)
 
     # create the bot
-    bot = AckBot()
+    bot = AckBot(creds)
 
 
 class AckBot(KikClientCallback):
-    def __init__(self):
-        self.client = KikClient(self, username, password)
+    def __init__(self, creds):
+        self.client = KikClient(self, creds['username'], creds['password'], kik_node=creds.get('node'), device_id=creds['device_id'], android_id=creds['android_id'])
         self.client.wait_for_messages()
 
     def on_authenticated(self):

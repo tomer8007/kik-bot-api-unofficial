@@ -6,7 +6,7 @@ import hmac
 import rsa
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.device_configuration import device_id, kik_version_info, android_id
+from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 captcha_element = '<challenge><response>{}</response></challenge>'
@@ -25,13 +25,13 @@ class LoginRequest(XMPPElement):
     """
     Represents a Kik Login request.
     """
-    def __init__(self, username, password, captcha_result=None, device_id_override=None, android_id_override=None):
+    def __init__(self, username, password, captcha_result=None, device_id=None, android_id=None):
         super().__init__()
         self.username = username
         self.password = password
         self.captcha_result = captcha_result
-        self.device_id_override = device_id_override
-        self.android_id_override = android_id_override
+        self.device_id = device_id
+        self.android_id = android_id
 
     def serialize(self) -> bytes:
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
@@ -46,7 +46,7 @@ class LoginRequest(XMPPElement):
         data = (f'<iq type="set" id="{self.message_id}">' 
                 f'<query xmlns="jabber:iq:register">' 
                 f'{tag.format(self.username, password_key)}' 
-                f'<device-id>{self.device_id_override or device_id}</device-id>' 
+                f'<device-id>{self.device_id}</device-id>' 
                 '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>' 
                 '<operator>unknown</operator>' 
                 '<install-date>unknown</install-date>' 
@@ -58,7 +58,7 @@ class LoginRequest(XMPPElement):
                 '<android-sdk>19</android-sdk>' 
                 '<registrations-since-install>0</registrations-since-install>' 
                 '<prefix>CAN</prefix>' \
-                f'<android-id>{self.android_id_override or android_id}</android-id>' 
+                f'<android-id>{self.android_id}</android-id>' 
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>' 
                 f'{captcha}' \
                 '</query>' 
@@ -80,15 +80,15 @@ class LoginResponse:
         self.last_name = data.query.last.text
 
 class MakeAnonymousStreamInitTag(XMPPElement):
-    def __init__(self, device_id_override=None, n=1):
+    def __init__(self, device_id=None, n=1):
         super().__init__()
-        self.device_id_override = device_id_override
+        self.device_id = device_id
         self.n = n
 
     def serialize(self):
         can = 'CAN'  # XmppSocketV2.java line 180, 
         
-        device = self.device_id_override if self.device_id_override else device_id
+        device = self.device_id
         timestamp = str(CryptographicUtils.make_kik_timestamp())
         sid = CryptographicUtils.make_kik_uuid()
         
@@ -135,16 +135,16 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
     a request sent on the begging of the connection to establish
     an authenticated session. That is, on the behalf of a specific kik user, with his credentials.
     """
-    def __init__(self, node, username, password, device_id_override=None):
+    def __init__(self, node, username, password, device_id=None):
         super().__init__()
         self.node = node
         self.username = username
         self.password = password
-        self.device_id_override = device_id_override
+        self.device_id = device_id
 
     def serialize(self):
         jid = self.node + "@talk.kik.com"
-        jid_with_resource = jid + "/CAN" + (self.device_id_override if self.device_id_override else device_id)
+        jid_with_resource = jid + "/CAN" + (self.device_id)
         timestamp = str(CryptographicUtils.make_kik_timestamp())
         sid = CryptographicUtils.make_kik_uuid()
 

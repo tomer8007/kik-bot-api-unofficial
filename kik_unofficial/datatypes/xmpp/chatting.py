@@ -376,7 +376,7 @@ class IncomingGroupSticker(XMPPResponse):
         self.sticker_source = extras_map['sticker_source'] if 'sticker_source' in extras_map else None
         self.png_preview = content.images.find('png-preview').text if content.images.find('png-preview') else None
         self.uris = []
-        self.uris.extend(self.Uri(uri) for uri in content.uris)
+        if content.uri: self.uris.extend(self.Uri(uri) for uri in content.uri)
 
     class Uri:
         def __init__(self, uri):
@@ -424,10 +424,10 @@ class OutgoingGIFMessage(XMPPElement):
         timestamp = str(int(round(time.time() * 1000)))
         message_type = "groupchat" if self.is_group else "chat"
         data = (
-            '<message cts="{0}" type="{1}" to="{12}" id="{2}" xmlns="jabber:client">'
-            '<kik push="true" timestamp="{3}" qos="true"/>'
+            f'<message cts="{timestamp}" type="{message_type}" to="{self.peer_jid}" id="{self.message_id}" xmlns="jabber:client">'
+            f'<kik push="true" timestamp="{timestamp}" qos="true"/>'
             '<pb/>'
-            '<content id="{4}" v="2" app-id="com.kik.ext.gif">'
+            f'<content id="{self.message_id}" v="2" app-id="com.kik.ext.gif">'
             '<strings>'
             '<app-name>GIF</app-name>'
             '<layout>video</layout>'
@@ -439,23 +439,21 @@ class OutgoingGIFMessage(XMPPElement):
             '</strings>'
             '<images>'
             '<icon></icon>'
-            '<preview>{5}</preview>'
+            f'<preview>{self.gif_preview}</preview>'
             '</images>'
             '<uris>'
-            '<uri priority="0" type="video" file-content-type="video/mp4">{6}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/webm">{7}</uri>'
-            '<uri priority="0" type="video" file-content-type="video/tinymp4">{8}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/tinywebm">{9}</uri>'
-            '<uri priority="0" type="video" file-content-type="video/nanomp4">{10}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/nanowebm">{11}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/mp4">{self.gif_data["mp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/webm">{self.gif_data["webm"]["url"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/tinymp4">{self.gif_data["tinymp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/tinywebm">{self.gif_data["tinywebm"]["url"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/nanomp4">{self.gif_data["nanomp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/nanowebm">{self.gif_data["nanowebm"]["url"]}</uri>'
             '</uris>'
             '</content>'
             '<request r="true" d="true" xmlns="kik:message:receipt"/>'
             '</message>'
-        ).format(timestamp, message_type, self.message_id, timestamp, self.message_id, self.gif_preview,
-                    self.gif_data["mp4"]["url"], self.gif_data["webm"]["url"], self.gif_data["tinymp4"]["url"],
-                    self.gif_data["tinywebm"]["url"], self.gif_data["nanomp4"]["url"],
-                    self.gif_data["nanowebm"]["url"], self.peer_jid)
+        )
+
 
         packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
         return list(packets)

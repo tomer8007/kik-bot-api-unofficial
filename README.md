@@ -1,37 +1,15 @@
 # Kik Bot API #
-Use this library to develop bots for [Kik Messenger](https://www.kik.com) that are essentially automated humans.
+The Kik Bot API is a Python library developed to automate interactions on [Kik Messenger](https://www.kik.com) that are essentially automated humans.
 
-It basically lets you do the same things as the official Kik app by pretending to be a real smartphone client; It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
+It's essentially a way to create bots that behave like humans on the platform. This library enables your bot to interact with the official Kik app by emulating a real smartphone client. It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
 
-This is the new branch of this project and is recommended.
-## Installation and dependencies ##
-First, make sure you are using **Python 3.6+**, not python 2.7. Second, just install it directly from GitHub:
-```
-git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
-pip3 install ./kik-bot-api-unofficial
-```
-## Usage ##
-Examples are a great way to understand things. A good place to start is the `examples/` directory. 
+This library is ideal for developers, hobbyists, and businesses who want to build automated bots to interact with users, groups, and other bots on Kik.
 
-It is as simple as:
-```python
-from kik_unofficial.client import KikClient
-from kik_unofficial.callbacks import KikClientCallback
-import kik_unofficial.datatypes.xmpp.chatting as chatting
+We do not endorse the use of this library for spamming or other malicious purposes. Please use this library responsibly.
 
-class EchoBot(KikClientCallback):
-    def __init__(self):
-        self.client = KikClient(self, "your_kik_username", "your_kik_password")
-        self.client.wait_for_messages()
+## Features ##
+With the Kik Bot API, you can:
 
-    def on_authenticated(self):
-        self.client.request_roster() # request list of chat partners
-
-    def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
-        self.client.send_chat_message(chat_message.from_jid, 'You said "{}"!'.format(chat_message.body))
-```
-
-Currently Supported Operations:
 - Log in with kik username and password, retrieve user information (such as email, name, etc).
 - Fetch chat partners information
 - Send text messages to users/groups and listen for incoming messages
@@ -39,13 +17,82 @@ Currently Supported Operations:
 - Send and receive read receipts
 - Fetch group information (name, participants, etc.)
 - Fetch past message history
-- Admin groups (add, remove or ban members, etc)
-- Search for groups and join them [Experimental]
+- Administer groups (add, remove or ban members, etc)
+- Search for groups and join them (experimental feature)
 - Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
 - Send images (including GIFs, using a [Tenor](https://tenor.com/gifapi) API key)
 
 Sending videos or recordings is not supported yet.
+
+## Installation and dependencies ##
+Make sure you have Python 3.8 or above installed on your system. You can install this library directly from GitHub:
+```
+git clone -b new https://github.com/tomer8007/kik-bot-api-unofficial
+pip3 install ./kik-bot-api-unofficial
+```
+## Quick Start Guide ##
+Here's a simple example of how to use the Kik Bot API:
+
+```python
+from kik_unofficial.client import KikClient
+from kik_unofficial.callbacks import KikClientCallback
+import kik_unofficial.datatypes.xmpp.chatting as chatting
+from kik_unofficial.datatypes.xmpp.errors import LoginError
+
+# Your kik login credentials (username and password)
+username = "your_kik_username"
+password = "your_kik_password"
+
+# The bot class that handles all the callbacks from the kik client
+class EchoBot(KikClientCallback):
+    def __init__(self):
+        self.client = KikClient(self, username, password)
+        self.client.wait_for_messages()
+
+    # This method is called when the bot is authenticated
+    def on_authenticated(self):
+        self.client.request_roster() # request list of chat partners
+
+    # This method is called when the bot receives a chat message in your dms
+    def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
+        self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
+    
+    # This method is called when the bot receives a chat message in a group
+    def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
+        self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
+    
+    # This method is called if a captcha is required to login
+    def on_login_error(self, login_error: LoginError):
+        if login_error.is_captcha():
+            login_error.solve_captcha_wizard(self.client)
+
+
+if __name__ == '__main__':
+    # Creates the bot and start listening for incoming chat messages
+    callback = EchoBot()
+    client = KikClient(callback=callback, kik_username=username, kik_password=password)
+    client.wait_for_messages()
+        
+```
+Please replace "your_kik_username" and "your_kik_password" with your actual Kik username and password.
+
+You can run this example by running `python3 examples/simple_echo_bot.py`. Visit the [examples](examples) directory for more examples.
+
+## Captcha Solving ##
+Once the bot starts running, you might see a message like this:
+`To continue, complete the captcha in this URL using a browser: https://captcha.kik.com/?id=...`
+
+
+This means that Kik has detected that you are using a bot and requires you to solve a captcha to continue. You can solve the captcha by opening the URL in a browser and following these steps:
+
+- Press f12 to open the developer tools
+- Open the network tab
+- Solve the captcha
+- Look for a file header that starts with `captcha-url?response=[your captcha response]`
+- Click on it and copy the response from the response tab
+- Paste the response in the terminal where the bot is running
+
 
 ### Docker ###
 After creating a bot, you can bootstrap it to run in a Docker container. This section assumes you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
@@ -76,3 +123,6 @@ Before investigating the format of certain requests/responses, it's worth checki
 If you are on Windows and you are unable to install the `lxml` package, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).
 
 If you are using [Termux](https://termux.com/), then use `pkg install libxml2 libxslt` to install `lxml` and `pkg install zlib libpng libjpeg-turbo` to install `pillow` dependencies.
+
+## Contact ##
+For any questions, suggestions, or discussions about the Kik Bot API, feel free to open an issue on the GitHub repository.

@@ -1,5 +1,5 @@
 # Kik Bot API #
-The Unofficial Kik Bot API is a Python library developed to automate interactions on [Kik Messenger](https://www.kik.com) that are essentially automated humans.
+The Unofficial Kik Bot API is a Python library developed to automate interactions on [Kik Messenger](https://www.kik.com).
 
 It's essentially a way to create bots that behave like humans on the platform. This library enables your bot to interact with the official Kik app by emulating a real smartphone client. It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
 

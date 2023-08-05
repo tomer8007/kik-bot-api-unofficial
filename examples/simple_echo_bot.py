@@ -7,7 +7,7 @@ from kik_unofficial.datatypes.xmpp.errors import LoginError
 username = "your_kik_username"
 password = "your_kik_password"
 
-# The bot class that handles all the callbacks from the kik client
+# This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
         self.client = KikClient(self, username, password)
@@ -17,7 +17,7 @@ class EchoBot(KikClientCallback):
     def on_authenticated(self):
         self.client.request_roster() # request list of chat partners
 
-    # This method is called when the bot receives a chat message in your dms
+    # This method is called when the bot receives a direct message (chat message)
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
     

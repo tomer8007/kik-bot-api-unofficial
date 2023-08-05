@@ -7,24 +7,6 @@ This library is ideal for developers, hobbyists, and businesses who want to buil
 
 We do not endorse the use of this library for spamming or other malicious purposes. Please use this library responsibly.
 
-## Features ##
-With the Kik Bot API, you can:
-
-- Log in with kik username and password, retrieve user information (such as email, name, etc).
-- Fetch chat partners information
-- Send text messages to users/groups and listen for incoming messages
-- Send and receive 'is-typing' status
-- Send and receive read receipts
-- Fetch group information (name, participants, etc.)
-- Fetch past message history
-- Administer groups (add, remove or ban members, etc)
-- Search for groups and join them (experimental feature)
-- Receive media content: camera, gallery, stickers
-- Add a kik user as a friend
-- Send images (including GIFs, using a [Tenor](https://developers.google.com/tenor/guides/quickstart) API key)
-
-Sending videos or recordings is not supported yet.
-
 ## Installation and dependencies ##
 Make sure you have Python 3.8 or above installed on your system. You can install this library directly from GitHub:
 ```
@@ -67,6 +49,24 @@ if __name__ == '__main__':
 Please replace "your_kik_username" and "your_kik_password" with your actual Kik username and password.
 
 You can run this example by running `python3 examples/simple_echo_bot.py`. Visit the [examples](examples) directory for more examples.
+
+## Features ##
+With the Kik Bot API, you can:
+
+- Log in with kik username and password, retrieve user information (such as email, name, etc).
+- Fetch chat partners information
+- Send text messages to users/groups and listen for incoming messages
+- Send and receive 'is-typing' status
+- Send and receive read receipts
+- Fetch group information (name, participants, etc.)
+- Fetch past message history
+- Administer groups (add, remove or ban members, etc)
+- Search for groups and join them (experimental feature)
+- Receive media content: camera, gallery, stickers
+- Add a kik user as a friend
+- Send images (including GIFs, using a [Tenor](https://developers.google.com/tenor/guides/quickstart) API key)
+
+Sending videos or recordings is not supported yet.
 
 ## Captcha Solving ##
 Once the bot starts running, you might see a message like this:

@@ -1,5 +1,5 @@
 # Kik Bot API #
-The Kik Bot API is a Python library developed to automate interactions on [Kik Messenger](https://www.kik.com) that are essentially automated humans.
+The Unofficial Kik Bot API is a Python library developed to automate interactions on [Kik Messenger](https://www.kik.com) that are essentially automated humans.
 
 It's essentially a way to create bots that behave like humans on the platform. This library enables your bot to interact with the official Kik app by emulating a real smartphone client. It communicates with Kik's servers at `talk1110an.kik.com:5223` over a modified version of the [XMPP](https://xmpp.org/about/technology-overview.html) protocol.
 
@@ -21,7 +21,7 @@ With the Kik Bot API, you can:
 - Search for groups and join them (experimental feature)
 - Receive media content: camera, gallery, stickers
 - Add a kik user as a friend
-- Send images (including GIFs, using a [Tenor](https://tenor.com/gifapi) API key)
+- Send images (including GIFs, using a [Tenor](https://developers.google.com/tenor/guides/quickstart) API key)
 
 Sending videos or recordings is not supported yet.
 
@@ -38,7 +38,6 @@ Here's a simple example of how to use the Kik Bot API:
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 import kik_unofficial.datatypes.xmpp.chatting as chatting
-from kik_unofficial.datatypes.xmpp.errors import LoginError
 
 # Your kik login credentials (username and password)
 username = "your_kik_username"
@@ -58,16 +57,6 @@ class EchoBot(KikClientCallback):
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
     
-    # This method is called when the bot receives a chat message in a group
-    def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
-        self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
-    
-    # This method is called if a captcha is required to login
-    def on_login_error(self, login_error: LoginError):
-        if login_error.is_captcha():
-            login_error.solve_captcha_wizard(self.client)
-
-
 if __name__ == '__main__':
     # Creates the bot and start listening for incoming chat messages
     callback = EchoBot()
@@ -86,7 +75,7 @@ Once the bot starts running, you might see a message like this:
 
 This means that Kik has detected that you are using a bot and requires you to solve a captcha to continue. You can solve the captcha by opening the URL in a browser and following these steps:
 
-- Press f12 to open the developer tools
+- Press F12 to open the developer tools
 - Open the network tab
 - Solve the captcha
 - Look for a file header that starts with `captcha-url?response=[your captcha response]`

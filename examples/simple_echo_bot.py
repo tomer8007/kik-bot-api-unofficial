@@ -23,7 +23,7 @@ class EchoBot(KikClientCallback):
     
     # This method is called when the bot receives a chat message in a group
     def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
-        self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
+        self.client.send_chat_message(chat_message.group_jid, f'You said "{chat_message.body}"!')
     
     # This method is called if a captcha is required to login
     def on_login_error(self, login_error: LoginError):

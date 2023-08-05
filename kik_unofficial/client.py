@@ -224,19 +224,21 @@ class KikClient:
         else:
             return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    def send_gif_image(self, peer_jid: str, search_term):
+    # If you can set your API key here by replacing the None value with your API key
+    def send_gif_image(self, peer_jid: str, search_term, API_key=None):
         """
         Sends a GIF image to another person or a group with the given JID/username.
         The GIF is taken from tendor.com, based on search keywords.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
         :param search_term: The search term to use when searching GIF images on tendor.com
+        :param API_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
         """
         if self.is_group_jid(peer_jid):
             log.info(f"[+] Sending a GIF message to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, True))
         else:
             log.info(f"[+] Sending a GIF message to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, False))
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """

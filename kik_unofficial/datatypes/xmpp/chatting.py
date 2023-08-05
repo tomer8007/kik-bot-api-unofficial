@@ -413,12 +413,12 @@ class OutgoingGIFMessage(XMPPElement):
     """
 	Represents an outgoing GIF message to another kik entity (member or group)
 	"""
-    def __init__(self, peer_jid, search_term, is_group=True):
+    def __init__(self, peer_jid, search_term, API_key, is_group=True):
         super().__init__()
         self.peer_jid = peer_jid
         self.allow_forward = True
         self.is_group = is_group
-        self.gif_preview, self.gif_data = self.get_gif_data(search_term)
+        self.gif_preview, self.gif_data = self.get_gif_data(search_term, API_key)
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
@@ -458,21 +458,20 @@ class OutgoingGIFMessage(XMPPElement):
         packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
         return list(packets)
 
-    def get_gif_data(self, search_term):
-        apikey = ""  # add api key from https://tenor.com/gifapi
-        if not apikey:
+    def get_gif_data(self, search_term, API_key): 
+        if not API_key:
             raise Exception("A tendor.com API key is required to search for GIFs images. please get one and change it")
 
-        r = requests.get(f"https://api.tenor.com/v1/search?q={search_term}&key={apikey}&limit=1")
+        r = requests.get(f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=1")
         if r.status_code == 200:
             gif = json.loads(r.content.decode('ascii'))
-            response = requests.get(gif["results"][0]["media"][0]["nanomp4"]["preview"])
+            response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
             img = Image.open(BytesIO(response.content))
             buffered = BytesIO()
 
             img.convert("RGB").save(buffered, format="JPEG")
             img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
-            return img_str, gif["results"][0]["media"][0]
+            return img_str, gif["results"][0]["media_formats"]
         else:
             return ""
 

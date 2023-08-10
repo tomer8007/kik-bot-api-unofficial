@@ -28,25 +28,27 @@ password = "your_kik_password"
 # This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
+        # On initialization, the kik client will attempt to login to kik
         self.client = KikClient(self, username, password)
         self.client.wait_for_messages()
 
-    def on_authenticated(self):
-        self.client.request_roster() # request list of chat partners
-
+    # This method is called when the bot receives a direct message from a user
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         self.client.send_chat_message(chat_message.from_jid, f'You said "{chat_message.body}"!')
     
+    # This method is called if the login fails for any reason including requiring a captcha
+    def on_login_error(self, login_error: LoginError):
+        if login_error.is_captcha():
+            login_error.solve_captcha_wizard(self.client)
+
 if __name__ == '__main__':
     # Creates the bot and start listening for incoming chat messages
     callback = EchoBot()
-    client = KikClient(callback=callback, kik_username=username, kik_password=password)
-    client.wait_for_messages()
         
 ```
-Please replace "your_kik_username" and "your_kik_password" with your actual Kik username and password.
+Please replace "your_kik_username" and "your_kik_password" with your actual Kik username and password. You also have to add the bot as a friend on Kik before you can send it messages.
 
-You can run this example by running `python3 examples/simple_echo_bot.py`. Visit the [examples](examples) directory for more examples.
+You can find a similar example by running `python3 examples/simple_echo_bot.py`. Visit the [examples](examples) directory for more examples.
 
 ## Features ##
 With the Kik Bot API, you can:

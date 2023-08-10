@@ -78,7 +78,7 @@ class KikClient:
         self.kik_connection_thread.start()
 
     def wait_for_messages(self):
-        self.kik_connection_thread.join()
+        self._kik_connection_thread_function()
 
     def _on_connection_made(self):
         """

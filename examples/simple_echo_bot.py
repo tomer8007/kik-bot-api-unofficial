@@ -12,9 +12,10 @@ class EchoBot(KikClientCallback):
     def __init__(self):
         self.client = KikClient(self, username, password)
         self.client.wait_for_messages()
-
-    # This method is called when the bot is authenticated
+    
+    # This method is called when the bot is fully logged in and setup
     def on_authenticated(self):
+        print("Login successful!")
         self.client.request_roster() # request list of chat partners
 
     # This method is called when the bot receives a direct message (chat message)
@@ -34,5 +35,3 @@ class EchoBot(KikClientCallback):
 if __name__ == '__main__':
     # Creates the bot and start listening for incoming chat messages
     callback = EchoBot()
-    client = KikClient(callback=callback, kik_username=username, kik_password=password)
-    client.wait_for_messages()

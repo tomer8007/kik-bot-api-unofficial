@@ -33,7 +33,7 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, device_id=random_device_id(), android_id=random_android_id()):
+                 kik_node=None, device_id=random_device_id(), android_id=random_android_id(), logging=False):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -45,6 +45,9 @@ class KikClient:
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
+        :param device_id: a unique device ID. If you don't supply one, a random one will be generated.
+        :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
+        :param logging: If true, turns on logging to stdout (default: False)
         """
         self.username = kik_username
         self.password = kik_password
@@ -68,6 +71,11 @@ class KikClient:
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
+        
+        # turn on logging with basic configuration
+        if logging:
+            from kik_unofficial.simple import simple_logger
+            simple_logger()
 
     def _connect(self):
         """

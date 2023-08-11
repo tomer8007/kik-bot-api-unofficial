@@ -29,7 +29,7 @@ password = "your_kik_password"
 class EchoBot(KikClientCallback):
     def __init__(self):
         # On initialization, the kik client will attempt to login to kik
-        self.client = KikClient(self, username, password)
+        self.client = KikClient(self, username, password, logging=True)
         self.client.wait_for_messages()
 
     # This method is called when the bot receives a direct message from a user

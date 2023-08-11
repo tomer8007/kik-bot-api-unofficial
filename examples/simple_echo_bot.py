@@ -1,3 +1,4 @@
+import time
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -10,12 +11,11 @@ password = "your_kik_password"
 # This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
-        self.client = KikClient(self, username, password)
+        self.client = KikClient(self, username, password, logging=True)
         self.client.wait_for_messages()
-    
+        
     # This method is called when the bot is fully logged in and setup
     def on_authenticated(self):
-        print("Login successful!")
         self.client.request_roster() # request list of chat partners
 
     # This method is called when the bot receives a direct message (chat message)
@@ -35,3 +35,4 @@ class EchoBot(KikClientCallback):
 if __name__ == '__main__':
     # Creates the bot and start listening for incoming chat messages
     callback = EchoBot()
+    

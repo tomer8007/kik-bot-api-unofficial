@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 import time
 from threading import Thread, Event
 from typing import Union, List, Tuple
@@ -70,12 +69,13 @@ class KikClient:
         self._new_user_added_event = Event()
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
-        self._connect()
         
         # turn on logging with basic configuration
         if logging:
             from kik_unofficial.simple import simple_logger
             simple_logger()
+        
+        self._connect()
 
     def _connect(self):
         """
@@ -86,7 +86,10 @@ class KikClient:
         self.kik_connection_thread.start()
 
     def wait_for_messages(self):
-        self._kik_connection_thread_function()
+        while True:
+            self.kik_connection_thread.join()
+            log.info("[+] Connection failed, trying again...")
+            time.sleep(1)
 
     def _on_connection_made(self):
         """

@@ -48,6 +48,11 @@ class KikClient:
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
         :param logging: If true, turns on logging to stdout (default: False)
         """
+        # turn on logging with basic configuration
+        if logger:
+            from kik_unofficial.utilities.logging_utils import set_up_basic_logging 
+            set_up_basic_logging()
+        
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
@@ -67,14 +72,8 @@ class KikClient:
 
         self._known_users_information = set()
         self._new_user_added_event = Event()
-
+        
         self.should_login_on_connection = kik_username is not None and kik_password is not None
-        
-        # turn on logging with basic configuration
-        if logger:
-            from kik_unofficial.simple import simple_logger
-            simple_logger()
-        
         self._connect()
 
     def _connect(self):
@@ -91,7 +90,7 @@ class KikClient:
             log.info("[+] Connection failed, trying again...")
             time.sleep(1)
         
-        log.info("[+] Connection failed for 5 times, exiting...")
+        log.info("[+] Connection failed 5 times, exiting...")
 
     def _on_connection_made(self):
         """

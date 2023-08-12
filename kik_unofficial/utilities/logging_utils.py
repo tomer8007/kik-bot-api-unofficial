@@ -4,7 +4,7 @@ import sys
 from kik_unofficial.client import KikClient
 
 # turn on logging with basic configuration
-def simple_logger():
+def set_up_basic_logging():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler(sys.stdout)

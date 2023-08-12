@@ -86,10 +86,12 @@ class KikClient:
         self.kik_connection_thread.start()
 
     def wait_for_messages(self):
-        while True:
+        for _ in range(5):
             self.kik_connection_thread.join()
             log.info("[+] Connection failed, trying again...")
             time.sleep(1)
+        
+        log.info("[+] Connection failed for 5 times, exiting...")
 
     def _on_connection_made(self):
         """

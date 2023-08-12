@@ -27,6 +27,7 @@ def main():
     # load the bot's credentials from creds.yaml
     with open(creds_file) as f:
         creds = yaml.safe_load(f)
+        print(creds)
 
     # create the bot
     bot = EchoBot(creds)
@@ -35,7 +36,7 @@ def main():
 class EchoBot(KikClientCallback):
     def __init__(self, creds: dict):
         username = creds['username']
-        password = creds.get('password', input('Password: '))
+        password = creds.get('password') or input("Enter your password: ")
         
         # optional parameters
         device_id = creds['device_id']

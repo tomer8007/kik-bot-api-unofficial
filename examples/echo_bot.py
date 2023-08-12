@@ -5,9 +5,8 @@ and echos back whatever chat messages it receives.
 """
 
 import argparse
-import logging
-import sys
 import yaml
+import os
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
@@ -18,33 +17,33 @@ from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniq
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
-    args = parser.parse_args()
+    # The credentials file where you store the bot's login information
+    creds_file = "creds.yaml"
+    
+    # Changes the current working directory to /examples
+    if not os.path.isfile(creds_file):
+        os.chdir("examples")
 
-    with open(args.credentials) as f:
+    # load the bot's credentials from creds.yaml
+    with open(creds_file) as f:
         creds = yaml.safe_load(f)
-
-    # set up logging
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(logging.Formatter(KikClient.log_format()))
-    logger.addHandler(stream_handler)
 
     # create the bot
     bot = EchoBot(creds)
 
 
 class EchoBot(KikClientCallback):
-    def __init__(self, creds):
+    def __init__(self, creds: dict):
+        username = creds['username']
+        password = creds.get('password', input('Password: '))
+        
+        # optional parameters
         device_id = creds['device_id']
         android_id = creds['android_id']
-        username = creds['username']
-        node = creds.get('node')
-        password = creds.get('password') or input('Password: ')
+        node = creds.get('node') # If know it, set it to None
         
-        self.client = KikClient(self, username, password, node, device_id=device_id, android_id=android_id)
+        
+        self.client = KikClient(self, username, password, node, device_id=device_id, android_id=android_id, logger=True)
         self.client.wait_for_messages()
 
     def on_authenticated(self):

@@ -21,15 +21,11 @@ from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 
-# Your kik login credentials (username and password)
-username = "your_kik_username"
-password = "your_kik_password"
-
 # This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
         # On initialization, the kik client will attempt to login to kik
-        self.client = KikClient(self, username, password, logger=True)
+        self.client = KikClient(self, "your_kik_username", "your_kik_password", logging=True)
         self.client.wait_for_messages()
 
     # This method is called when the bot receives a direct message from a user

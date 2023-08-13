@@ -10,7 +10,7 @@ password = "your_kik_password"
 # This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
-        self.client = KikClient(self, username, password, logger=True)
+        self.client = KikClient(self, username, password, logging=True)
         self.client.wait_for_messages()
         
     # This method is called when the bot is fully logged in and setup

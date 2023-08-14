@@ -21,6 +21,7 @@ from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
+from kik_unofficial.utilities.logging_utils import set_up_basic_logging 
 
 
 HOST, PORT = "talk1110an.kik.com", 5223
@@ -50,7 +51,6 @@ class KikClient:
         """
         # turn on logging with basic configuration
         if logging:
-            from kik_unofficial.utilities.logging_utils import set_up_basic_logging 
             set_up_basic_logging()
         
         self.username = kik_username
@@ -87,10 +87,10 @@ class KikClient:
     def wait_for_messages(self):
         for _ in range(5):
             self.kik_connection_thread.join()
-            log.info("[+] Connection failed, trying again...")
+            log.info("[+] Connection has disconnected, trying again...")
             time.sleep(1)
         
-        log.info("[+] Connection failed 5 times, exiting...")
+        log.info("[+] Failed to reconnect, exiting...")
 
     def _on_connection_made(self):
         """
@@ -719,10 +719,6 @@ class KikClient:
                 return user.jid
 
         return None
-
-    @staticmethod
-    def log_format():
-        return '[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s'
 
     @staticmethod
     def is_group_jid(jid):

@@ -115,8 +115,8 @@ class IncomingChatMessage(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if 'd' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
         self.preview = data.preview.text if data.preview else None
 
@@ -298,8 +298,8 @@ class IncomingGroupStatus(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.status = data.status.text if data.status else None
@@ -312,8 +312,8 @@ class IncomingGroupSysmsg(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
@@ -354,29 +354,29 @@ class IncomingStatusResponse(XMPPResponse):
 class IncomingImageMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.image_url = data.find('file-url').get_text() if data.find('file-url') else None
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid'] if data.g else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
 
 
 class IncomingGroupSticker(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        content = data.content
+        content = data.content or data
         extras_map = self.parse_extras(content.extras)
-        self.from_jid = data['from']
-        self.group_jid = data.g['jid']
+        self.from_jid = data['from'] if data else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.sticker_pack_id = extras_map['sticker_pack_id'] if 'sticker_pack_id' in extras_map else None
         self.sticker_url = extras_map['sticker_url'] if 'sticker_url' in extras_map else None
         self.sticker_id = extras_map['sticker_id'] if 'sticker_id' in extras_map else None
         self.sticker_source = extras_map['sticker_source'] if 'sticker_source' in extras_map else None
         self.png_preview = content.images.find('png-preview').text if content.images.find('png-preview') else None
         self.uris = []
-        self.uris.extend(self.Uri(uri) for uri in content.uris)
+        if content.uri: self.uris.extend(self.Uri(uri) for uri in content.uri)
 
     class Uri:
         def __init__(self, uri):
@@ -394,12 +394,12 @@ class IncomingGifMessage(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
-        self.from_jid = data['from']
-        self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.from_jid = data['from'] if data else None
+        self.to_jid = data['to'] if data else None
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.uris = [self.Uri(uri) for uri in data.content.uris]
 
     class Uri:
@@ -413,21 +413,21 @@ class OutgoingGIFMessage(XMPPElement):
     """
 	Represents an outgoing GIF message to another kik entity (member or group)
 	"""
-    def __init__(self, peer_jid, search_term, is_group=True):
+    def __init__(self, peer_jid, search_term, API_key, is_group=True):
         super().__init__()
         self.peer_jid = peer_jid
         self.allow_forward = True
         self.is_group = is_group
-        self.gif_preview, self.gif_data = self.get_gif_data(search_term)
+        self.gif_preview, self.gif_data = self.get_gif_data(search_term, API_key)
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
         message_type = "groupchat" if self.is_group else "chat"
         data = (
-            '<message cts="{0}" type="{1}" to="{12}" id="{2}" xmlns="jabber:client">'
-            '<kik push="true" timestamp="{3}" qos="true"/>'
+            f'<message cts="{timestamp}" type="{message_type}" to="{self.peer_jid}" id="{self.message_id}" xmlns="jabber:client">'
+            f'<kik push="true" timestamp="{timestamp}" qos="true"/>'
             '<pb/>'
-            '<content id="{4}" v="2" app-id="com.kik.ext.gif">'
+            f'<content id="{self.message_id}" v="2" app-id="com.kik.ext.gif">'
             '<strings>'
             '<app-name>GIF</app-name>'
             '<layout>video</layout>'
@@ -439,42 +439,39 @@ class OutgoingGIFMessage(XMPPElement):
             '</strings>'
             '<images>'
             '<icon></icon>'
-            '<preview>{5}</preview>'
+            f'<preview>{self.gif_preview}</preview>'
             '</images>'
             '<uris>'
-            '<uri priority="0" type="video" file-content-type="video/mp4">{6}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/webm">{7}</uri>'
-            '<uri priority="0" type="video" file-content-type="video/tinymp4">{8}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/tinywebm">{9}</uri>'
-            '<uri priority="0" type="video" file-content-type="video/nanomp4">{10}</uri>'
-            '<uri priority="1" type="video" file-content-type="video/nanowebm">{11}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/mp4">{self.gif_data["mp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/webm">{self.gif_data["webm"]["url"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/tinymp4">{self.gif_data["tinymp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/tinywebm">{self.gif_data["tinywebm"]["url"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/nanomp4">{self.gif_data["nanomp4"]["url"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/nanowebm">{self.gif_data["nanowebm"]["url"]}</uri>'
             '</uris>'
             '</content>'
             '<request r="true" d="true" xmlns="kik:message:receipt"/>'
             '</message>'
-        ).format(timestamp, message_type, self.message_id, timestamp, self.message_id, self.gif_preview,
-                    self.gif_data["mp4"]["url"], self.gif_data["webm"]["url"], self.gif_data["tinymp4"]["url"],
-                    self.gif_data["tinywebm"]["url"], self.gif_data["nanomp4"]["url"],
-                    self.gif_data["nanowebm"]["url"], self.peer_jid)
+        )
+
 
         packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
         return list(packets)
 
-    def get_gif_data(self, search_term):
-        apikey = ""  # add api key from https://tenor.com/gifapi
-        if not apikey:
+    def get_gif_data(self, search_term, API_key): 
+        if not API_key:
             raise Exception("A tendor.com API key is required to search for GIFs images. please get one and change it")
 
-        r = requests.get(f"https://api.tenor.com/v1/search?q={search_term}&key={apikey}&limit=1")
+        r = requests.get(f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=1")
         if r.status_code == 200:
             gif = json.loads(r.content.decode('ascii'))
-            response = requests.get(gif["results"][0]["media"][0]["nanomp4"]["preview"])
+            response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
             img = Image.open(BytesIO(response.content))
             buffered = BytesIO()
 
             img.convert("RGB").save(buffered, format="JPEG")
             img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
-            return img_str, gif["results"][0]["media"][0]
+            return img_str, gif["results"][0]["media_formats"]
         else:
             return ""
 
@@ -482,25 +479,25 @@ class OutgoingGIFMessage(XMPPElement):
 class IncomingVideoMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
         self.duration_milliseconds = data.find('duration').text if data.find('duration') else None
         self.file_size = data.find('file-size').text
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
 
 
 class IncomingCardMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.request_delivered_receipt = data.request['d'] == 'true' if data.request else False
-        self.request_read_receipt = data.request['r'] == 'true' if data.request else False
+        self.request_delivered_receipt = data.request['d'] == 'true' if data.request and 'd' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.from_jid = data['from']
         self.to_jid = data['to']
-        self.group_jid = data.g['jid']
+        self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.app_name = data.find('app-name').text if data.find('app-name') else None
         self.card_icon = data.find('card-icon').text if data.find('card-icon') else None
         self.layout = data.find('layout').text if data.find('layout') else None

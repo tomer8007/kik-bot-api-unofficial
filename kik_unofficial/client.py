@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 import time
 from threading import Thread, Event
 from typing import Union, List, Tuple
@@ -22,6 +21,7 @@ from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
+from kik_unofficial.utilities.logging_utils import set_up_basic_logging 
 
 
 HOST, PORT = "talk1110an.kik.com", 5223
@@ -33,7 +33,7 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, device_id=random_device_id(), android_id=random_android_id()):
+                 kik_node=None, device_id=random_device_id(), android_id=random_android_id(), logging=False):
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -45,7 +45,14 @@ class KikClient:
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
+        :param device_id: a unique device ID. If you don't supply one, a random one will be generated.
+        :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
+        :param logging: If true, turns on logging to stdout (default: False)
         """
+        # turn on logging with basic configuration
+        if logging:
+            set_up_basic_logging()
+        
         self.username = kik_username
         self.password = kik_password
         self.kik_node = kik_node
@@ -65,7 +72,7 @@ class KikClient:
 
         self._known_users_information = set()
         self._new_user_added_event = Event()
-
+        
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
 
@@ -78,7 +85,12 @@ class KikClient:
         self.kik_connection_thread.start()
 
     def wait_for_messages(self):
-        self.kik_connection_thread.join()
+        for _ in range(5):
+            self.kik_connection_thread.join()
+            log.info("[+] Connection has disconnected, trying again...")
+            time.sleep(1)
+        
+        log.info("[+] Failed to reconnect, exiting...")
 
     def _on_connection_made(self):
         """
@@ -224,19 +236,21 @@ class KikClient:
         else:
             return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    def send_gif_image(self, peer_jid: str, search_term):
+    # If you can set your API key here by replacing the None value with your API key
+    def send_gif_image(self, peer_jid: str, search_term, API_key=None):
         """
         Sends a GIF image to another person or a group with the given JID/username.
         The GIF is taken from tendor.com, based on search keywords.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
         :param search_term: The search term to use when searching GIF images on tendor.com
+        :param API_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
         """
         if self.is_group_jid(peer_jid):
             log.info(f"[+] Sending a GIF message to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, True))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, True))
         else:
             log.info(f"[+] Sending a GIF message to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, False))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, False))
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -705,10 +719,6 @@ class KikClient:
                 return user.jid
 
         return None
-
-    @staticmethod
-    def log_format():
-        return '[%(asctime)-15s] %(levelname)-6s (thread %(threadName)-10s): %(message)s'
 
     @staticmethod
     def is_group_jid(jid):

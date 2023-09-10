@@ -39,17 +39,14 @@ class FetchRosterResponse(XMPPResponse):
 
     @staticmethod
     def parse_peer(element):
-        if element.name == "g":
+        if element.name in ('g', "remove-group"):
             return Group(element)
-        elif element.name == "item":
+        elif element.name in ('item', "remove"):
+            # remove deletes accounts / accounts no longer in the roster
             return User(element)
-        elif element.name == "remove":
-            # deleted accounts / accounts no longer in the roster
-            return User(element)
-        elif element.name == "remove-group":
-            return Group(element)
         else:
-            raise KikParsingException("Unsupported peer element tag: {}".format(element.name))
+            raise KikParsingException(f"Unsupported peer element tag: {element.name}")
+        
 
 
 class QueryUsersInfoRequest(XMPPElement):
@@ -58,27 +55,24 @@ class QueryUsersInfoRequest(XMPPElement):
     """
     def __init__(self, peer_jids: Union[str, List[str]]):
         super().__init__()
-        if isinstance(peer_jids, List):
-            self.peer_jids = peer_jids
-        else:
-            self.peer_jids = [peer_jids]
+        self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
     def serialize(self) -> bytes:
         items = []
         for jid in self.peer_jids:
             if "@" in jid:
-                items.append('<item jid="{}" />'.format(jid))
+                items.append(f'<item jid="{jid}" />')
             else:
                 # this is in fact not a JID, but a username
-                items.append('<item username="{}" />'.format(jid))
+                items.append(f'<item username="{jid}" />')
 
         xmlns = 'kik:iq:friend:batch' if len(items) > 1 else "kik:iq:friend"
 
-        data = ('<iq type="get" id="{}">'
-                '<query xmlns="{}">'
-                '{}'
+        data = (f'<iq type="get" id="{self.message_id}">'
+                f'<query xmlns="{xmlns}">'
+                f'{"".join(items)}'
                 '</query>'
-                '</iq>').format(self.message_id, xmlns, "".join(items))
+                '</iq>')
 
         return data.encode()
 
@@ -101,11 +95,11 @@ class AddFriendRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self):
-        data = '<iq type="set" id="{}">' \
+        data = f'<iq type="set" id="{self.message_id}">' \
                '<query xmlns="kik:iq:friend">' \
-               '<add jid="{}" />' \
+               f'<add jid="{self.peer_jid}" />' \
                '</query>' \
-               '</iq>'.format(self.message_id, self.peer_jid)
+               '</iq>'
         return data.encode()
 
 
@@ -119,12 +113,12 @@ class RemoveFriendRequest(XMPPElement):
 
     def serialize(self):
         data = (
-            '<iq type="set" id="{}">'
+            f'<iq type="set" id="{self.message_id}">'
             '<query xmlns="kik:iq:friend">'
-            '<remove jid="{}" />'
+            f'<remove jid="{self.peer_jid}" />'
             '</query>'
             '</iq>'
-        ).format(self.message_id, self.peer_jid)
+        )
         return data.encode()
 
 
@@ -145,9 +139,9 @@ class GroupSearchRequest(XMPPElement):
         if encoded_search_query.endswith("="):
             encoded_search_query = encoded_search_query[:encoded_search_query.index("=")]
 
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:iq:xiphias:bridge" service="mobile.groups.v1.GroupSearch" method="FindGroups">'
-                '<body>{}</body></query></iq>').format(self.message_id, encoded_search_query)
+                f'<body>{encoded_search_query}</body></query></iq>')
         return data.encode()
 
 
@@ -162,15 +156,14 @@ class GroupSearchResponse(XMPPResponse):
         results = group_search_service_pb2.FindGroupsResponse()
         results.ParseFromString(encoded_results)
         self.groups = []  # type: List[self.GroupSearchEntry]
-        for result in results.match:
-            self.groups.append(self.GroupSearchEntry(result))
+        self.groups.extend(self.GroupSearchEntry(result) for result in results.match)
 
     class GroupSearchEntry:
         """
         Represents a group entry that was found in the search results
         """
         def __init__(self, result):
-            self.jid = result.jid.local_part + "@groups.kik.com"
+            self.jid = f"{result.jid.local_part}@groups.kik.com"
             self.hashtag = result.display_data.hashtag
             self.display_name = result.display_data.display_name
             self.picture_url = result.display_data.display_pic_base_url
@@ -178,7 +171,7 @@ class GroupSearchResponse(XMPPResponse):
             self.group_join_token = result.group_join_token.token
 
         def __repr__(self):
-            return "GroupSearchEntry(jid={}, hashtag={}, name={}, members={})".format(self.jid, self.hashtag, self.display_name, self.member_count)
+            return f"GroupSearchEntry(jid={self.jid}, hashtag={self.hashtag}, name={self.display_name}, members={self.member_count})"
 
 
 class GroupJoinRequest(XMPPElement):
@@ -196,11 +189,10 @@ class GroupJoinRequest(XMPPElement):
         join_token = base64.b64encode(self.join_token, b"-_").decode()
         if join_token.endswith("="):
             join_token = join_token[:join_token.index("=")]
-        data = ('<iq type="set" id="{}">'
+        data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
-                '<g jid="{}" action="join">'
-                '<code>{}</code>'
-                '<token>{}</token>'
-                '</g></query></iq>') \
-            .format(self.message_id, self.group_jid, self.group_hashtag, join_token)
+                f'<g jid="{self.group_jid}" action="join">'
+                f'<code>{self.group_hashtag}</code>'
+                f'<token>{join_token}</token>'
+                '</g></query></iq>')
         return data.encode()

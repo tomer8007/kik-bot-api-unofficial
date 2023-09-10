@@ -87,15 +87,15 @@ class MakeAnonymousStreamInitTag(XMPPElement):
 
     def serialize(self):
         can = 'CAN'  # XmppSocketV2.java line 180, 
-        
+
         device = self.device_id
         timestamp = str(CryptographicUtils.make_kik_timestamp())
         sid = CryptographicUtils.make_kik_uuid()
-        
-        signature = rsa.sign("{}:{}:{}:{}".format(can + device, kik_version, timestamp, sid).encode(), private_key, 'SHA-256')
+
+        signature = rsa.sign(f"{can + device}:{kik_version}:{timestamp}:{sid}".encode(), private_key,'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
 
-        hmac_data = timestamp + ":" + can + device
+        hmac_data = f"{timestamp}:{can}{device}"
         hmac_secret_key = CryptographicUtils.build_hmac_key()
         cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode(), hashlib.sha1).digest()).decode()
 
@@ -110,7 +110,7 @@ class MakeAnonymousStreamInitTag(XMPPElement):
             'conn': 'WIFI', 
             'dev': can+device,
             }
-        
+
         # Test data to confirm the sort_kik_map function returns the correct result.
         # the_map = { 
         #     'signed': 'signature',
@@ -126,7 +126,7 @@ class MakeAnonymousStreamInitTag(XMPPElement):
 
         if self.n > 0:
             the_map['n'] = self.n
-        
+
         packet = CryptographicUtils.make_connection_payload(*CryptographicUtils.sort_kik_map(the_map))
         return packet.encode()
 
@@ -143,16 +143,16 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
         self.device_id = device_id
 
     def serialize(self):
-        jid = self.node + "@talk.kik.com"
-        jid_with_resource = jid + "/CAN" + (self.device_id)
+        jid = f"{self.node}@talk.kik.com"
+        jid_with_resource = f"{jid}/CAN{self.device_id}"
         timestamp = str(CryptographicUtils.make_kik_timestamp())
         sid = CryptographicUtils.make_kik_uuid()
 
         # some super secret cryptographic stuff
-        
-        signature = rsa.sign("{}:{}:{}:{}".format(jid, kik_version, timestamp, sid).encode(), private_key, 'SHA-256')
+
+        signature = rsa.sign(f"{jid}:{kik_version}:{timestamp}:{sid}".encode(), private_key,'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
-        hmac_data = timestamp + ":" + jid
+        hmac_data = f"{timestamp}:{jid}"
         hmac_secret_key = CryptographicUtils.build_hmac_key()
         cv = binascii.hexlify(hmac.new(hmac_secret_key, hmac_data.encode(), hashlib.sha1).digest()).decode()
 
@@ -176,7 +176,7 @@ class CaptchaElement:
     """
     def __init__(self, data: BeautifulSoup):
         self.type = data.stp['type']
-        self.captcha_url = data.stp.text + "&callback_url=https://kik.com/captcha-url"
+        self.captcha_url = f"{data.stp.text}&callback_url=https://kik.com/captcha-url"
         self.stc_id = data['id']
 
 
@@ -190,9 +190,5 @@ class CaptchaSolveRequest(XMPPElement):
         self.stc_id = stc_id
 
     def serialize(self) -> bytes:
-        data = (
-            '<stc id="{}">'
-            '<sts>{}</sts>'
-            '</stc>'
-        ).format(self.stc_id, self.captcha_result)
+        data = f'<stc id="{self.stc_id}"><sts>{self.captcha_result}</sts></stc>'
         return data.encode()

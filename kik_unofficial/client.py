@@ -122,7 +122,7 @@ class KikClient:
         self.disconnect()
         self._connect()
 
-    def login(self, username, password, captcha_result=None):
+    def login(self, username: str, password: str, captcha_result: str = None):
         """
         Sends a login request with the given kik username and password
 
@@ -138,7 +138,7 @@ class KikClient:
         log.info(f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
-    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
+    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result: str = None):
         """
         Sends a register request to sign up a new user to kik with the given details.
         """
@@ -237,8 +237,9 @@ class KikClient:
         else:
             return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    # If you can set your API key here by replacing the None value with your API key
-    def send_gif_image(self, peer_jid: str, search_term, API_key=None):
+    # Uncomment if you want to set your api key here
+    # def send_gif_image(self, peer_jid, search_term, API_key = "YOUR_API_KEY"):
+    def send_gif_image(self, peer_jid: str, search_term: str, API_key: str):
         """
         Sends a GIF image to another person or a group with the given JID/username.
         The GIF is taken from tendor.com, based on search keywords.

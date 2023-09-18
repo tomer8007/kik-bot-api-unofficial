@@ -31,9 +31,8 @@ class KikClient:
     """
     The main kik class with which you're managing a kik connection and sending commands
     """
-
-    def __init__(self, callback: callbacks.KikClientCallback, kik_username, kik_password,
-                 kik_node=None, device_id=random_device_id(), android_id=random_android_id(), logging=False):
+    def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
+                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), logging: bool = False) -> None:
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -45,7 +44,7 @@ class KikClient:
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
-        :param device_id: a unique device ID. If you don't supply one, a random one will be generated.
+        :param device_id: a unique device ID. If you don't supply one, a random one will be generated. (generated at _on_connection_made)
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
         :param logging: If true, turns on logging to stdout (default: False)
         """
@@ -97,12 +96,14 @@ class KikClient:
         Gets called when the TCP connection to kik's servers is done and we are connected.
         Now we might initiate a login request or an auth request.
         """
-        if self.username is not None and self.password is not None and self.kik_node is not None:
+        if self.username and self.password and self.kik_node and self.device_id:
             # we have all required credentials, we can authenticate
-            log.info(f"[+] Establishing authenticated connection using kik node '{self.kik_node}'...")
+            log.info(f"[+] Establishing authenticated connection using kik node '{self.kik_node}', device id '{self.device_id}' and android id '{self.android_id}'...")
 
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password, self.device_id)
         else:
+            # if device id is not known, we generate a random one
+            self.device_id = random_device_id()
             message = login.MakeAnonymousStreamInitTag(self.device_id, n = 1)
         self.initial_connection_payload = message.serialize()
         self.connection.send_raw_data(self.initial_connection_payload)
@@ -121,7 +122,7 @@ class KikClient:
         self.disconnect()
         self._connect()
 
-    def login(self, username, password, captcha_result=None):
+    def login(self, username: str, password: str, captcha_result: str = None):
         """
         Sends a login request with the given kik username and password
 
@@ -137,7 +138,7 @@ class KikClient:
         log.info(f"[+] Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
-    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None):
+    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result: str = None):
         """
         Sends a register request to sign up a new user to kik with the given details.
         """
@@ -236,8 +237,9 @@ class KikClient:
         else:
             return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
-    # If you can set your API key here by replacing the None value with your API key
-    def send_gif_image(self, peer_jid: str, search_term, API_key=None):
+    # Uncomment if you want to set your api key here
+    # def send_gif_image(self, peer_jid, search_term, API_key = "YOUR_API_KEY"):
+    def send_gif_image(self, peer_jid: str, search_term: str, API_key: str):
         """
         Sends a GIF image to another person or a group with the given JID/username.
         The GIF is taken from tendor.com, based on search keywords.

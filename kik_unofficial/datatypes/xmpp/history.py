@@ -56,12 +56,13 @@ class OutgoingHistoryRequest(XMPPElement):
 
         data = (f'<iq type="set" id="{self.message_id}" cts="{timestamp}">'
                 '<query xmlns="kik:iq:QoS">'
-                f'<msg-acks />'
+                '<msg-acks />'
                 '<history attach="true" />'
                 '</query>'
                 '</iq>'
         )
         return data.encode()
+    
 
 class HistoryResponse(XMPPResponse):
     """

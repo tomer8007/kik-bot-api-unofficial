@@ -11,6 +11,7 @@ kik_version_14_info = {"kik_version": "14.0.0.11130",  "classes_dex_sha1_digest"
 kik_version_14_5_info = {"kik_version": "14.5.0.13136", "classes_dex_sha1_digest": "LuYEjtvBu4mG2kBBG0wA3Ki1PSE="}
 kik_version_15_21_info = {'kik_version': '15.21.0.22201', 'classes_dex_sha1_digest': 'MbZ+Zbjaz5uFXKFDM88CwFh7DAg='}
 kik_version_15_49_info = {'kik_version': '15.49.0.27501', 'classes_dex_sha1_digest': '5o61frOsakJJ2iCYafCoKHtyu7w='}
+kik_version_15_57_info = {'kik_version': '15.57.2.29235', 'classes_dex_sha1_digest': 'hA77Y2jUTVbpHRB9LosnnunQ1PY='}
 
-kik_version_info = kik_version_15_49_info        # a kik version that's not updated will cause a captcha on login
+kik_version_info = kik_version_15_57_info        # a kik version that's not updated will cause a captcha on login
 

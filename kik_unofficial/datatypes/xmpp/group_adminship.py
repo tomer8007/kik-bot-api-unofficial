@@ -19,6 +19,7 @@ class AddToGroupRequest(XMPPElement):
                 '</iq>')
         return data.encode()
 
+
 class ChangeGroupNameRequest(XMPPElement):
     def __init__(self, group_jid, new_name):
         super().__init__()
@@ -34,6 +35,7 @@ class ChangeGroupNameRequest(XMPPElement):
                 '</query>'
                 '</iq>')
         return data.encode()
+
 
 class RemoveFromGroupRequest(XMPPElement):
     def __init__(self, group_jid, peer_jid):

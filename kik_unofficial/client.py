@@ -16,13 +16,14 @@ import kik_unofficial.datatypes.xmpp.sign_up as sign_up
 import kik_unofficial.xmlns_handlers as xmlns_handlers
 from kik_unofficial.datatypes.xmpp.auth_stanza import AuthStanza
 from kik_unofficial.datatypes.xmpp import account, xiphias
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
 
-HOST, PORT = "talk1110an.kik.com", 5223
+HOST, PORT = CryptographicUtils.get_kik_host_name(), 5223
 
 
 class KikClient:
@@ -184,28 +185,24 @@ class KikClient:
             self.log.info(f"Sending chat message '{message}' to user '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))
 
-    def send_chat_image(self, peer_jid: str, file, forward=True):
+    def send_chat_image(self, peer_jid: str, image_file, allow_forward=False, allow_save=False):
         """
         Sends an image chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param file: The path to the image file OR its bytes OR an IOBase object to send.
+        :param allow_save: Allow Saving of the image. bool
+        :param allow_forward: Allow Forwarding of the Image. bool
         """
         peer_jid = self.get_jid(peer_jid)
+        is_group = self.is_group_jid(peer_jid)
 
-        if self.is_group_jid(peer_jid):
-            self.log.info(f"Sending chat image to group '{peer_jid}'...")
-            imageRequest = chatting.OutgoingGroupChatImage(peer_jid, file, forward)
-        else:
-            self.log.info(f"Sending chat image to user '{peer_jid}'...")
-            imageRequest = chatting.OutgoingChatImage(peer_jid, file, False, forward)
-        content.upload_gallery_image(
-            imageRequest,
-            f'{self.kik_node}@talk.kik.com',
-            self.username,
-            self.password,
-        )
-        return self._send_xmpp_element(imageRequest)
+        self.log.info(f'Sending chat image to {"group" if is_group else "user"} \'{peer_jid}\'')
+
+        image_request = chatting.OutgoingChatImage(peer_jid, image_file, allow_forward, allow_save, is_group)
+
+        content.upload_gallery_image(self, image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
+        return image_request.message_id
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
@@ -244,20 +241,21 @@ class KikClient:
 
     # Uncomment if you want to set your api key here
     # def send_gif_image(self, peer_jid, search_term, API_key = "YOUR_API_KEY"):
-    def send_gif_image(self, peer_jid: str, search_term: str, API_key: str):
+    def send_gif_image(self, peer_jid: str, search_term: str, API_key: str, random_gif=False):
         """
         Sends a GIF image to another person or a group with the given JID/username.
         The GIF is taken from tendor.com, based on search keywords.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
         :param search_term: The search term to use when searching GIF images on tendor.com
         :param API_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
+        :param random_gif: Pick a GIF at random from tenor gif result.
         """
         if self.is_group_jid(peer_jid):
             self.log.info(f"Sending a GIF message to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, True))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=True))
         else:
             self.log.info(f"Sending a GIF message to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, False))
+            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=False))
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -276,8 +274,8 @@ class KikClient:
     def remove_friend(self, peer_jid):
         return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))
 
-    def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
-        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
+    def send_link(self, peer_jid, link, title, text='', app_name='Webpage', thumbnail=None, allow_forward=True):
+        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name, thumbnail, allow_forward))
 
     def xiphias_get_users(self, peer_jids: Union[str, List[str]]):
         """

@@ -51,9 +51,24 @@ class XMPPMessageHandler(XmppHandler):
                 log.warning(
                     f"[!] Received mobile-remote-call with method '{mobile_remote_call['method']}' of service '{mobile_remote_call['service']}'"
                 )
-            elif data.find('images'):
-                # images
-                self.callback.on_image_received(IncomingImageMessage(data))
+            elif data.content and 'app-id' in data.content.attrs:
+                app_id = data.content['app-id']
+                if app_id == 'com.kik.ext.stickers':
+                    self.callback.on_group_sticker(IncomingGroupSticker(data))
+                elif app_id == 'com.kik.ext.gallery':
+                    self.callback.on_image_received(IncomingImageMessage(data))
+                elif app_id == 'com.kik.ext.camera':
+                    self.callback.on_image_received(IncomingImageMessage(data))
+                elif app_id == 'com.kik.ext.gif':
+                    self.callback.on_gif_received(IncomingGifMessage(data))
+                elif app_id == 'com.kik.ext.video-camera':
+                    self.callback.on_video_received(IncomingVideoMessage(data))
+                elif app_id == 'com.kik.ext.video-gallery':
+                    self.callback.on_video_received(IncomingVideoMessage(data))
+                elif app_id == 'com.kik.cards':
+                    self.callback.on_card_received(IncomingCardMessage(data))
+                else:
+                    log.warning(f'Unknown App ID {app_id}')
             else:
                 # what else? GIFs?
                 log.debug(f"[-] Received unknown chat message. contents: {str(data)}")
@@ -91,10 +106,28 @@ class XMPPMessageHandler(XmppHandler):
                 self.callback.on_group_status_received(IncomingGroupStatus(data))
             elif data.find('sysmsg'):
                 self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
+            elif data.content and 'app-id' in data.content.attrs:
+                app_id = data.content['app-id']
+                if app_id == 'com.kik.ext.stickers':
+                    self.callback.on_group_sticker(IncomingGroupSticker(data))
+                elif app_id == 'com.kik.ext.gallery':
+                    self.callback.on_image_received(IncomingImageMessage(data))
+                elif app_id == 'com.kik.ext.camera':
+                    self.callback.on_image_received(IncomingImageMessage(data))
+                elif app_id == 'com.kik.ext.gif':
+                    self.callback.on_gif_received(IncomingGifMessage(data))
+                elif app_id == 'com.kik.ext.video-camera':
+                    self.callback.on_video_received(IncomingVideoMessage(data))
+                elif app_id == 'com.kik.ext.video-gallery':
+                    self.callback.on_video_received(IncomingVideoMessage(data))
+                elif app_id == 'com.kik.cards':
+                    self.callback.on_card_received(IncomingCardMessage(data))
+                else:
+                    log.warning(f'Unknown app_id: {app_id}')
             else:
-                log.debug(f"[-] Received unknown groupchat message. contents: {str(data)}")
+                log.critical(f'Received unknown group chat message sent through PM chat. contents: {str(data)}')
         else:
-            log.debug(f"[-] Received unknown message type. contents: {str(data)}")
+            log.debug(f"Received unknown message type. contents: {str(data)}")
 
 
 class GroupXMPPMessageHandler(XmppHandler):
@@ -109,18 +142,24 @@ class GroupXMPPMessageHandler(XmppHandler):
             self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
         elif data.content and 'app-id' in data.content.attrs:
             app_id = data.content['app-id']
-            if app_id == 'com.kik.cards':
-                self.callback.on_card_received(IncomingCardMessage(data))
-            elif app_id in ['com.kik.ext.gallery', 'com.kik.ext.camera']:
+            if app_id == 'com.kik.ext.stickers':
+                self.callback.on_group_sticker(IncomingGroupSticker(data))
+            elif app_id == 'com.kik.ext.gallery':
+                self.callback.on_image_received(IncomingImageMessage(data))
+            elif app_id == 'com.kik.ext.camera':
                 self.callback.on_image_received(IncomingImageMessage(data))
             elif app_id == 'com.kik.ext.gif':
                 self.callback.on_gif_received(IncomingGifMessage(data))
-            elif app_id == 'com.kik.ext.stickers':
-                self.callback.on_group_sticker(IncomingGroupSticker(data))
-            elif app_id in ['com.kik.ext.video-camera', 'com.kik.ext.video-gallery']:
+            elif app_id == 'com.kik.ext.video-camera':
                 self.callback.on_video_received(IncomingVideoMessage(data))
+            elif app_id == 'com.kik.ext.video-gallery':
+                self.callback.on_video_received(IncomingVideoMessage(data))
+            elif app_id == 'com.kik.cards':
+                self.callback.on_card_received(IncomingCardMessage(data))
+            else:
+                log.warning(f'Unknown app_id: {app_id}')
         else:
-            log.debug(f"[-] Received unknown group message. contents: {str(data)}")
+            log.debug(f"Received unknown group message. contents: {str(data)}")
 
 
 class HistoryHandler(XmppHandler):
@@ -149,12 +188,12 @@ class RegisterOrLoginResponseHandler(XmppHandler):
             if data.find('email'):
                 # sign up
                 sign_up_error = SignUpError(data)
-                log.info(f"[-] Register error: {sign_up_error}")
+                log.critical(f"Register error: {sign_up_error}")
                 self.callback.on_register_error(sign_up_error)
 
             else:
                 login_error = LoginError(data)
-                log.info(f"[-] Login error: {login_error}")
+                log.critical(f"Login error: {login_error}")
                 self.callback.on_login_error(login_error)
 
         elif message_type == "result":
@@ -164,12 +203,12 @@ class RegisterOrLoginResponseHandler(XmppHandler):
                 self.client.username = response.username
                 self.client.kik_node = response.kik_node
                 self.client.kik_email = response.email
-                log.info(f"[+] Logged in as {response.username}")
+                log.info(f"Logged in as {response.username}")
                 self.callback.on_login_ended(response)
             else:
                 # sign up successful
                 response = RegisterResponse(data)
-                log.info("[+] Registered.")
+                log.info("Registered.")
                 self.callback.on_sign_up_ended(response)
                 
             self.client._establish_authenticated_session(response.kik_node)

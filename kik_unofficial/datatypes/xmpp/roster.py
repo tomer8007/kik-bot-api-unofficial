@@ -12,6 +12,7 @@ class FetchRosterRequest(XMPPElement):
     """
     Represents a request to get the chat partners list (the roster)
     """
+
     def __init__(self, is_big=True, timestamp=None):
         super().__init__()
         self.timestamp = timestamp
@@ -31,6 +32,7 @@ class FetchRosterResponse(XMPPResponse):
     """
     Represents the response to a 'get roster' request which contains the peers list
     """
+
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.peers = [self.parse_peer(element) for element in iter(data.query)]
@@ -46,13 +48,13 @@ class FetchRosterResponse(XMPPResponse):
             return User(element)
         else:
             raise KikParsingException(f"Unsupported peer element tag: {element.name}")
-        
 
 
 class QueryUsersInfoRequest(XMPPElement):
     """
     Represents a request to get basic information (display name, JID, etc.) of one or more users
     """
+
     def __init__(self, peer_jids: Union[str, List[str]]):
         super().__init__()
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
@@ -76,10 +78,12 @@ class QueryUsersInfoRequest(XMPPElement):
 
         return data.encode()
 
+
 class PeersInfoResponse(XMPPResponse):
     """
     Represents the response to a peers query request, which contains the basic information of the peers
     """
+
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         items = data.query.find_all('item')
@@ -90,6 +94,7 @@ class AddFriendRequest(XMPPElement):
     """
     Represents a request to add some user (peer) as a friend
     """
+
     def __init__(self, peer_jid):
         super().__init__()
         self.peer_jid = peer_jid
@@ -107,6 +112,7 @@ class RemoveFriendRequest(XMPPElement):
     """
     Represents a request to remove some user (peer) as a friend
     """
+
     def __init__(self, peer_jid):
         super().__init__()
         self.peer_jid = peer_jid
@@ -126,6 +132,7 @@ class GroupSearchRequest(XMPPElement):
     """
     Represents a request to search for groups by name
     """
+
     def __init__(self, search_query):
         super().__init__()
         self.search_query = search_query
@@ -135,7 +142,8 @@ class GroupSearchRequest(XMPPElement):
         if search_query.startswith("#"):
             search_query = search_query[1:]
 
-        encoded_search_query = base64.b64encode(("\x0a" + chr(len(search_query)) + search_query).encode(), b"-_").decode()
+        encoded_search_query = base64.b64encode(("\x0a" + chr(len(search_query)) + search_query).encode(),
+                                                b"-_").decode()
         if encoded_search_query.endswith("="):
             encoded_search_query = encoded_search_query[:encoded_search_query.index("=")]
 
@@ -149,6 +157,7 @@ class GroupSearchResponse(XMPPResponse):
     """
     Represents a response to a groups search, that was previously conducted using a query
     """
+
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
 
@@ -162,6 +171,7 @@ class GroupSearchResponse(XMPPResponse):
         """
         Represents a group entry that was found in the search results
         """
+
         def __init__(self, result):
             self.jid = f"{result.jid.local_part}@groups.kik.com"
             self.hashtag = result.display_data.hashtag
@@ -179,6 +189,7 @@ class GroupJoinRequest(XMPPElement):
     Represents a request to join a specific group
     In order to join a group a special token is needed that is obtained from the search results
     """
+
     def __init__(self, group_hashtag, join_token, group_jid):
         super().__init__()
         self.group_hashtag = group_hashtag

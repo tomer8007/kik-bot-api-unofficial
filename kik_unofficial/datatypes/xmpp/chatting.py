@@ -1,7 +1,7 @@
 """
 Defines classes for dealing with generic chatting (text messaging, read receipts, etc)
 """
-
+import random
 import time
 import os
 import requests
@@ -60,43 +60,56 @@ class OutgoingChatImage(XMPPElement):
    Represents an outgoing image chat message to another kik entity (member or group)
    """
 
-    def __init__(self, peer_jid, file_location, is_group=False, forward=True):
+    def __init__(self, peer_jid, file_location, allow_forward, allow_save, is_group=False):
         super().__init__()
         self.peer_jid = peer_jid
-        self.allow_forward = forward
         self.is_group = is_group
-        self.parsed = ParsingUtilities.parse_image(file_location)
+        self.parsed_image = ParsingUtilities.parse_image(file_location)
         self.timestamp = time.time()
+        self.allow_forward = allow_forward
+        self.allow_save = allow_save
 
     def serialize(self):
-        timestamp = str(int(round(self.timestamp * 1000)))
-        message_type = "groupchat" if self.is_group else "chat"
+        message_type = "chat" if not self.is_group else "groupchat"
+        xmlns = "jabber:client" if not self.is_group else "kik:groups"
+        timestamp = str(int(round(time.time() * 1000)))
+
+        # Allow forward flag should always be included
+        image_config = f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'
+
+        # Needs to be inverted
+        if not self.allow_save:
+            image_config += '<disallow-save>true</disallow-save>'
+
+        app_id = "com.kik.ext.gallery"
+        app_name = "Gallery"
+
         data = (
-            f'<message to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}" type="{message_type}" xmlns="jabber:client">'
-            f'<kik timestamp="{timestamp}" qos="true" push="true"/>'
-            '<request xmlns="kik:message:receipt" d="true" r="true" />'
-            f'<content id="{self.content_id}" v="2" app-id="com.kik.ext.gallery">'
-            '<strings>'
-            '<app-name>Gallery</app-name>'
-            f'<file-size>{self.parsed["size"]}</file-size>'
-            f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'
-            '<disallow-save>false</disallow-save>'
-            '<file-content-type>image/jpeg</file-content-type>'
+            f'<message to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}" type="{message_type}" xmlns="{xmlns}">'
+            f'<pb/>'
+            f'<kik push="true" qos="true" timestamp="{timestamp}" />'
+            f'<request xmlns="kik:message:receipt" d="true" r="true" />'
+            f'<content id="{self.content_id}" app-id="{app_id}" v="2">'
+            f'<strings>'
+            f'<app-name>{app_name}</app-name>'
+            f'<file-size>{self.parsed_image["size"]}</file-size>'
+            f'{image_config}'
+            f'<file-content-type>image/jpeg</file-content-type>'
             f'<file-name>{self.content_id}.jpg</file-name>'
-            '</strings>'
-            '<extras />'
-            '<hashes>'
-            f'<sha1-original>{self.parsed["SHA1"]}</sha1-original>'
-            f'<sha1-scaled>{self.parsed["SHA1Scaled"]}</sha1-scaled>'
-            f'<blockhash-scaled>{self.parsed["blockhash"]}</blockhash-scaled>'
-            '</hashes>'
-            '<images>'
-            f'<preview>{self.parsed["base64"]}</preview>'
-            '<icon></icon>'
-            '</images>'
-            '<uris />'
-            '</content>'
-            '</message>'
+            f'</strings>'
+            f'<extras />'
+            f'<hashes>'
+            f'<sha1-original>{self.parsed_image["SHA1"]}</sha1-original>'
+            f'<sha1-scaled>{self.parsed_image["SHA1Scaled"]}</sha1-scaled>'
+            f'<blockhash-scaled>{self.parsed_image["blockhash"]}</blockhash-scaled>'
+            f'</hashes>'
+            f'<images>'
+            f'<preview>{self.parsed_image["base64"]}</preview>'
+            f'<icon>iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAMpSURBVGiB7ZdNSBRhGMd/M1NJhZaGlRHmIRULsmN0sGsXqUOnoEMQhF07WRB0SPuAkjBCSTzUIfDS0sEgsCw6lVQmmbrq+oHa5k7q6urqzkyHSXTdHZuvnF3Z32n2fR/m/f/3fd73eUZA04SydxxWFao1OAPkkdrIAvhEidruCvxCWbtWrCi8BEq9VmaRHkmiUlQVqkk/8QClqkK1UNKmhUj9tDFCFklf8QB5otcKnJIx4DUZA16zxWjidD5cL4a9WRspJ5FgFGr6oPVX8nnDHUgF8aBruFZsPG9oIBXEL7OelrQ/AxkDXuO6gZgG84rbbzXG8Bq1w6cpeDgIEQVO5MKVItghublCIq4ZGIrA1e8wEdV/d4Vh91a4VBgfp2owp0C2Syu7lkKd4RXxABrwdDQxbmQeqr7B2II767pmQEg2tmZQ0aBhGD5OwYMBWFKdr+uagWM5ULCq4AjAhYPxMa+C8GJCf34bgt455+s6NjC+AFEVCrdD3VE4mQvlOVBVBOcPrMT9ikJ9QN8FgJkYPArot5YTHB2l0QW4+AUuH4JzBXB8Fzwp10Vlrflrno9DIBI/9mYSWoNQuc++Bts7EFXhrh+G5/Vuse9vOkhCoviuMDQEYG3Kq0DjEPxesqvCgYGvM/Be1p/nFLjZC9NJhMzE4LYflgxSpT8Crw1aZTPYMjCvwL1+vWAt0zEFvp+JsW2T8Hna+F2KBnWDEFq0o8SGAQ1oGoHOmfhxFagbgI5VYscX4I7/3wc1tAj3B1YOuBUsGwhEoGUs+dycArf69JyOqnrqyCbzu20SematqrFhoGk4vuKu5UcYno3qKdUum3+vvASNw1bVWLhGNeCDDC3j68cpwOMhvahZ7Upbg3B2P5zak7yyJ8P0DszGoH7QXKyi6TXCDo1DEImZjze9AzsluFECIQd3thnyt1lrwU0bEAU4km1H0v8l80npNYYGgutclRvNeloMDdT0pYaJYFQvjkYIJW2aw47cWzbvGUgXMga8ZlMYsND0phyyKIDPaxV2EcAnihK1QI/XYmzQI0rUit0V+CWJSgGaSY90kgVoliQquyvw/wEBywt7TQ67XwAAAABJRU5ErkJggg==</icon>'
+            f'</images>'
+            f'<uris />'
+            f'</content>'
+            f'</message>'
         )
 
         packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
@@ -108,8 +121,8 @@ class OutgoingGroupChatImage(OutgoingChatImage):
     Represents an outgoing image chat message to a group
     """
 
-    def __init__(self, group_jid, file_location, forward):
-        super().__init__(group_jid, file_location, is_group=True, forward=forward)
+    def __init__(self, group_jid, file_location, allow_forward, allow_save):
+        super().__init__(group_jid, file_location, allow_forward, allow_save, is_group=True)
 
 
 class IncomingChatMessage(XMPPResponse):
@@ -229,13 +242,18 @@ class OutgoingGroupIsTypingEvent(XMPPElement):
 
 
 class OutgoingLinkShareEvent(XMPPElement):
-    def __init__(self, peer_jid, link, title, text, app_name):
+    def __init__(self, peer_jid, link, title, text, app_name, thumbnail, allow_forward=True):
         super().__init__()
         self.peer_jid = peer_jid
         self.link = link
         self.title = title
         self.text = text
         self.app_name = app_name
+        self.allow_forward = allow_forward
+        if not thumbnail:
+            self.preview = ''
+        else:
+            self.preview = self.get_preview(thumbnail)
 
     def serialize(self):
         message_type = 'type="groupchat" xmlns="kik:groups"' if 'group' in self.peer_jid else 'type="chat"'
@@ -251,11 +269,13 @@ class OutgoingLinkShareEvent(XMPPElement):
                 '<layout>article</layout>'
                 f'<title>{self.title}</title>'
                 f'<text>{self.text}</text>'
-                '<allow-forward>true</allow-forward>'
+                f'<allow-forward>{self.allow_forward}</allow-forward>'
                 '</strings>'
                 '<extras />'
                 '<hashes />'
                 '<images>'
+                '<icon></icon>'
+                f'<preview>{self.preview}</preview>'
                 '</images>'
                 '<uris>'
                 f'<uri platform="cards">{self.link}</uri>'
@@ -266,6 +286,14 @@ class OutgoingLinkShareEvent(XMPPElement):
                 '</message>')
 
         return data.encode()
+
+    @staticmethod
+    def get_preview(preview):
+        img = Image.open(preview)
+        buffered = BytesIO()
+        img.convert("RGB").save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
+        return img_str
 
 
 class IncomingMessageReadEvent(XMPPResponse):
@@ -306,7 +334,7 @@ class IncomingGroupStatus(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request[
                                              'd'] == 'true' if data.request and 'd' in data.request.attrs else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.status = data.status.text if data.status else None
@@ -321,7 +349,7 @@ class IncomingGroupSysmsg(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request[
                                              'd'] == 'true' if data.request and 'd' in data.request.attrs else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.group_jid = data['from']
         self.to_jid = data['to']
         self.sysmsg_xmlns = data.sysmsg['xmlns'] if data.sysmsg and 'xmlns' in data.sysmsg.attrs else None
@@ -364,7 +392,9 @@ class IncomingImageMessage(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request[
                                              'd'] == 'true' if data.request and 'd' in data.request.attrs else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.app_id = data.find('content').attrs["app-id"]
+        self.app_name = data.find('app-name').get_text()
         self.image_url = data.find('file-url').get_text() if data.find('file-url') else None
         self.status = data.status.text if data.status else None
         self.from_jid = data['from']
@@ -406,7 +436,7 @@ class IncomingGifMessage(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request[
                                              'd'] == 'true' if data.request and 'd' in data.request.attrs else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
         self.status = data.status.text if data.status else None
         self.from_jid = data['from'] if data else None
         self.to_jid = data['to'] if data else None
@@ -415,8 +445,15 @@ class IncomingGifMessage(XMPPResponse):
 
     class Uri:
         def __init__(self, uri):
-            self.file_content_type = uri['file-content-type']
-            self.type = uri['type']
+            # Because some custom clients don't send proper stanza for GIFs
+            if uri.has_attr('file-content-type'):
+                self.file_content_type = uri['file-content-type']
+            else:
+                self.file_content_type = "video/mp4"
+            if uri.has_attr('type'):
+                self.type = uri['type']
+            else:
+                self.type = uri['type'] = "video"
             self.url = uri.text
 
 
@@ -425,12 +462,14 @@ class OutgoingGIFMessage(XMPPElement):
 	Represents an outgoing GIF message to another kik entity (member or group)
 	"""
 
-    def __init__(self, peer_jid, search_term, API_key, is_group=True):
+    def __init__(self, peer_jid, search_term, API_key, random_gif=False, is_group=True):
         super().__init__()
         self.peer_jid = peer_jid
         self.allow_forward = True
         self.is_group = is_group
-        self.gif_preview, self.gif_data = self.get_gif_data(search_term, API_key)
+        self.gif_preview, self.gif_data = self.get_gif_data(search_term, API_key, random_gif)
+        if not self.gif_preview or not self.gif_data:
+            return
 
     def serialize(self):
         timestamp = str(int(round(time.time() * 1000)))
@@ -469,14 +508,27 @@ class OutgoingGIFMessage(XMPPElement):
         packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
         return list(packets)
 
-    def get_gif_data(self, search_term, API_key):
+    def get_gif_data(self, search_term, API_key, random_gif):
         if not API_key:
-            raise Exception("A tendor.com API key is required to search for GIFs images. please get one and change it")
+            raise Exception("A tenor.com API key is required to search for GIFs images. please get one and change it")
+        if random_gif:
+            gif_url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=10"
+        else:
+            gif_url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=1"
 
-        r = requests.get(f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=1")
+        r = requests.get(gif_url)
         if r.status_code == 200:
             gif = json.loads(r.content.decode('ascii'))
-            response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
+            if random_gif:
+                if len(gif["results"]) > 1:
+                    response_length = len(gif["results"])
+                    chosen_index = random.randint(0, response_length)
+                else:
+                    chosen_index = 0
+                response = requests.get(gif["results"][chosen_index]["media_formats"]["nanogifpreview"]["url"])
+            else:
+                response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
+
             img = Image.open(BytesIO(response.content))
             buffered = BytesIO()
 
@@ -484,7 +536,7 @@ class OutgoingGIFMessage(XMPPElement):
             img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
             return img_str, gif["results"][0]["media_formats"]
         else:
-            return ""
+            return None, None
 
 
 class IncomingVideoMessage(XMPPResponse):
@@ -492,7 +544,9 @@ class IncomingVideoMessage(XMPPResponse):
         super().__init__(data)
         self.request_delivered_receipt = data.request[
                                              'd'] == 'true' if data.request and 'd' in data.request.attrs else False
-        self.requets_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.request_read_receipt = data.request['r'] == 'true' if data.request and 'r' in data.request.attrs else False
+        self.app_id = data.find('content').attrs["app-id"]
+        self.app_name = data.find('app-name').get_text()
         self.video_url = data.find('file-url').text
         self.file_content_type = data.find('file-content-type').text if data.find('file-content-type') else None
         self.duration_milliseconds = data.find('duration').text if data.find('duration') else None

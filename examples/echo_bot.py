@@ -10,10 +10,12 @@ import os
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
+from kik_unofficial.datatypes.xmpp.chatting import KikPongResponse
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
-from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
+from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, TempBanElement
+
 
 def main():
     # The credentials file where you store the bot's login information
@@ -41,7 +43,7 @@ class EchoBot(KikClientCallback):
         android_id = creds['android_id']
         node = creds.get('node') # If you don't know it, set it to None
         
-        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, enable_logging=True)
+        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, enable_logging=True, log_file_path="var/test.log", log_level=2)
         self.client.wait_for_messages()
 
     # Initialization and Authentication
@@ -101,6 +103,12 @@ class EchoBot(KikClientCallback):
 
     def on_sign_up_ended(self, response: RegisterResponse):
         print(f"[+] Registered as {response.kik_node}")
+
+    def on_pong(self, response: KikPongResponse):
+        print(f"[+] Received Pong {response.recieved_time}")
+
+    def on_temp_ban_received(self, response: TempBanElement):
+        print(f"[-] Temporary Ban Received: {response.ban_title} {response.ban_message} {response.ban_end_time}")
 
     # Error Handling
     def on_connection_failed(self, response: ConnectionFailedResponse):

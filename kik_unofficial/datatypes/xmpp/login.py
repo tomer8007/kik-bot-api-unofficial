@@ -58,10 +58,10 @@ class LoginRequest(XMPPElement):
                 '<lang>en_US</lang>'
                 '<android-sdk>19</android-sdk>'
                 '<registrations-since-install>0</registrations-since-install>'
-                '<prefix>CAN</prefix>' \
+                '<prefix>CAN</prefix>'
                 f'<android-id>{self.android_id}</android-id>'
                 '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
-                f'{captcha}' \
+                f'{captcha}'
                 '</query>'
                 '</iq>')
 

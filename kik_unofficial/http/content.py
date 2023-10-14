@@ -53,7 +53,7 @@ def send(url, image, jid, username, password):
 
 
 def content_upload_thread(url, image, headers):
-    log.debug('Uploading content')
+    log.debug('Uploading Image')
     r = requests.put(url, data=image, headers=headers)
     if r.status_code != 200:
         raise KikUploadError(r.status_code, r.reason)

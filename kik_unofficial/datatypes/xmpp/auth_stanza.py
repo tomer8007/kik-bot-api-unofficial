@@ -33,7 +33,7 @@ class AuthStanza():
         Send the outgoing auth stanza
         """
         stanza = self.searlize()
-        log.info('[+] Sending authentication certificate')
+        log.info('Sending authentication certificate')
         self.client.loop.call_soon_threadsafe(self.client.connection.send_raw_data, stanza)
 
     def revalidate(self) -> None:
@@ -43,7 +43,7 @@ class AuthStanza():
         if time.time() < self.revalidate_time:
             return
         stanza = self.searlize()
-        log.info('[+] Revalidating the authentication certificate')
+        log.info('Revalidating the authentication certificate')
         self.client.loop.call_soon_threadsafe(self.client.connection.send_raw_data, stanza)
 
     def searlize(self) -> bytes:
@@ -158,11 +158,11 @@ class AuthStanza():
         Handles the auth response (result/error) sent by Kik
         """
         if data.error:
-            log.error('[!] kik:auth:cert [' + data.error.get('code') + '] ' + data.error.get_text())
+            log.error('kik:auth:cert [' + data.error.get('code') + '] ' + data.error.get_text())
             log.debug(str(data))
             return
         if data.find_all('regenerate-key', recursive=True):
-            log.info('[!] Regenerating the keys for certificate authentication')
+            log.info('Regenerating the keys for certificate authentication')
             self.teardown()
             self.send_stanza()
             return
@@ -171,7 +171,7 @@ class AuthStanza():
         self.cert_url = data.certificate.url.text
         self.revalidate_time = current + (revalidate * 1000)
         self.client.loop.call_later(revalidate, self.revalidate)
-        log.info('[+] Successfully validated the authentication certificate')
+        log.info('Successfully validated the authentication certificate')
 
     def teardown(self):
         """

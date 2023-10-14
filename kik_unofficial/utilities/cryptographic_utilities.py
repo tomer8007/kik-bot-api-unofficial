@@ -14,6 +14,7 @@ class CryptographicUtils:
     A class for generating various cryptographic values needed to establish an authenticated session
     and sending messages.
     """
+
     def __init__(self):
         pass
 
@@ -93,13 +94,13 @@ class CryptographicUtils:
         i3 = iArr[i2][0]
         i2 = iArr[i2][1]
         j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ (
-            (65280 & most_significant_bits) >> 8)
+                (65280 & most_significant_bits) >> 8)
         i2 = (CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
-            CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
+                CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i3) << 1)
         for i4 in range(6):
             i = (i + (i2 * 7)) % 60
             least_significant_bits = (least_significant_bits & ((1 << (i + 2)) ^ -1)) | (
-                (CryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
+                    (CryptographicUtils.kik_uuid_sub_func(j, i4)) << (i + 2))
         mstb = binascii.hexlify(
             (most_significant_bits.to_bytes((most_significant_bits.bit_length() + 7) // 8, 'big') or b'\0'))
         lstb = binascii.hexlify(
@@ -152,7 +153,7 @@ class CryptographicUtils:
             new_map[selected_key] = dictionary[selected_key]
             del dictionary[selected_key]
 
-        return new_map, ' '*hash_code_for_spaces
+        return new_map, ' ' * hash_code_for_spaces
 
     @staticmethod
     def kik_map_hash_code(dictionary, hash_code_base, hash_code_offset):
@@ -184,7 +185,22 @@ class CryptographicUtils:
 
         for i in range(0, len(digest), 4):
             j ^= ((((ParsingUtilities.byte_to_signed_int(digest[i + 3])) << 24) | (
-                (ParsingUtilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
-                      (ParsingUtilities.byte_to_signed_int(digest[i + 1])) << 8)) | (ParsingUtilities.byte_to_signed_int(digest[i]))
+                    (ParsingUtilities.byte_to_signed_int(digest[i + 2])) << 16)) | (
+                          (ParsingUtilities.byte_to_signed_int(digest[i + 1])) << 8)) | (
+                     ParsingUtilities.byte_to_signed_int(digest[i]))
 
         return j
+
+    @staticmethod
+    def get_kik_host_name():
+        # The android APK determines the host name for the XMPP domain
+        # by using the minor and major version numbers
+        # talk(major)(minor)0an.kik.com
+
+        split = kik_version_info['kik_version'].split('.')
+        ret = 'talk'
+
+        for i in range(0, 2):
+            ret += split[i]
+
+        return ret + '0an.kik.com'

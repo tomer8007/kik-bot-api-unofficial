@@ -3,12 +3,12 @@ from typing import Union
 from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
 from kik_unofficial.datatypes.xmpp.chatting import *
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
-from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement
+from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement, TempBanElement
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
-
+from kik_unofficial.datatypes.xmpp.chatting import KikPongResponse
 
 
 class KikClientCallback:
@@ -146,4 +146,18 @@ class KikClientCallback:
         pass
 
     def on_card_received(self, response: IncomingCardMessage):
+        pass
+
+    def on_pong(self, response: KikPongResponse):
+        """
+        Gets called when the kik server sends a pong response to a ping response.
+        :return:
+        """
+        pass
+
+    def on_temp_ban_received(self, response: TempBanElement):
+        """
+        Gets called when kik servers send a temp ban message after successful authentication
+        When received, you will be unable to send or receive any stanzas until the current time is greater than the ban end time.
+        """
         pass

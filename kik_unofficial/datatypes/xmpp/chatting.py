@@ -591,4 +591,4 @@ class KikPongResponse:
     """
 
     def __init__(self, data: BeautifulSoup):
-        self.recieved_time = time.time()
+        self.received_time = time.time()

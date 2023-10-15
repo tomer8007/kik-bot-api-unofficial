@@ -201,8 +201,8 @@ class KikClient:
 
         image_request = chatting.OutgoingChatImage(peer_jid, image_file, allow_forward, allow_save, is_group)
 
-        content.upload_gallery_image(self, image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
-        return image_request.message_id
+        content.upload_gallery_image(image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
+        return self._send_xmpp_element(image_request)
 
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
@@ -622,7 +622,9 @@ class KikClient:
             if "bad-request" in dir(iq_element.error):
                 raise Exception(f'Received a Bad Request error for stanza with ID {iq_element.attrs["id"]}')
             if iq_element.error.find("service-unavailable"):
-                raise Exception(f'Received a service Unavailable error for stanza with ID {iq_element.attrs["id"]}')
+                # Service unavailable 5xx error.
+                xmlns_handlers.ServiceRequestErrorHandler(self.callback, self).handle(iq_element)
+                return
 
         query = iq_element.query
         xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']

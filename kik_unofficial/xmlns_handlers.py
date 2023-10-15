@@ -4,17 +4,19 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
-from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, IncomingChatMessage, \
-    IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, IncomingGroupIsTypingEvent, \
-    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent, IncomingGifMessage, \
+from kik_unofficial.datatypes.xmpp.chatting import IncomingMessageDeliveredEvent, IncomingMessageReadEvent, \
+    IncomingChatMessage, \
+    IncomingGroupChatMessage, IncomingFriendAttribution, IncomingGroupStatus, IncomingIsTypingEvent, \
+    IncomingGroupIsTypingEvent, \
+    IncomingStatusResponse, IncomingGroupSticker, IncomingGroupSysmsg, IncomingImageMessage, IncomingGroupReceiptsEvent, \
+    IncomingGifMessage, \
     IncomingVideoMessage, IncomingCardMessage
-from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
+from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError, ServiceRequestError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
-
 
 log = logging.getLogger('kik_unofficial')
 
@@ -210,7 +212,7 @@ class RegisterOrLoginResponseHandler(XmppHandler):
                 response = RegisterResponse(data)
                 log.info("Registered.")
                 self.callback.on_sign_up_ended(response)
-                
+
             self.client._establish_authenticated_session(response.kik_node)
 
 
@@ -240,3 +242,8 @@ class XiphiasHandler(XmppHandler):
             self.callback.on_xiphias_get_users_response(UsersByAliasResponse(data))
         else:  # TODO
             self.callback.on_group_search_response(GroupSearchResponse(data))
+
+
+class ServiceRequestErrorHandler(XmppHandler):
+    def handle(self, data: BeautifulSoup):
+        self.callback.on_service_request_error(ServiceRequestError(data))

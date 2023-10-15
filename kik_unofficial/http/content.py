@@ -6,6 +6,7 @@ from threading import Thread
 
 from kik_unofficial.datatypes.exceptions import KikUploadError
 from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage
+from kik_unofficial.datatypes.xmpp.errors import ServiceRequestError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
 
@@ -14,12 +15,12 @@ log = logging.getLogger('kik_unofficial')
 SALT = "YA=57aSA!ztajE5"
 
 
-def upload_gallery_image(client, image: OutgoingChatImage, jid, username, password):
+def upload_gallery_image(image: OutgoingChatImage, jid, username, password):
     url = f"https://platform.kik.com/content/files/{image.content_id}"
-    send_gallery_image(client, image, url, jid, username, password)
+    send_gallery_image(image, url, jid, username, password)
 
 
-def send_gallery_image(client, image, url, jid, username, password):
+def send_gallery_image(image, url, jid, username, password):
     username_passkey = CryptographicUtils.key_from_password(username, password)
     app_id = "com.kik.ext.gallery"
     v = SALT + image.content_id + app_id
@@ -48,15 +49,32 @@ def send_gallery_image(client, image, url, jid, username, password):
 
     Thread(
         target=image_upload_thread,
-        args=(client, image, url, headers),
+        args=(image, url, headers),
         name='KikContent'
     ).start()
 
 
-def image_upload_thread(client, image, url, headers):
-    log.debug('Uploading Image')
-    r = requests.put(url, data=image.parsed_image["original"], headers=headers)
-    if r.status_code != 200:
-        raise KikUploadError(r.status_code, r.reason)
-    else:
-        client.send_stanza(image.serialize(), "Image")
+def image_upload_thread(image, url, headers):
+    r = None
+    max_retries = 5
+    retry_delay = 2
+    for attempt in range(max_retries):
+        try:
+            log.debug('Uploading Image')
+            r = requests.put(url, data=image.parsed_image["original"], headers=headers)
+            r.raise_for_status()
+            log.debug('Image uploaded successfully')
+            break
+        except requests.exceptions.HTTPError as e:
+            if r is not None and r.status_code in [500, 502, 503, 504]:
+                log.warning(f'Failed to upload image, attempt {attempt + 1}: {str(e)}')
+                if attempt < max_retries - 1:
+                    log.debug(f'Retrying in {retry_delay} seconds...')
+                    time.sleep(retry_delay)
+                continue
+            else:
+                log.error(f'Failed to upload image: {str(e)}')
+                break
+        except Exception as e:
+            log.error(f'An error occurred while uploading image: {str(e)}')
+            break

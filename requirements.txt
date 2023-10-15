@@ -8,4 +8,4 @@ pyDes~=2.0.1
 colorama~=0.4.6
 pbkdf2~=1.3
 python-dotenv~=1.0.0
-PyYAML~=6.0.1
+moviepy~=1.0.3

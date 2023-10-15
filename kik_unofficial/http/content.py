@@ -5,11 +5,10 @@ import time
 from threading import Thread
 
 from kik_unofficial.datatypes.exceptions import KikUploadError
-from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage
+from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage, OutgoingChatVideo
 from kik_unofficial.datatypes.xmpp.errors import ServiceRequestError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
-
 
 log = logging.getLogger('kik_unofficial')
 SALT = "YA=57aSA!ztajE5"
@@ -48,33 +47,76 @@ def send_gallery_image(image, url, jid, username, password):
     }
 
     Thread(
-        target=image_upload_thread,
-        args=(image, url, headers),
+        target=media_upload_thread,
+        args=(image, url, headers, "image"),
         name='KikContent'
     ).start()
 
 
-def image_upload_thread(image, url, headers):
+def upload_gallery_video(video: OutgoingChatVideo, jid, username, password):
+    url = f"https://platform.kik.com/content/files/{video.content_id}"
+    send_gallery_video(video, url, jid, username, password)
+
+
+def send_gallery_video(video, url, jid, username, password):
+    username_passkey = CryptographicUtils.key_from_password(username, password)
+    app_id = "com.kik.ext.video-gallery"
+    v = SALT + video.content_id + app_id
+
+    verification = hashlib.sha1(v.encode('UTF-8')).hexdigest()
+    headers = {
+        'Host': 'platform.kik.com',
+        'Connection': 'Keep-Alive',
+        'Content-Length': str(video.parsed_video['size']),
+        'User-Agent': f'Kik/{kik_version_info["kik_version"]} (Android 7.1.2) Content',
+        'x-kik-jid': jid,
+        'x-kik-password': username_passkey,
+        'x-kik-verification': verification,
+        'x-kik-app-id': app_id,
+        'x-kik-content-chunks': '1',
+        'x-kik-content-size': str(video.parsed_video['size']),
+        'x-kik-content-md5': video.parsed_video['MD5'],
+        'x-kik-chunk-number': '0',
+        'x-kik-chunk-md5': video.parsed_video['MD5'],
+        'Content-Type': 'video/mp4',
+        'x-kik-content-extension': '.mp4'
+    }
+
+    Thread(
+        target=media_upload_thread,
+        args=(video, url, headers, "video"),
+        name='KikVideoContent'
+    ).start()
+
+
+def media_upload_thread(media, url, headers, media_type="image"):
     r = None
     max_retries = 5
     retry_delay = 2
     for attempt in range(max_retries):
         try:
-            log.debug('Uploading Image')
-            r = requests.put(url, data=image.parsed_image["original"], headers=headers)
+            log.debug(f'Uploading Media {media_type}')
+            if media_type == "image":
+                media_data = media.parsed_image["original"]
+            elif media_type == "video":
+                media_data = media.parsed_video['original']
+            else:
+                break
+
+            r = requests.put(url, data=media_data, headers=headers)
             r.raise_for_status()
-            log.debug('Image uploaded successfully')
+            log.debug(f'Media {media_type} uploaded successfully')
             break
         except requests.exceptions.HTTPError as e:
             if r is not None and r.status_code in [500, 502, 503, 504]:
-                log.warning(f'Failed to upload image, attempt {attempt + 1}: {str(e)}')
+                log.warning(f'Failed to upload media {media_type}, attempt {attempt + 1}: {str(e)}')
                 if attempt < max_retries - 1:
                     log.debug(f'Retrying in {retry_delay} seconds...')
                     time.sleep(retry_delay)
                 continue
             else:
-                log.error(f'Failed to upload image: {str(e)}')
+                log.error(f'Failed to upload media {media_type}: {str(e)}')
                 break
         except Exception as e:
-            log.error(f'An error occurred while uploading image: {str(e)}')
+            log.error(f'An error occurred while uploading media {media_type}: {str(e)}')
             break

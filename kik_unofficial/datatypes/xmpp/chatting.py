@@ -116,13 +116,71 @@ class OutgoingChatImage(XMPPElement):
         return list(packets)
 
 
-class OutgoingGroupChatImage(OutgoingChatImage):
+class OutgoingChatVideo(XMPPElement):
     """
-    Represents an outgoing image chat message to a group
-    """
+   Represents an outgoing image chat message to another kik entity (member or group)
+   """
 
-    def __init__(self, group_jid, file_location, allow_forward, allow_save):
-        super().__init__(group_jid, file_location, allow_forward, allow_save, is_group=True)
+    def __init__(self, peer_jid, video_location, allow_forward, allow_save, auto_play, muted, looping, is_group):
+        super().__init__()
+        self.peer_jid = peer_jid
+        self.is_group = is_group
+        self.parsed_video = ParsingUtilities.parse_video(video_location)
+        self.allow_forward = allow_forward
+        self.allow_save = allow_save
+        self.auto_play = auto_play
+        self.muted = muted
+        self.looping = looping
+
+    def serialize(self):
+        message_type = "chat" if not self.is_group else "groupchat"
+        xmlns = "jabber:client" if not self.is_group else "kik:groups"
+        timestamp = str(int(round(time.time() * 1000)))
+
+        app_id = "com.kik.ext.video-gallery"
+        preview_data = self.parsed_video['thumbnail_base64']
+
+        # Allow forward flag should always be included
+        video_config = f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'
+
+        # Needs to be inverted
+        if not self.allow_save:
+            video_config += '<disallow-save>true</disallow-save>'
+        if self.auto_play:
+            video_config += '<video-should-autoplay>true</video-should-autoplay>'
+        if self.muted:
+            video_config += '<video-should-be-muted>true</video-should-be-muted>'
+        if self.looping:
+            video_config += '<video-should-loop>true</video-should-loop>'
+
+        data = (
+            f'<message to="{self.peer_jid}" id="{self.message_id}" cts="{timestamp}" type="{message_type}" xmlns="{xmlns}">'
+            f'<pb/>'
+            f'<kik push="true" qos="true" timestamp="{timestamp}" />'
+            f'<request xmlns="kik:message:receipt" d="true" r="true" />'
+            f'<content id="{self.content_id}" app-id="{app_id}" v="2">'
+            f'<strings>'
+            f'<app-name>Gallery</app-name>'
+            f'<file-size>{self.parsed_video["size"]}</file-size>'
+            f'{video_config}'
+            f'<layout>video</layout>'
+            f'<file-content-type>video/mp4</file-content-type>'
+            f'<file-name>{self.content_id}.mp4</file-name>'
+            f'<duration>{self.parsed_video["duration"]}</duration>'
+            f'</strings>'
+            f'<extras />'
+            f'<hashes />'
+            f'<images>'
+            f'<preview>{preview_data}</preview>'
+            f'<icon>iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAMpSURBVGiB7ZdNSBRhGMd/M1NJhZaGlRHmIRULsmN0sGsXqUOnoEMQhF07WRB0SPuAkjBCSTzUIfDS0sEgsCw6lVQmmbrq+oHa5k7q6urqzkyHSXTdHZuvnF3Z32n2fR/m/f/3fd73eUZA04SydxxWFao1OAPkkdrIAvhEidruCvxCWbtWrCi8BEq9VmaRHkmiUlQVqkk/8QClqkK1UNKmhUj9tDFCFklf8QB5otcKnJIx4DUZA16zxWjidD5cL4a9WRspJ5FgFGr6oPVX8nnDHUgF8aBruFZsPG9oIBXEL7OelrQ/AxkDXuO6gZgG84rbbzXG8Bq1w6cpeDgIEQVO5MKVItghublCIq4ZGIrA1e8wEdV/d4Vh91a4VBgfp2owp0C2Syu7lkKd4RXxABrwdDQxbmQeqr7B2II767pmQEg2tmZQ0aBhGD5OwYMBWFKdr+uagWM5ULCq4AjAhYPxMa+C8GJCf34bgt455+s6NjC+AFEVCrdD3VE4mQvlOVBVBOcPrMT9ikJ9QN8FgJkYPArot5YTHB2l0QW4+AUuH4JzBXB8Fzwp10Vlrflrno9DIBI/9mYSWoNQuc++Bts7EFXhrh+G5/Vuse9vOkhCoviuMDQEYG3Kq0DjEPxesqvCgYGvM/Be1p/nFLjZC9NJhMzE4LYflgxSpT8Crw1aZTPYMjCvwL1+vWAt0zEFvp+JsW2T8Hna+F2KBnWDEFq0o8SGAQ1oGoHOmfhxFagbgI5VYscX4I7/3wc1tAj3B1YOuBUsGwhEoGUs+dycArf69JyOqnrqyCbzu20SematqrFhoGk4vuKu5UcYno3qKdUum3+vvASNw1bVWLhGNeCDDC3j68cpwOMhvahZ7Upbg3B2P5zak7yyJ8P0DszGoH7QXKyi6TXCDo1DEImZjze9AzsluFECIQd3thnyt1lrwU0bEAU4km1H0v8l80npNYYGgutclRvNeloMDdT0pYaJYFQvjkYIJW2aw47cWzbvGUgXMga8ZlMYsND0phyyKIDPaxV2EcAnihK1QI/XYmzQI0rUit0V+CWJSgGaSY90kgVoliQquyvw/wEBywt7TQ67XwAAAABJRU5ErkJggg==</icon>'
+            f'</images>'
+            f'<uris />'
+            f'</content>'
+            f'</message>'
+        )
+
+        packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
+        return list(packets)
 
 
 class IncomingChatMessage(XMPPResponse):
@@ -468,7 +526,7 @@ class OutgoingGIFMessage(XMPPElement):
         self.allow_forward = True
         self.is_group = is_group
         self.gif_preview, self.gif_data = self.get_gif_data(search_term, API_key, random_gif)
-        if not self.gif_preview or not self.gif_data:
+        if self.gif_preview is None or self.gif_data is None:
             return
 
     def serialize(self):
@@ -509,34 +567,100 @@ class OutgoingGIFMessage(XMPPElement):
         return list(packets)
 
     def get_gif_data(self, search_term, API_key, random_gif):
+        base_url = "https://tenor.googleapis.com/v2/search"
         if not API_key:
             raise Exception("A tenor.com API key is required to search for GIFs images. please get one and change it")
-        if random_gif:
-            gif_url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=10"
-        else:
-            gif_url = f"https://tenor.googleapis.com/v2/search?q={search_term}&key={API_key}&limit=1"
+
+        limit = 15 if random_gif else 1
+        gif_url = f"{base_url}?q={search_term}&key={API_key}&limit={limit}"
 
         r = requests.get(gif_url)
-        if r.status_code == 200:
-            gif = json.loads(r.content.decode('ascii'))
-            if random_gif:
-                if len(gif["results"]) > 1:
-                    response_length = len(gif["results"])
-                    chosen_index = random.randint(0, response_length)
-                else:
-                    chosen_index = 0
-                response = requests.get(gif["results"][chosen_index]["media_formats"]["nanogifpreview"]["url"])
-            else:
-                response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
+        if r.status_code != 200:
+            return None, None
 
+        try:
+            gif = json.loads(r.content.decode('ascii'))
+
+            if len(gif["results"]) == 0:
+                return None, None
+
+            # Determine the index of the gif to fetch
+            chosen_index = random.randint(0, len(gif["results"]) - 1) if random_gif else 0
+
+            # Retrieve the gif data
+            gif_url = gif["results"][chosen_index]["media_formats"]["nanogifpreview"]["url"]
+            response = requests.get(gif_url)
+
+            if response.status_code != 200:
+                return None, None
+
+            # Process the image and convert it to a base64 encoded string
             img = Image.open(BytesIO(response.content))
             buffered = BytesIO()
-
             img.convert("RGB").save(buffered, format="JPEG")
             img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
-            return img_str, gif["results"][0]["media_formats"]
-        else:
+
+            return img_str, gif["results"][chosen_index]["media_formats"]
+
+        except (KeyError, TypeError, IndexError, json.JSONDecodeError):
             return None, None
+
+
+class OutgoingSavedGIFMessage(XMPPElement):
+    """
+    Represents an outgoing GIF message that was saved as a json file.
+    Use cases, saving a user sent GIF to json file so it can be called for later use.
+    Triggers/Substitutions
+    See examples/var/test_gif.json
+    """
+
+    def __init__(self, peer_jid, gif_data_path, is_group=True):
+        super().__init__()
+        self.peer_jid = peer_jid
+        self.allow_forward = True
+        self.is_group = is_group
+        self.gif_preview, self.gif_data = self.get_gif_data(gif_data_path)
+
+    def serialize(self):
+        timestamp = str(int(round(time.time() * 1000)))
+        message_type = "chat" if not self.is_group else "groupchat"
+        data = (
+            f'<message cts="{timestamp}" type="{message_type}" to="{self.peer_jid}" id="{self.message_id}" xmlns="jabber:client">'
+            f'<kik push="true" timestamp="{timestamp}" qos="true"/>'
+            f'<pb/>'
+            f'<content id="{self.message_id}" v="2" app-id="com.kik.ext.gif">'
+            f'<strings>'
+            f'<app-name>GIF</app-name>'
+            f'<layout>video</layout>'
+            f'<allow-forward>true</allow-forward>'
+            f'<disallow-save>true</disallow-save>'
+            f'<video-should-autoplay>true</video-should-autoplay>'
+            f'<video-should-loop>true</video-should-loop>'
+            f'<video-should-be-muted>true</video-should-be-muted>'
+            f'</strings>'
+            f'<images>'
+            f'<icon></icon>'
+            f'<preview>{self.gif_preview}</preview>'
+            f'</images>'
+            f'<uris>'
+            f'<uri priority="0" type="video" file-content-type="video/mp4">{self.gif_data["mp4"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/webm">{self.gif_data["webm"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/tinymp4">{self.gif_data["tinymp4"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/tinywebm">{self.gif_data["tinywebm"]}</uri>'
+            f'<uri priority="0" type="video" file-content-type="video/nanomp4">{self.gif_data["nanomp4"]}</uri>'
+            f'<uri priority="1" type="video" file-content-type="video/nanowebm">{self.gif_data["nanowebm"]}</uri>'
+            f'</uris>'
+            f'</content>'
+            f'<request r="true" d="true" xmlns="kik:message:receipt"/>'
+            f'</message>'
+        )
+        packets = [data[s:s + 16384].encode() for s in range(0, len(data), 16384)]
+        return list(packets)
+
+    def get_gif_data(self, gif_path):
+        with open(gif_path, 'r') as gif_file:
+            content = json.load(gif_file)
+        return content["preview"], content
 
 
 class IncomingVideoMessage(XMPPResponse):

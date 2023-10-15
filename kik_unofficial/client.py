@@ -204,6 +204,34 @@ class KikClient:
         content.upload_gallery_image(image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
         return self._send_xmpp_element(image_request)
 
+    def send_chat_video(self, peer_jid: str, video_file, forward=True, save=True,
+                        auto_play=False, muted=False, looping=False):
+        """
+        Sends an image chat message to another person or a group with the given JID/username.
+        WARNING: videos above 15 MB (15728640 bytes) will be rejected by Kik's upload server.
+
+        :param forward: Allow forwarding of the video. bool
+        :param save: Allow saving of the video. bool
+        :param auto_play: Causes the video to auto-play when it is on the screen. bool
+        :param muted: Mutes the video when played. bool
+        :param looping: Loops the video when played. bool
+        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
+                         If you don't know the JID of someone, you can also specify a kik username here.
+        :param video_file: The path to the video file OR its bytes OR an IOBase object to send.
+        """
+        peer_jid = self.get_jid(peer_jid)
+        is_group = self.is_group_jid(peer_jid)
+
+        self.log.info(f' Sending chat video to {"group" if is_group else "user"} \'{peer_jid}\'')
+
+        video_request = chatting.OutgoingChatVideo(peer_jid, video_file, forward, save, auto_play, muted, looping, is_group)
+
+        # Do not send the video stanza until the video is successfully uploaded to the Kik platform server
+        # This prevents "failed to load" errors
+        content.upload_gallery_video(video_request, self.kik_node + '@talk.kik.com', self.username, self.password)
+
+        return self._send_xmpp_element(video_request)
+
     def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
         """
         Sends a read receipt for a previously sent message, to a specific user or group.
@@ -244,7 +272,7 @@ class KikClient:
     def send_gif_image(self, peer_jid: str, search_term: str, API_key: str, random_gif=False):
         """
         Sends a GIF image to another person or a group with the given JID/username.
-        The GIF is taken from tendor.com, based on search keywords.
+        The GIF is taken from tenor.com, based on search keywords.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
         :param search_term: The search term to use when searching GIF images on tendor.com
         :param API_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
@@ -256,6 +284,20 @@ class KikClient:
         else:
             self.log.info(f"Sending a GIF message to user '{peer_jid}'...")
             return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=False))
+
+    def send_saved_gif_image(self, peer_jid: str, gif_path):
+        """
+        Sends a GIF image to another person or a group with the given JID/username.
+        The GIF is stored in json format when setting a gif as a substitution or trigger.
+        :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
+        :param gif_path: The path to the file that contains gif information
+        """
+        if self.is_group_jid(peer_jid):
+            self.log.info(f'Sending a GIF message to group \'{peer_jid}\'...')
+            return self._send_xmpp_element(chatting.OutgoingSavedGIFMessage(peer_jid, gif_path, True))
+        else:
+            self.log.info(f'Sending a GIF message to user \'{peer_jid}\'...')
+            return self._send_xmpp_element(chatting.OutgoingSavedGIFMessage(peer_jid, gif_path, False))
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -538,6 +580,9 @@ class KikClient:
         :param xmpp_element: The XMPP element to send
         :return: The UUID of the element that was sent
         """
+        if message is None:
+            self.log.critical("Got NoneType XMPP Element when trying to send to KIK.")
+            return 0
         while not self.connected:
             self.log.debug("Waiting for connection.")
             time.sleep(0.1)

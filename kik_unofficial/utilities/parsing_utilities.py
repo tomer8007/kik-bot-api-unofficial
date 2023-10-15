@@ -5,6 +5,7 @@ import io
 import os
 import hashlib
 from PIL import Image
+from moviepy.editor import VideoFileClip
 from kik_unofficial.utilities.blockhash import blockhash
 
 
@@ -101,6 +102,54 @@ class ParsingUtilities:
             'blockhash': block_scaled,
             'MD5': md5,
         }
+
+    @staticmethod
+    def parse_video(file_location: [str, bytes, pathlib.Path, io.IOBase]) -> dict:
+        clip = None
+        buffered = None
+        img = None
+        img_str = ""
+        duration = 0
+
+        file_bytes = get_file_bytes(file_location)
+
+        size = len(file_bytes)
+        md5 = hashlib.md5(file_bytes).hexdigest()
+
+        if isinstance(file_location, bytes):
+            file_location = io.BytesIO(file_location)
+
+        try:
+            clip = VideoFileClip(file_location)
+            duration = clip.duration
+
+            frame = clip.get_frame(1)
+            img = Image.fromarray(frame)
+            img.thumbnail((256, 256))
+
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG")
+            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        except Exception as e:
+            print(f"An error occurred parsing video: {str(e)}")
+        finally:
+            # Cleanup
+            if buffered:
+                buffered.close()
+            if img:
+                img.close()
+            if clip:
+                clip.close()
+
+        final = {
+            'size': size,
+            'original': file_bytes,
+            'MD5': md5,
+            'thumbnail_base64': img_str,
+            'duration': duration * 1000
+        }
+
+        return final
 
     @staticmethod
     def fix_base64_padding(data):

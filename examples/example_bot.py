@@ -22,7 +22,7 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedR
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
 
-bot_log = set_up_basic_logging(1, "example_bot")
+bot_log = set_up_basic_logging(2, "example_bot")
 
 
 def main():
@@ -82,6 +82,14 @@ class ExampleBot(KikClientCallback):
         pm = chat_message.body.lower()
         if pm == "image":
             self.client.send_chat_image(chat_message.from_jid, "var/test_image.png")
+        elif pm == "gifr":
+            self.client.send_gif_image(chat_message.from_jid, "robot", API_key="", random_gif=True)
+        elif pm == "gif":
+            self.client.send_gif_image(chat_message.from_jid, "robot", API_key="", random_gif=False)
+        elif pm == "gifs":
+            self.client.send_saved_gif_image(chat_message.from_jid, "var/test_gif.json")
+        elif pm == "video":
+            self.client.send_chat_video(chat_message.from_jid, "var/test_video.mp4", auto_play=True, looping=True)
         elif pm == "ping":
             self.pong_list.append((time.time(), chat_message.from_jid))
             self.client.send_ping()

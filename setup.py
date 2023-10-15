@@ -27,7 +27,7 @@ setup(
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
     ],
-    keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
+    keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python'],
     packages=find_packages(exclude=['docs', 'test']),
     install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf>=4.21.0', 'requests', 'pillow', 'pyDes', 'python-dotenv', 'colorama~=0.4.6', 'moviepy~=1.0.3'],
     extras_require={'dev': [],'test': []},

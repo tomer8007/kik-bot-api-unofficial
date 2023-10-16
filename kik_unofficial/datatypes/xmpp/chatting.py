@@ -116,7 +116,7 @@ class OutgoingChatImage(XMPPElement):
         return list(packets)
 
 
-class OutgoingChatVideo(XMPPElement):
+class OutgoingVideoMessage(XMPPElement):
     """
    Represents an outgoing image chat message to another kik entity (member or group)
    """

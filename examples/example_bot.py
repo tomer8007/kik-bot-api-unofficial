@@ -89,7 +89,7 @@ class ExampleBot(KikClientCallback):
         elif pm == "gifs":
             self.client.send_saved_gif_image(chat_message.from_jid, "var/test_gif.json")
         elif pm == "video":
-            self.client.send_chat_video(chat_message.from_jid, "var/test_video.mp4", auto_play=True, looping=True)
+            self.client.send_video_message(chat_message.from_jid, "var/test_video.mp4", auto_play=True, looping=True)
         elif pm == "ping":
             self.pong_list.append((time.time(), chat_message.from_jid))
             self.client.send_ping()

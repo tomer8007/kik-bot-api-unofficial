@@ -204,7 +204,7 @@ class KikClient:
         content.upload_gallery_image(image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
         return self._send_xmpp_element(image_request)
 
-    def send_chat_video(self, peer_jid: str, video_file, forward=True, save=True,
+    def send_video_message(self, peer_jid: str, video_file, forward=True, save=True,
                         auto_play=False, muted=False, looping=False):
         """
         Sends an image chat message to another person or a group with the given JID/username.
@@ -224,7 +224,7 @@ class KikClient:
 
         self.log.info(f' Sending chat video to {"group" if is_group else "user"} \'{peer_jid}\'')
 
-        video_request = chatting.OutgoingChatVideo(peer_jid, video_file, forward, save, auto_play, muted, looping, is_group)
+        video_request = chatting.OutgoingVideoMessage(peer_jid, video_file, forward, save, auto_play, muted, looping, is_group)
 
         # Do not send the video stanza until the video is successfully uploaded to the Kik platform server
         # This prevents "failed to load" errors

@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 from kik_unofficial.datatypes.exceptions import KikUploadError
-from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage, OutgoingChatVideo
+from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage, OutgoingVideoMessage
 from kik_unofficial.datatypes.xmpp.errors import ServiceRequestError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
@@ -53,7 +53,7 @@ def send_gallery_image(image, url, jid, username, password):
     ).start()
 
 
-def upload_gallery_video(video: OutgoingChatVideo, jid, username, password):
+def upload_gallery_video(video: OutgoingVideoMessage, jid, username, password):
     url = f"https://platform.kik.com/content/files/{video.content_id}"
     send_gallery_video(video, url, jid, username, password)
 

@@ -63,11 +63,11 @@ class ColoredFormatter(logging.Formatter):
             level_name = 'WARNING'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTYELLOW_EX}'
         elif record.levelno == logging.ERROR:
-            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTRED_EX}#{reset}]'
+            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTRED_EX}-{reset}]'
             level_name = 'ERROR'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTRED_EX}'
         elif record.levelno == logging.CRITICAL:
-            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}*{reset}]'
+            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}#{reset}]'
             level_name = 'CRITICAL'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}'
         else:

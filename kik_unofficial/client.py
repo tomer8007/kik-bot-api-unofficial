@@ -33,8 +33,8 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), logger_name: str = "kik_unofficial", log_level: int = 1,
-                 log_file_path: str = None) -> None:
+                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
+                 logger_name: str = "kik_unofficial", log_file_path: str = None) -> None:
 
         """
         Initializes a connection to Kik servers.
@@ -47,10 +47,12 @@ class KikClient:
         :param kik_password: the kik password to log in with.
         :param kik_node: the username plus 3 letters after the "_" and before the "@" in the JID. If you know it,
                          authentication will happen faster and without a login. otherwise supply None.
-        :param device_id: a unique device ID. If you don't supply one, a random one will be generated. (generated at _on_connection_made)
+        :param device_id: a unique device ID. If you don't supply one, a random one will be generated. (generated in __init__ if None)
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
+        ;param log_level: Level of logging 1 debug, 2 info, 3 warn, 4 error, 5 critical.
+        ;param logger_name; Name to use for the logger.
         ;param log_file_path: If set will create a daily rotated log file and archive for 7 days.
-        ;param log_level: Level of logging 1 debug, 2 info, 3 warn, 4 error, 5 critical
+
         """
 
         globals.LOGGER_NAME = logger_name
@@ -61,7 +63,7 @@ class KikClient:
         self.password = kik_password
         self.kik_node = kik_node
         self.kik_email = None
-        self.device_id = device_id
+        self.device_id = device_id or random_device_id()
         self.android_id = android_id
 
         self.callback = callback
@@ -89,12 +91,13 @@ class KikClient:
         self.kik_connection_thread.start()
 
     def wait_for_messages(self):
-        for _ in range(5):
+        for i in range(5):
             self.kik_connection_thread.join()
-            self.log.info("Connection has disconnected, trying again...")
+            if i == 0:
+                self.log.warning("Connection has <<disconnected>>, trying again...")
             time.sleep(1)
 
-        self.log.info("Failed to reconnect, exiting...")
+        self.log.critical("<<Failed>> to reconnect, exiting...")
 
     def _on_connection_made(self):
         """
@@ -109,10 +112,8 @@ class KikClient:
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password,
                                                                  self.device_id)
         else:
-            # only generate new device id if one is not supplied
-            if self.device_id is None:
-                self.device_id = random_device_id()
             message = login.MakeAnonymousStreamInitTag(self.device_id, n=1)
+
         self.initial_connection_payload = message.serialize()
         self.connection.send_raw_data(self.initial_connection_payload)
 
@@ -208,7 +209,7 @@ class KikClient:
         content.upload_gallery_image(image_request, self.kik_node + '@talk.kik.com', self.username, self.password)
         return self._send_xmpp_element(image_request)
 
-    def send_video_message(self, peer_jid: str, video_file, forward=True, save=True,
+    def send_video_message(self, peer_jid: str, video_file, allow_forward=True, allow_save=True,
                         auto_play=False, muted=False, looping=False):
         """
         Sends a video message to another person or a group with the given JID/username.
@@ -228,7 +229,7 @@ class KikClient:
 
         self.log.info(f' Sending chat video to {"group" if is_group else "user"} \'{peer_jid}\'')
 
-        video_request = chatting.OutgoingVideoMessage(peer_jid, video_file, forward, save, auto_play, muted, looping, is_group)
+        video_request = chatting.OutgoingVideoMessage(peer_jid, video_file, allow_forward, allow_save, auto_play, muted, looping, is_group)
 
         # Do not send the video stanza until the video is successfully uploaded to the Kik platform server
         # This prevents "failed to load" errors
@@ -643,6 +644,7 @@ class KikClient:
 
         :param k_element: The XML element we just received from kik.
         """
+
         if k_element['ok'] == "1":
             self.connected = True
 
@@ -656,10 +658,13 @@ class KikClient:
                 self.login(self.username, self.password)
                 self.should_login_on_connection = False
         else:
-            #TODO Add some sort of retry with user/password if auth failed with kik_node and
-            # if password is incorrect shutdown, don't retry
-
-            self.callback.on_connection_failed(login.ConnectionFailedResponse(k_element))
+            conn_failed = login.ConnectionFailedResponse(k_element)
+            if self.kik_node is not None:
+                self.log.error(f" Authentication failed {conn_failed.message}, trying to log in with user/password.")
+                self.kik_node = None
+                self._connect()
+            else:
+                self.callback.on_connection_failed(conn_failed)
 
     def _handle_received_iq_element(self, iq_element: BeautifulSoup):
         """
@@ -763,12 +768,13 @@ class KikClient:
         The Kik Connection thread main function.
         Initiates the asyncio loop and actually connects.
         """
+
         # If there is already a connection going, than wait for it to stop
         if self.loop and self.loop.is_running():
             self.loop.call_soon_threadsafe(self.connection.close)
             self.log.debug("Waiting for the previous connection to stop.")
             while self.loop.is_running():
-                self.log.debug("Still Waiting for the previous connection to stop.")
+                self.log.warning("Still Waiting for the previous connection to stop.")
                 time.sleep(1)
 
         self.log.info("Initiating the Kik Connection thread and connecting to kik server...")
@@ -864,6 +870,7 @@ class KikConnection(Protocol):
         return data.endswith(b'</' + expected_end_tag + b'>')
 
     def connection_lost(self, exception):
+        self.log.debug("KikConnection: Lost Connection")
         self.loop.call_soon_threadsafe(self.api._on_connection_lost)
         self.loop.stop()
 

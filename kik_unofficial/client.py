@@ -22,6 +22,7 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
+from kik_unofficial.utilities import globals
 
 HOST, PORT = CryptographicUtils.get_kik_host_name(), 5223
 
@@ -32,8 +33,9 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
-                 enable_logging: bool = False, log_file_path: str = None) -> None:
+                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), logger_name: str = "kik_unofficial", log_level: int = 1,
+                 log_file_path: str = None) -> None:
+
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -47,12 +49,13 @@ class KikClient:
                          authentication will happen faster and without a login. otherwise supply None.
         :param device_id: a unique device ID. If you don't supply one, a random one will be generated. (generated at _on_connection_made)
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
-        :param enable_logging: If true, turns on logging to stdout (default: False)
         ;param log_file_path: If set will create a daily rotated log file and archive for 7 days.
+        ;param log_level: Level of logging 1 debug, 2 info, 3 warn, 4 error, 5 critical
         """
-        # turn on logging with basic configuration
-        if enable_logging:
-            self.log = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial", log_file_path=log_file_path)
+
+        globals.LOGGER_NAME = logger_name
+
+        self.log = set_up_basic_logging(log_level=log_level, logger_name=logger_name, log_file_path=log_file_path)
 
         self.username = kik_username
         self.password = kik_password
@@ -106,8 +109,9 @@ class KikClient:
             message = login.EstablishAuthenticatedSessionRequest(self.kik_node, self.username, self.password,
                                                                  self.device_id)
         else:
-            # if device id is not known, we generate a random one
-            self.device_id = random_device_id()
+            # only generate new device id if one is not supplied
+            if self.device_id is None:
+                self.device_id = random_device_id()
             message = login.MakeAnonymousStreamInitTag(self.device_id, n=1)
         self.initial_connection_payload = message.serialize()
         self.connection.send_raw_data(self.initial_connection_payload)
@@ -652,6 +656,9 @@ class KikClient:
                 self.login(self.username, self.password)
                 self.should_login_on_connection = False
         else:
+            #TODO Add some sort of retry with user/password if auth failed with kik_node and
+            # if password is incorrect shutdown, don't retry
+
             self.callback.on_connection_failed(login.ConnectionFailedResponse(k_element))
 
     def _handle_received_iq_element(self, iq_element: BeautifulSoup):

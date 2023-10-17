@@ -8,9 +8,9 @@ import rsa
 import time
 
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
+from kik_unofficial.utilities import globals
 
-
-log = logging.getLogger(__name__)
+log = logging.getLogger(globals.LOGGER_NAME)
 identifierHex = "30820122300d06092a864886f70d01010105000382010f00"
 
 

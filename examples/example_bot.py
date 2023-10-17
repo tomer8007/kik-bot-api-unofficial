@@ -20,9 +20,6 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoR
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, TempBanElement
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
-from kik_unofficial.utilities.logging_utils import set_up_basic_logging
-
-bot_log = set_up_basic_logging(2, "example_bot")
 
 
 def main():
@@ -47,7 +44,6 @@ def main():
 class ExampleBot(KikClientCallback):
     def __init__(self, creds: dict):
         self.bot_display_name = None
-        self.log = bot_log
         self.pong_list = []
 
         username = creds['username']
@@ -58,8 +54,12 @@ class ExampleBot(KikClientCallback):
         android_id = creds['android_id']
         node = creds.get('node')  # If you don't know it, set it to None
 
-        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id,
-                                enable_logging=True, log_file_path="var/test.log", log_level=2)
+        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, logger_name="example_bot",
+                                log_file_path="var/example_bot.log", log_level=1)
+
+        # Utilize the APIs Logging for bot
+        self.log = self.client.log
+
         self.client.wait_for_messages()
 
     # --------------------------------------------
@@ -223,7 +223,8 @@ class ExampleBot(KikClientCallback):
 
     def on_pong(self, response: KikPongResponse):
         if len(self.pong_list) >= 1:
-            self.client.send_chat_message(self.pong_list[0][1], f"Pong Received Took {round((response.received_time - self.pong_list[0][0]) * 1000, 2)} ms")
+            self.client.send_chat_message(self.pong_list[0][1],
+                                          f"Pong Received Took {round((response.received_time - self.pong_list[0][0]) * 1000, 2)} ms")
             self.pong_list.pop()
 
         self.log.info(f'Pong returned: {response.received_time}')
@@ -240,7 +241,8 @@ class ExampleBot(KikClientCallback):
         user_text = '\n'.join([str(us) for us in users])
         group_text = '\n'.join([str(gr) for gr in groups])
         partner_count = len(response.peers)
-        self.log.info(f'Roster Recieved\nTotal Peers: {str(partner_count)}\n Groups:\n{group_text}\nUsers:\n{user_text}\n')
+        self.log.info(
+            f'Roster Recieved\nTotal Peers: {str(partner_count)}\n Groups:\n{group_text}\nUsers:\n{user_text}\n')
 
     # Listener for friend attributions
     def on_friend_attribution(self, response: chatting.IncomingFriendAttribution):

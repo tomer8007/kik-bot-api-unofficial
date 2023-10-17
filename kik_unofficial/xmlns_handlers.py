@@ -17,8 +17,9 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoR
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
+from kik_unofficial.utilities import globals
 
-log = logging.getLogger('kik_unofficial')
+log = logging.getLogger(globals.LOGGER_NAME)
 
 
 class XmppHandler:

@@ -22,7 +22,6 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.http import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
-from kik_unofficial.utilities import globals
 
 HOST, PORT = CryptographicUtils.get_kik_host_name(), 5223
 
@@ -33,8 +32,7 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
-                 logger_name: str = "kik_unofficial", log_file_path: str = None) -> None:
+                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1, log_file_path: str = None) -> None:
 
         """
         Initializes a connection to Kik servers.
@@ -55,9 +53,7 @@ class KikClient:
 
         """
 
-        globals.LOGGER_NAME = logger_name
-
-        self.log = set_up_basic_logging(log_level=log_level, logger_name=logger_name, log_file_path=log_file_path)
+        self.log = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial", log_file_path=log_file_path)
 
         self.username = kik_username
         self.password = kik_password

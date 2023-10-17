@@ -54,7 +54,7 @@ class ExampleBot(KikClientCallback):
         android_id = creds['android_id']
         node = creds.get('node')  # If you don't know it, set it to None
 
-        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, logger_name="example_bot",
+        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id,
                                 log_file_path="var/example_bot.log", log_level=1)
 
         # Utilize the APIs Logging for bot

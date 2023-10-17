@@ -9,9 +9,8 @@ from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage, OutgoingVi
 from kik_unofficial.datatypes.xmpp.errors import ServiceRequestError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
-from kik_unofficial.utilities import globals
 
-log = logging.getLogger(globals.LOGGER_NAME)
+log = logging.getLogger("kik_unofficial")
 SALT = "YA=57aSA!ztajE5"
 
 

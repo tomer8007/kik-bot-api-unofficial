@@ -211,7 +211,7 @@ class KikClient:
     def send_video_message(self, peer_jid: str, video_file, forward=True, save=True,
                         auto_play=False, muted=False, looping=False):
         """
-        Sends an image chat message to another person or a group with the given JID/username.
+        Sends a video message to another person or a group with the given JID/username.
         WARNING: videos above 15 MB (15728640 bytes) will be rejected by Kik's upload server.
 
         :param forward: Allow forwarding of the video. bool

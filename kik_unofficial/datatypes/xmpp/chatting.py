@@ -499,7 +499,8 @@ class IncomingGifMessage(XMPPResponse):
         self.from_jid = data['from'] if data else None
         self.to_jid = data['to'] if data else None
         self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
-        self.uris = [self.Uri(uri) for uri in data.content.uris]
+        self.uris = []
+        if data.uri: self.uris.extend(self.Uri(uri) for uri in data.uri)
 
     class Uri:
         def __init__(self, uri):

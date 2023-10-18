@@ -10,7 +10,7 @@ from kik_unofficial.datatypes.xmpp.errors import ServiceRequestError
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
 
-log = logging.getLogger("kik_unofficial")
+logger = logging.getLogger("kik_unofficial")
 SALT = "YA=57aSA!ztajE5"
 
 
@@ -95,7 +95,7 @@ def media_upload_thread(media, url, headers, media_type="image"):
     retry_delay = 2
     for attempt in range(max_retries):
         try:
-            log.debug(f'Uploading Media {media_type}')
+            logger.debug(f'Uploading Media {media_type}')
             if media_type == "image":
                 media_data = media.parsed_image["original"]
             elif media_type == "video":
@@ -105,18 +105,18 @@ def media_upload_thread(media, url, headers, media_type="image"):
 
             r = requests.put(url, data=media_data, headers=headers)
             r.raise_for_status()
-            log.debug(f'Media {media_type} uploaded successfully')
+            logger.debug(f'Media {media_type} uploaded successfully')
             break
         except requests.exceptions.HTTPError as e:
             if r is not None and r.status_code in [500, 502, 503, 504]:
-                log.warning(f'Failed to upload media {media_type}, attempt {attempt + 1}: {str(e)}')
+                logger.warning(f'Failed to upload media {media_type}, attempt {attempt + 1}: {str(e)}')
                 if attempt < max_retries - 1:
-                    log.debug(f'Retrying in {retry_delay} seconds...')
+                    logger.debug(f'Retrying in {retry_delay} seconds...')
                     time.sleep(retry_delay)
                 continue
             else:
-                log.error(f'Failed to upload media {media_type}: {str(e)}')
+                logger.error(f'Failed to upload media {media_type}: {str(e)}')
                 break
         except Exception as e:
-            log.error(f'An error occurred while uploading media {media_type}: {str(e)}')
+            logger.error(f'An error occurred while uploading media {media_type}: {str(e)}')
             break

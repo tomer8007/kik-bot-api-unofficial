@@ -19,7 +19,7 @@ from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasRes
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
 
 
-log = logging.getLogger("kik_unofficial")
+logger = logging.getLogger("kik_unofficial")
 
 
 class XmppHandler:
@@ -51,8 +51,8 @@ class XMPPMessageHandler(XmppHandler):
             elif data.find('xiphias-mobileremote-call'):
                 # usually SafetyNet-related (?)
                 mobile_remote_call = data.find('xiphias-mobileremote-call')
-                log.warning(
-                    f"[!] Received mobile-remote-call with method '{mobile_remote_call['method']}' of service '{mobile_remote_call['service']}'"
+                logger.warning(
+                    f"Received mobile-remote-call with method '{mobile_remote_call['method']}' of service '{mobile_remote_call['service']}'"
                 )
             elif data.content and 'app-id' in data.content.attrs:
                 app_id = data.content['app-id']
@@ -71,10 +71,10 @@ class XMPPMessageHandler(XmppHandler):
                 elif app_id == 'com.kik.cards':
                     self.callback.on_card_received(IncomingCardMessage(data))
                 else:
-                    log.warning(f'Unknown App ID {app_id}')
+                    logger.warning(f'Unknown App ID {app_id}')
             else:
                 # what else? GIFs?
-                log.debug(f"[-] Received unknown chat message. contents: {str(data)}")
+                logger.warning(f"Received unknown chat message. contents: {str(data)}")
 
         elif data['type'] == 'receipt':
             #
@@ -126,11 +126,11 @@ class XMPPMessageHandler(XmppHandler):
                 elif app_id == 'com.kik.cards':
                     self.callback.on_card_received(IncomingCardMessage(data))
                 else:
-                    log.warning(f'Unknown app_id: {app_id}')
+                    logger.warning(f'Unknown app_id: {app_id}')
             else:
-                log.critical(f'Received unknown group chat message sent through PM chat. contents: {str(data)}')
+                logger.critical(f'Received unknown group chat message sent through PM chat. contents: {str(data)}')
         else:
-            log.debug(f"Received unknown message type. contents: {str(data)}")
+            logger.debug(f"Received unknown message type. contents: {str(data)}")
 
 
 class GroupXMPPMessageHandler(XmppHandler):
@@ -160,9 +160,9 @@ class GroupXMPPMessageHandler(XmppHandler):
             elif app_id == 'com.kik.cards':
                 self.callback.on_card_received(IncomingCardMessage(data))
             else:
-                log.warning(f'Unknown app_id: {app_id}')
+                logger.warning(f'Unknown app_id: {app_id}')
         else:
-            log.debug(f"Received unknown group message. contents: {str(data)}")
+            logger.debug(f"Received unknown group message. contents: {str(data)}")
 
 
 class HistoryHandler(XmppHandler):
@@ -191,12 +191,12 @@ class RegisterOrLoginResponseHandler(XmppHandler):
             if data.find('email'):
                 # sign up
                 sign_up_error = SignUpError(data)
-                log.critical(f"Register error: {sign_up_error}")
+                logger.critical(f"Register error: {sign_up_error}")
                 self.callback.on_register_error(sign_up_error)
 
             else:
                 login_error = LoginError(data)
-                log.critical(f"Login error: {login_error}")
+                logger.critical(f"Login error: {login_error}")
                 self.callback.on_login_error(login_error)
 
         elif message_type == "result":
@@ -206,12 +206,12 @@ class RegisterOrLoginResponseHandler(XmppHandler):
                 self.client.username = response.username
                 self.client.kik_node = response.kik_node
                 self.client.kik_email = response.email
-                log.info(f"Logged in as {response.username}")
+                logger.info(f"Logged in as {response.username}")
                 self.callback.on_login_ended(response)
             else:
                 # sign up successful
                 response = RegisterResponse(data)
-                log.info("Registered.")
+                logger.info("Registered.")
                 self.callback.on_sign_up_ended(response)
 
             self.client._establish_authenticated_session(response.kik_node)

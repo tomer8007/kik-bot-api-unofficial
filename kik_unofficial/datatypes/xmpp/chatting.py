@@ -472,8 +472,8 @@ class IncomingGroupSticker(XMPPResponse):
         self.sticker_id = extras_map['sticker_id'] if 'sticker_id' in extras_map else None
         self.sticker_source = extras_map['sticker_source'] if 'sticker_source' in extras_map else None
         self.png_preview = content.images.find('png-preview').text if content.images.find('png-preview') else None
-        self.uris = []
-        if content.uri: self.uris.extend(self.Uri(uri) for uri in content.uri)
+        uris = content.find_all('uri')
+        self.uris = [self.Uri(uri) for uri in uris]
 
     class Uri:
         def __init__(self, uri):
@@ -500,7 +500,9 @@ class IncomingGifMessage(XMPPResponse):
         self.to_jid = data['to'] if data else None
         self.group_jid = data.g['jid'] if data.g and 'jid' in data.g.attrs else None
         self.uris = []
-        if data.uri: self.uris.extend(self.Uri(uri) for uri in data.uri)
+        uris = data.find_all('uri')
+        if uris:
+            self.uris.extend(self.Uri(uri) for uri in uris)
 
     class Uri:
         def __init__(self, uri):
@@ -512,7 +514,7 @@ class IncomingGifMessage(XMPPResponse):
             if uri.has_attr('type'):
                 self.type = uri['type']
             else:
-                self.type = uri['type'] = "video"
+                self.type = "video"
             self.url = uri.text
 
 

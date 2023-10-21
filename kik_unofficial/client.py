@@ -835,31 +835,28 @@ class KikConnection(Protocol):
 
     def data_received(self, data: bytes):
         self.logger.debug("Received raw data: %s", data)
-        if self.partial_data is None:
-            if len(data) < 16384:
+
+        if not self.partial_data:
+            if len(data) < 16384 and data.endswith(b'>'):
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             else:
                 self.logger.debug("Multi-packet data, waiting for next packet.")
-                start_tag, is_closing = self.parse_start_tag(data)
-                self.partial_data_start_tag = start_tag
+                self.partial_data_start_tag, _ = self.parse_start_tag(data)
                 self.partial_data = data
-        elif self.ends_with_tag(self.partial_data_start_tag, data):
-            self.loop.call_soon_threadsafe(self.api._on_new_data_received, self.partial_data + data)
-            self.partial_data = None
-            self.partial_data_start_tag = None
         else:
-            self.logger.debug(f"Waiting for another packet, size={len(self.partial_data)}")
-            self.partial_data += data
+            full_data = self.partial_data + data
+            if self.ends_with_tag(self.partial_data_start_tag, data):
+                self.loop.call_soon_threadsafe(self.api._on_new_data_received, full_data)
+                self.partial_data, self.partial_data_start_tag = None, None
+            else:
+                self.logger.debug(f"Waiting for another packet, size={len(full_data)}")
+                self.partial_data = full_data
 
     @staticmethod
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
-        tag = data.lstrip(b'<')
-        tag = tag.split(b'>')[0]
-        tag = tag.split(b' ')[0]
+        tag = data.lstrip(b'<').split(b'>')[0].split(b' ')[0]
         is_closing = tag.endswith(b'/')
-        if is_closing:
-            tag = tag[:-1]
-        return tag, is_closing
+        return (tag[:-1] if is_closing else tag), is_closing
 
     @staticmethod
     def ends_with_tag(expected_end_tag: bytes, data: bytes):

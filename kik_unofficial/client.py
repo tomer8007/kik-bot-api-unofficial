@@ -914,17 +914,17 @@ class KikConnection(Protocol):
     def cleanup_buffer(self):
         # This method is called after the cleanup_interval to remove outdated data from the buffer
         current_time = time.time()
-        cleaned_count = 0  # Initialize a counter for cleaned messages
+        cleaned_count = len(self.data_array)  # Initialize a counter for cleaned messages
 
         self.logger.debug("Cleaning up partial data buffer")
         self.data_array = [(ts, data) for (ts, data) in self.data_array if current_time - ts <= self.cleanup_interval]
 
         # Calculate the number of messages cleaned
-        cleaned_count = len(self.data_array) - cleaned_count
+        cleaned_count = cleaned_count - len(self.data_array)
 
         self.cleanup_task = None
 
-        self.logger.debug(f"Cleaned up {cleaned_count} messages.")
+        self.logger.info(f"Cleaned up {cleaned_count} messages.")
 
     def connection_lost(self, exception):
         if self.cleanup_task:

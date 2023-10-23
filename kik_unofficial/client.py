@@ -1,4 +1,5 @@
 import asyncio
+import re
 import time
 from threading import Thread, Event
 from typing import Union, List, Tuple
@@ -823,7 +824,7 @@ class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):
         self.api = api
         self.loop = loop
-        self.partial_data = None  # type: bytes
+        self.partial_data = b""  # type: bytes
         self.partial_data_start_tag = None  # type: str
         self.transport = None  # type: Transport
         self.logger = api.logger
@@ -833,30 +834,78 @@ class KikConnection(Protocol):
         self.logger.info("Connected.")
         self.api._on_connection_made()
 
+    # def data_received(self, data: bytes):
+    #     self.logger.debug("Received raw data: %s", data)
+    #
+    #     if not self.partial_data:
+    #         if len(data) < 16384 and data.endswith(b'>'):
+    #             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+    #         else:
+    #             self.logger.debug("Multi-packet data, waiting for next packet.")
+    #             self.partial_data_start_tag, _ = self.parse_start_tag(data)
+    #             self.partial_data = data
+    #     else:
+    #         full_data = self.partial_data + data
+    #         if self.ends_with_tag(self.partial_data_start_tag, data):
+    #             self.loop.call_soon_threadsafe(self.api._on_new_data_received, full_data)
+    #             self.partial_data, self.partial_data_start_tag = None, None
+    #         else:
+    #             self.logger.debug(f"Waiting for another packet, size={len(full_data)}")
+    #             self.partial_data = full_data
+    #
+    # @staticmethod
+    # def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
+    #     tag = data.lstrip(b'<').split(b'>')[0].split(b' ')[0]
+    #     is_closing = tag.endswith(b'/')
+    #     return (tag[:-1] if is_closing else tag), is_closing
+
     def data_received(self, data: bytes):
         self.logger.debug("Received raw data: %s", data)
 
-        if not self.partial_data:
-            if len(data) < 16384 and data.endswith(b'>'):
+        # Handle empty packets wont get caught by logic below
+        if data == b" ":
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+
+        # Handle </pong> messages sometimes they can come in a <ack> message which would be thrown away.
+        pong_match = re.search(b'<pong/>', data)
+        if pong_match:
+            pong_data = pong_match.group()
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, pong_data)
+        else:
+            # Check if it's a full data packet and not a multi-packet message
+            if not self.is_multi_packet(data):
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             else:
-                self.logger.debug("Multi-packet data, waiting for next packet.")
-                self.partial_data_start_tag, _ = self.parse_start_tag(data)
-                self.partial_data = data
-        else:
-            full_data = self.partial_data + data
-            if self.ends_with_tag(self.partial_data_start_tag, data):
-                self.loop.call_soon_threadsafe(self.api._on_new_data_received, full_data)
-                self.partial_data, self.partial_data_start_tag = None, None
+                # Add incoming data to the buffer
+                self.partial_data += data
+
+        while self.partial_data:
+            # Attempt to find the start and end tags within the partial_data
+            start_tag, is_closing = self.parse_start_tag(self.partial_data)
+            expected_end_tag = start_tag if not is_closing else start_tag + b'/'
+            end_tag_position = self.partial_data.find(b'</' + expected_end_tag + b'>')
+
+            if end_tag_position != -1:
+                # Extract the complete XMPP stanza
+                xmpp_stanza = self.partial_data[:end_tag_position + len(expected_end_tag) + 3]
+
+                # Call the callback with the complete XMPP stanza
+                self.loop.call_soon_threadsafe(self.api._on_new_data_received, xmpp_stanza)
+
+                # Remove the processed data from the buffer
+                self.partial_data = self.partial_data[end_tag_position + len(expected_end_tag) + 3:]
             else:
-                self.logger.debug(f"Waiting for another packet, size={len(full_data)}")
-                self.partial_data = full_data
+                # If no complete stanza is found, wait for more data
+                break
 
     @staticmethod
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
         tag = data.lstrip(b'<').split(b'>')[0].split(b' ')[0]
         is_closing = tag.endswith(b'/')
         return (tag[:-1] if is_closing else tag), is_closing
+
+    def is_multi_packet(self, data: bytes):
+        return len(data) < 16384 and data.endswith(b'>') and not data.startswith(b'<')
 
     @staticmethod
     def ends_with_tag(expected_end_tag: bytes, data: bytes):

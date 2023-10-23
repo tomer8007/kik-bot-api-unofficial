@@ -824,7 +824,6 @@ class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):
         self.api = api
         self.loop = loop
-        self.partial_data = b""  # type: bytes
         self.data_buffer = []
         self.partial_data_start_tag = None  # type: str
         self.transport = None  # type: Transport
@@ -868,7 +867,8 @@ class KikConnection(Protocol):
         # Handle empty packets wont get caught by logic below
         if data == b" ":
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-        elif re.search(b'<pong/>', data):
+        # Sometimes Pong comes back in an ack message, handle those.
+        elif re.search(b'<ack id="[^"]*"/><pong/>', data):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
         elif not self.is_multi_packet(data):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)

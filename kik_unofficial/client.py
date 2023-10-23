@@ -825,9 +825,12 @@ class KikConnection(Protocol):
         self.api = api
         self.loop = loop
         self.partial_data = b""  # type: bytes
+        self.data_buffer = []
         self.partial_data_start_tag = None  # type: str
         self.transport = None  # type: Transport
         self.logger = api.logger
+        self.cleanup_interval = 60  # Timeout in seconds for cleaning up the buffer
+        self.cleanup_task = None
 
     def connection_made(self, transport: Transport):
         self.transport = transport
@@ -865,38 +868,38 @@ class KikConnection(Protocol):
         # Handle empty packets wont get caught by logic below
         if data == b" ":
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-
-        # Handle </pong> messages sometimes they can come in a <ack> message which would be thrown away.
-        pong_match = re.search(b'<pong/>', data)
-        if pong_match:
-            pong_data = pong_match.group()
-            self.loop.call_soon_threadsafe(self.api._on_new_data_received, pong_data)
+        elif re.search(b'<pong/>', data):
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+        elif not self.is_multi_packet(data):
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
         else:
-            # Check if it's a full data packet and not a multi-packet message
-            if not self.is_multi_packet(data):
-                self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-            else:
-                # Add incoming data to the buffer
-                self.partial_data += data
+            # Add incoming data to the buffer with a timestamp
+            self.data_buffer.append((time.time(), data))
 
-        while self.partial_data:
-            # Attempt to find the start and end tags within the partial_data
-            start_tag, is_closing = self.parse_start_tag(self.partial_data)
+        if not self.cleanup_task:
+            self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
+
+        self.process_partial_data()
+
+    def process_partial_data(self):
+        to_remove = []
+        for i, (timestamp, data) in enumerate(self.data_buffer):
+            start_tag, is_closing = self.parse_start_tag(data)
             expected_end_tag = start_tag if not is_closing else start_tag + b'/'
-            end_tag_position = self.partial_data.find(b'</' + expected_end_tag + b'>')
+            end_tag_position = data.find(b'</' + expected_end_tag + b'>')
 
             if end_tag_position != -1:
                 # Extract the complete XMPP stanza
-                xmpp_stanza = self.partial_data[:end_tag_position + len(expected_end_tag) + 3]
+                xmpp_stanza = data[:end_tag_position + len(expected_end_tag) + 3]
 
                 # Call the callback with the complete XMPP stanza
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, xmpp_stanza)
 
                 # Remove the processed data from the buffer
-                self.partial_data = self.partial_data[end_tag_position + len(expected_end_tag) + 3:]
-            else:
-                # If no complete stanza is found, wait for more data
-                break
+                to_remove.append(i)
+
+        for i in reversed(to_remove):
+            del self.data_buffer[i]
 
     @staticmethod
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
@@ -907,11 +910,16 @@ class KikConnection(Protocol):
     def is_multi_packet(self, data: bytes):
         return len(data) < 16384 and data.endswith(b'>') and not data.startswith(b'<')
 
-    @staticmethod
-    def ends_with_tag(expected_end_tag: bytes, data: bytes):
-        return data.endswith(b'</' + expected_end_tag + b'>')
+    def cleanup_buffer(self):
+        # This method is called after the cleanup_interval to remove outdated data from the buffer
+        current_time = time.time()
+        self.logger.debug("Cleaning up partial data buffer")
+        self.data_buffer = [(ts, data) for (ts, data) in self.data_buffer if current_time - ts <= self.cleanup_interval]
+        self.cleanup_task = None
 
     def connection_lost(self, exception):
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
         self.logger.debug("KikConnection: Lost Connection")
         self.loop.call_soon_threadsafe(self.api._on_connection_lost)
         self.loop.stop()

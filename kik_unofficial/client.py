@@ -824,7 +824,7 @@ class KikConnection(Protocol):
     def __init__(self, loop, api: KikClient):
         self.api = api
         self.loop = loop
-        self.data_buffer = []
+        self.data_array = []
         self.partial_data_start_tag = None  # type: str
         self.transport = None  # type: Transport
         self.logger = api.logger
@@ -870,11 +870,12 @@ class KikConnection(Protocol):
         # Sometimes Pong comes back in an ack message, handle those.
         elif re.search(b'<ack id="[^"]*"/><pong/>', data):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+        # Normal flow, not Multi Packet, not empty.
         elif not self.is_multi_packet(data):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
         else:
             # Add incoming data to the buffer with a timestamp
-            self.data_buffer.append((time.time(), data))
+            self.data_array.append((time.time(), data))
 
         if not self.cleanup_task:
             self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
@@ -883,7 +884,7 @@ class KikConnection(Protocol):
 
     def process_partial_data(self):
         to_remove = []
-        for i, (timestamp, data) in enumerate(self.data_buffer):
+        for i, (timestamp, data) in enumerate(self.data_array):
             start_tag, is_closing = self.parse_start_tag(data)
             expected_end_tag = start_tag if not is_closing else start_tag + b'/'
             end_tag_position = data.find(b'</' + expected_end_tag + b'>')
@@ -899,7 +900,7 @@ class KikConnection(Protocol):
                 to_remove.append(i)
 
         for i in reversed(to_remove):
-            del self.data_buffer[i]
+            del self.data_array[i]
 
     @staticmethod
     def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
@@ -916,10 +917,10 @@ class KikConnection(Protocol):
         cleaned_count = 0  # Initialize a counter for cleaned messages
 
         self.logger.debug("Cleaning up partial data buffer")
-        self.data_buffer = [(ts, data) for (ts, data) in self.data_buffer if current_time - ts <= self.cleanup_interval]
+        self.data_array = [(ts, data) for (ts, data) in self.data_array if current_time - ts <= self.cleanup_interval]
 
         # Calculate the number of messages cleaned
-        cleaned_count = len(self.data_buffer) - cleaned_count
+        cleaned_count = len(self.data_array) - cleaned_count
 
         self.cleanup_task = None
 

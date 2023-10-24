@@ -1,6 +1,7 @@
 import asyncio
 import re
 import time
+import xml.etree.ElementTree as element_tree
 from threading import Thread, Event
 from typing import Union, List, Tuple
 from asyncio import Transport, Protocol
@@ -33,7 +34,8 @@ class KikClient:
     """
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1, log_file_path: str = None) -> None:
+                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
+                 log_file_path: str = None) -> None:
 
         """
         Initializes a connection to Kik servers.
@@ -54,7 +56,8 @@ class KikClient:
 
         """
 
-        self.logger = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial", log_file_path=log_file_path)
+        self.logger = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial",
+                                           log_file_path=log_file_path)
 
         self.username = kik_username
         self.password = kik_password
@@ -207,7 +210,7 @@ class KikClient:
         return self._send_xmpp_element(image_request)
 
     def send_video_message(self, peer_jid: str, video_file, allow_forward=True, allow_save=True,
-                        auto_play=False, muted=False, looping=False):
+                           auto_play=False, muted=False, looping=False):
         """
         Sends a video message to another person or a group with the given JID/username.
         WARNING: videos above 15 MB (15728640 bytes) will be rejected by Kik's upload server.
@@ -226,7 +229,8 @@ class KikClient:
 
         self.logger.info(f' Sending chat video to {"group" if is_group else "user"} \'{peer_jid}\'')
 
-        video_request = chatting.OutgoingVideoMessage(peer_jid, video_file, allow_forward, allow_save, auto_play, muted, looping, is_group)
+        video_request = chatting.OutgoingVideoMessage(peer_jid, video_file, allow_forward, allow_save, auto_play, muted,
+                                                      looping, is_group)
 
         # Do not send the video stanza until the video is successfully uploaded to the Kik platform server
         # This prevents "failed to load" errors
@@ -282,10 +286,12 @@ class KikClient:
         """
         if self.is_group_jid(peer_jid):
             self.logger.info(f"Sending a GIF message to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=True))
+            return self._send_xmpp_element(
+                chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=True))
         else:
             self.logger.info(f"Sending a GIF message to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=False))
+            return self._send_xmpp_element(
+                chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, random_gif=random_gif, is_group=False))
 
     def send_saved_gif_image(self, peer_jid: str, gif_path):
         """
@@ -319,7 +325,8 @@ class KikClient:
         return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))
 
     def send_link(self, peer_jid, link, title, text='', app_name='Webpage', thumbnail=None, allow_forward=True):
-        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name, thumbnail, allow_forward))
+        return self._send_xmpp_element(
+            chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name, thumbnail, allow_forward))
 
     def xiphias_get_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -657,7 +664,8 @@ class KikClient:
         else:
             conn_failed = login.ConnectionFailedResponse(k_element)
             if self.kik_node is not None:
-                self.logger.error(f" Authentication failed {conn_failed.message}, trying to logger in with user/password.")
+                self.logger.error(
+                    f" Authentication failed {conn_failed.message}, trying to logger in with user/password.")
                 self.kik_node = None
                 self._connect()
             else:
@@ -836,80 +844,142 @@ class KikConnection(Protocol):
         self.logger.info("Connected.")
         self.api._on_connection_made()
 
-    # def data_received(self, data: bytes):
-    #     self.logger.debug("Received raw data: %s", data)
-    #
-    #     if not self.partial_data:
-    #         if len(data) < 16384 and data.endswith(b'>'):
-    #             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-    #         else:
-    #             self.logger.debug("Multi-packet data, waiting for next packet.")
-    #             self.partial_data_start_tag, _ = self.parse_start_tag(data)
-    #             self.partial_data = data
-    #     else:
-    #         full_data = self.partial_data + data
-    #         if self.ends_with_tag(self.partial_data_start_tag, data):
-    #             self.loop.call_soon_threadsafe(self.api._on_new_data_received, full_data)
-    #             self.partial_data, self.partial_data_start_tag = None, None
-    #         else:
-    #             self.logger.debug(f"Waiting for another packet, size={len(full_data)}")
-    #             self.partial_data = full_data
-    #
-    # @staticmethod
-    # def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
-    #     tag = data.lstrip(b'<').split(b'>')[0].split(b' ')[0]
-    #     is_closing = tag.endswith(b'/')
-    #     return (tag[:-1] if is_closing else tag), is_closing
-
     def data_received(self, data: bytes):
+        """
+        Handles the reception of new data packets and orchestrates the appropriate actions based on their contents.
+        """
+
         self.logger.debug("Received raw data: %s", data)
 
-        # Handle empty packets wont get caught by logic below
+        # Handle empty packets
         if data == b" ":
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-        # Sometimes Pong comes back in an ack message, handle those.
-        elif re.search(b'<ack id="[^"]*"/><pong/>', data):
+            return
+
+        # Handle 'ack' packets with 'pong'
+        if re.search(b'<ack id="[^"]*"/><pong/>', data):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
-        # Normal flow, not Multi Packet, not empty.
-        elif not self.is_multi_packet(data):
+            return
+
+        is_multipacket, is_start, tag = self.analyze_and_parse_packet(data)
+
+        # Normal packet handling
+        if not is_multipacket:
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
         else:
-            # Add incoming data to the buffer with a timestamp
-            self.data_array.append((time.time(), data))
+            # Add incoming data to buffer for further processing
+            self.data_array.append((time.time(), tag, is_start, data))
+
+            self.process_partial_data()
 
         if not self.cleanup_task:
             self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
 
-        self.process_partial_data()
-
     def process_partial_data(self):
+        """Processes multi-packet data, combining them as needed."""
         to_remove = []
-        for i, (timestamp, data) in enumerate(self.data_array):
-            start_tag, is_closing = self.parse_start_tag(data)
-            expected_end_tag = start_tag if not is_closing else start_tag + b'/'
-            end_tag_position = data.find(b'</' + expected_end_tag + b'>')
+        i = 0
 
-            if end_tag_position != -1:
-                # Extract the complete XMPP stanza
-                xmpp_stanza = data[:end_tag_position + len(expected_end_tag) + 3]
+        while i < len(self.data_array):
+            timestamp, tag, is_start, packet_data = self.data_array[i]
 
-                # Call the callback with the complete XMPP stanza
-                self.loop.call_soon_threadsafe(self.api._on_new_data_received, xmpp_stanza)
+            if not is_start:
+                # Handle stray end tags
+                if i == 0:
+                    to_remove.append(i)
+                i += 1
+                continue
 
-                # Remove the processed data from the buffer
-                to_remove.append(i)
+            # Start tag processing
+            combined_data = packet_data
 
-        for i in reversed(to_remove):
-            del self.data_array[i]
+            # Check for next packet
+            if i + 1 < len(self.data_array):
+                _, next_tag, next_is_start, next_packet_data = self.data_array[i + 1]
+
+                # Mismatched start-end tags, skip
+                if next_is_start or tag != next_tag:
+                    i += 1
+                    continue
+
+                combined_data += next_packet_data
+            else:
+                i += 1
+                continue
+
+            # Attempt to parse the combined data
+            if self.is_valid_xml(combined_data):
+                self.loop.call_soon_threadsafe(self.api._on_new_data_received, combined_data)
+                to_remove.extend([i, i + 1])
+                i += 2
+                continue
+            else:
+                self.logger.warning(f"Invalid XML encountered: {combined_data}")
+                i += 1
+
+        # Cleanup processed data entries
+        for index in reversed(to_remove):
+            del self.data_array[index]
 
     @staticmethod
-    def parse_start_tag(data: bytes) -> Tuple[bytes, bool]:
-        tag = data.lstrip(b'<').split(b'>')[0].split(b' ')[0]
-        is_closing = tag.endswith(b'/')
-        return (tag[:-1] if is_closing else tag), is_closing
+    def is_valid_xml(data: bytes) -> bool:
+        """Checks if the given data forms a valid XML."""
+        try:
+            element_tree.fromstring(data)
+            return True
+        except element_tree.ParseError:
+            return False
 
-    def is_multi_packet(self, data: bytes):
-        return len(data) < 16384 and data.endswith(b'>') and not data.startswith(b'<')
+    @staticmethod
+    def analyze_and_parse_packet(data: bytes) -> (bool, bool, str):
+        """
+        Analyzes a data packet to determine if it's multi-packet and if it's a start tag.
+        It also parses and returns the tag present in the data packet.
+
+        Returns:
+            tuple: A tuple where:
+                - The first value is a boolean indicating if it's a multi-packet.
+                - The second value is a boolean indicating if it's a start tag.
+                - The third value is the tag name present in the data packet.
+        """
+        is_multi = False
+        is_start = False
+        tag = ""
+
+        # Check for multi-packet
+        if data.startswith(b'<') and not data.endswith(b'>'):
+            is_multi = True
+            is_start = True
+            # Potential end or middle of multi-packet sequence
+        elif not data.startswith(b'<') and data.endswith(b'>'):
+            is_multi = True
+
+        # Parse tag
+        if is_start and is_multi:
+            # For start tag
+            start_pos = data.find(b'<')
+            end_pos_space = data.find(b' ', start_pos)
+            end_pos_bracket = data.find(b'>', start_pos)
+
+            if end_pos_space == -1:
+                end_pos = end_pos_bracket
+            elif end_pos_bracket == -1:
+                end_pos = end_pos_space
+            else:
+                end_pos = min(end_pos_space, end_pos_bracket)
+
+            if start_pos != -1 and end_pos != -1:
+                tag = data[start_pos + 1:end_pos].decode('utf-8')
+
+        elif not is_start and is_multi:
+            # For end tag
+            start_pos = data.rfind(b'</')
+            end_pos = data.find(b'>', start_pos)
+
+            if start_pos != -1 and end_pos != -1:
+                tag = data[start_pos + 2:end_pos].decode('utf-8')
+
+        return is_multi, is_start, tag
 
     def cleanup_buffer(self):
         # This method is called after the cleanup_interval to remove outdated data from the buffer

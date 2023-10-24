@@ -125,7 +125,6 @@ class ParsingUtilities:
 
             frame = clip.get_frame(1)
             img = Image.fromarray(frame)
-            img.thumbnail((256, 256))
 
             buffered = io.BytesIO()
             img.save(buffered, format="JPEG")

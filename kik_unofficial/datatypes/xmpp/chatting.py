@@ -582,7 +582,7 @@ class OutgoingGIFMessage(XMPPElement):
             return None, None
 
         try:
-            gif = json.loads(r.content.decode('ascii'))
+            gif = json.loads(r.content.decode('utf-8'))
 
             if len(gif["results"]) == 0:
                 return None, None
@@ -605,7 +605,7 @@ class OutgoingGIFMessage(XMPPElement):
 
             return img_str, gif["results"][chosen_index]["media_formats"]
 
-        except (KeyError, TypeError, IndexError, json.JSONDecodeError):
+        except (KeyError, TypeError, IndexError, UnicodeDecodeError, json.JSONDecodeError):
             return None, None
 
 

@@ -856,9 +856,21 @@ class KikConnection(Protocol):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             return
 
-        # Handle 'ack' packets with 'pong'
-        if re.search(b'<ack id="[^"]*"/><pong/>', data):
-            self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+        # remove ack packets from data Sometimes they can surround other data and make it useless.
+        """
+        b'<ack id="216d3bdb-f49f-46d6-8fee-00b800f3c6e4"/><ack id="3708b946-b1a9-4638-a270-feca3d003fb8"/>
+        <ack id="4ccea4e6-febc-44fa-b039-ccea66a59d59"/><ack id="8e90c3d4-ae7d-4c56-99a9-04c861fe9b6b"/>
+        <ack id="ada11cbe-bf25-46e7-bb4b-283b85efafb6"/><ack id="71a6efec-21f9-4b8d-af5b-e9af64090a6e"/>
+        <ack id="b70a2d5d-bafe-4aa5-a913-0ec8ea165d6c"/><ack id="be079172-1f28-4536-93f3-07e777cbf044"/>
+        <ack id="686bb77f-f88c-4c96-ac08-97d8e086d7a0"/>
+        <iq id="216d3bdb-f49f-46d6-8fee-00b800f3c6e4" type="result" to="xxxxx"><query service="mobile.entity.v1.Entity" xmlns="kik:iq:xiphias:bridge" method="GetUsersByAlias"><body>xxx</body></query></iq>
+        <ack id="2a2cac3f-ea4c-4d82-8358-faa1b0fd1536"/><ack id="a180f4c2-6245-4c13-94a7-ca98556e1fb4"/>
+        <ack id="cef965cb-8f27-4230-8c25-de5044faf5d0"/>'
+        """
+
+        if re.search(b'<ack .*?/>', data):
+            cleaned_data = re.sub(b'<ack .*?/>', b'', data)
+            self.loop.call_soon_threadsafe(self.api._on_new_data_received, cleaned_data)
             return
 
         is_multipacket, is_start, tag = self.analyze_and_parse_packet(data)

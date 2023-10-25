@@ -901,9 +901,9 @@ class KikConnection(Protocol):
         element_patterns = [
             b'<k .*?>',
             b'<pong/>',
-            b'<iq>.*?</iq>',
-            b'<message>.*?</message>',
-            b'<stc>.*?</stc>'
+            b'<iq .*?>.*?</iq>',
+            b'<message .*?>.*?</message>',
+            b'<stc .*?>.*?</stc>'
         ]
 
         # Extract all matching elements

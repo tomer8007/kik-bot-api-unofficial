@@ -870,6 +870,9 @@ class KikConnection(Protocol):
 
         if re.search(b'<ack .*?/>', data):
             cleaned_data = re.sub(b'<ack .*?/>', b'', data)
+            if data == b'':
+                # just an empty ack message ignore it
+                return
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, cleaned_data)
             return
 

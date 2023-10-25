@@ -573,7 +573,7 @@ class KikClient:
         self.logger.info(f"Changing account email to '{new_email}'")
         return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
-    def disconnect(self, close=False):
+    def disconnect(self, exiting=False):
         """
         Closes the connection to kik's servers.
         """
@@ -581,9 +581,9 @@ class KikClient:
         self.connection.close()
         self.is_expecting_connection_reset = True
 
-        if close:
+        if exiting:
             self.exiting = True
-            self.loop.call_soon(self.loop.stop)
+            self.loop.stop()
 
     # -----------------
     # Internal methods

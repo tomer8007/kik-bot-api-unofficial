@@ -870,7 +870,7 @@ class KikConnection(Protocol):
 
         if re.search(b'<ack .*?/>', data):
             cleaned_data = re.sub(b'<ack .*?/>', b'', data)
-            if data == b'':
+            if cleaned_data == b'':
                 # just an empty ack message ignore it
                 return
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, cleaned_data)
@@ -880,7 +880,11 @@ class KikConnection(Protocol):
 
         # Normal packet handling
         if not is_multipacket:
-            self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
+            # split elements if there is more than one.
+            elements = self.split_elements(data)
+            # send each elements through
+            for el in elements:
+                self.loop.call_soon_threadsafe(self.api._on_new_data_received, el)
         else:
             # Add incoming data to buffer for further processing
             self.data_array.append((time.time(), tag, is_start, data))
@@ -889,6 +893,26 @@ class KikConnection(Protocol):
 
         if not self.cleanup_task:
             self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
+
+    @staticmethod
+    def split_elements(data_bytes):
+        """split data packet in to groups of elements"""
+        # element patterns
+        element_patterns = [
+            b'<k .*?>',
+            b'<pong/>',
+            b'<iq>.*?</iq>',
+            b'<message>.*?</message>',
+            b'<stc>.*?</stc>'
+        ]
+
+        # Extract all matching elements
+        elements = []
+        for pattern in element_patterns:
+            matches = re.findall(pattern, data_bytes)
+            elements.extend(matches)
+
+        return elements
 
     def process_partial_data(self):
         """Processes multi-packet data, combining them as needed."""
@@ -1001,7 +1025,7 @@ class KikConnection(Protocol):
         current_time = time.time()
         cleaned_count = len(self.data_array)  # Initialize a counter for cleaned messages
 
-        self.logger.debug("Cleaning up partial data buffer")
+        self.logger.debug(f"Cleaning up partial data buffer: Total - {cleaned_count}")
         self.data_array = [(ts, data) for (ts, data) in self.data_array if current_time - ts <= self.cleanup_interval]
 
         # Calculate the number of messages cleaned
@@ -1009,7 +1033,7 @@ class KikConnection(Protocol):
 
         self.cleanup_task = None
 
-        self.logger.info(f"Cleaned up {cleaned_count} messages.")
+        self.logger.warning(f"Cleaned up partial data: Removed {cleaned_count} messages.")
 
     def connection_lost(self, exception):
         if self.cleanup_task:

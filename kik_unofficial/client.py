@@ -1039,7 +1039,7 @@ class KikConnection(Protocol):
 
         self.cleanup_task = None
 
-        self.logger.warning(f"Cleaned up partial data: Removed {cleaned_count} messages.")
+        self.logger.debug(f"Cleaned up partial data: Removed {cleaned_count} messages.")
 
     def connection_lost(self, exception):
         if self.cleanup_task:

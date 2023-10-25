@@ -72,6 +72,7 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
+        self.exiting = False
         self.is_expecting_connection_reset = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -93,11 +94,14 @@ class KikClient:
     def wait_for_messages(self):
         for i in range(5):
             self.kik_connection_thread.join()
-            if i == 0:
+            if i == 0 and not self.exiting:
                 self.logger.warning("Connection has <<disconnected>>, trying again...")
+
+            if self.exiting:
+                break
             time.sleep(1)
 
-        self.logger.critical("<<Failed>> to reconnect, exiting...")
+        self.logger.critical("<<Exiting...>>")
 
     def _on_connection_made(self):
         """
@@ -569,7 +573,7 @@ class KikClient:
         self.logger.info(f"Changing account email to '{new_email}'")
         return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
-    def disconnect(self):
+    def disconnect(self, close=False):
         """
         Closes the connection to kik's servers.
         """
@@ -577,7 +581,9 @@ class KikClient:
         self.connection.close()
         self.is_expecting_connection_reset = True
 
-        # self.loop.call_soon(self.loop.stop)
+        if close:
+            self.exiting = True
+            self.loop.call_soon(self.loop.stop)
 
     # -----------------
     # Internal methods

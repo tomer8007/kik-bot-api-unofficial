@@ -12,7 +12,9 @@ class Peer:
     a base class for representing a kik entity that has a JID (such as a user or a group)
     """
     def __init__(self, jid):
+        self.alias_jid = jid
         self.jid = jid
+
 
 
 class User(Peer):
@@ -49,7 +51,7 @@ class User(Peer):
         return f"{self.display_name} ({self.username})"
 
     def __repr__(self):
-        return f"User(jid={self.jid}, username={self.username}, display_name={self.display_name})"
+        return f"User(jid={self.jid}, alias_jid={self.alias_jid}, username={self.username}, display_name={self.display_name})"
 
 
 class Group(Peer):
@@ -83,3 +85,4 @@ class GroupMember(Peer):
         super().__init__(xml_data.text)
         self.is_admin = xml_data.get('a') == '1'
         self.is_owner = xml_data.get('s') == '1'
+        self.dm_privacy = xml_data.get('dmd') == '1'

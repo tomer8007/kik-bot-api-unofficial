@@ -228,18 +228,18 @@ class PeersInfoResponseHandler(XmppHandler):
 
         # add this user to the list of known users if it wasn't encountered before
         for peer_info in peers_info.users:
-            if "_a@talk" not in peer_info.jid:
 
-                # Check to see if message id = to a friend request we sent
-                # If so add the alias_jid to peer_info
+            # Check to see if message id = to a friend request we sent
+            # If so add the alias_jid to peer_info
+            if "_a@talk.kik.com" not in peer_info.jid:
                 if peers_info.message_id in self.client.alias_jid_cache:
                     peer_info.alias_jid = self.client.alias_jid_cache[peers_info.message_id]
                     del self.client.alias_jid_cache[peers_info.message_id]
+                else:
+                    peer_info.alias_jid = "Unavailable"
 
-                self.client._known_users_information.add(peer_info)
-            else:
-                # set the alias_jid to jid, since this is just an alias.
-                peer_info.alias_jid = peer_info.jid
+            self.client._known_users_information.add(peer_info)
+
 
         self.client._new_user_added_event.set()
 

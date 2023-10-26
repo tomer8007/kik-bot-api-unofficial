@@ -328,8 +328,6 @@ class KikClient:
         message = roster.AddFriendRequest(peer_jid)
         if "_a@talk" in peer_jid:
             self.alias_jid_cache[message.message_id] = peer_jid
-        else:
-            return None
 
         return self._send_xmpp_element(message)
 

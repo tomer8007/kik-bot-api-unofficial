@@ -79,6 +79,7 @@ class KikClient:
 
         self._known_users_information = set()
         self._new_user_added_event = Event()
+        self.alias_jid_cache = {}
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
@@ -320,10 +321,17 @@ class KikClient:
                           If you want to request information for more than one user, supply a list of strings.
                           Otherwise, supply a string
         """
+
         return self._send_xmpp_element(roster.QueryUsersInfoRequest(peer_jids))
 
     def add_friend(self, peer_jid):
-        return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
+        message = roster.AddFriendRequest(peer_jid)
+        if "_a@talk" in peer_jid:
+            self.alias_jid_cache[message.message_id] = peer_jid
+        else:
+            return None
+
+        return self._send_xmpp_element(message)
 
     def remove_friend(self, peer_jid):
         return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))

@@ -237,6 +237,9 @@ class PeersInfoResponseHandler(XmppHandler):
                     del self.client.alias_jid_cache[peers_info.message_id]
 
                 self.client._known_users_information.add(peer_info)
+            else:
+                # set the alias_jid to jid, since this is just an alias.
+                peer_info.alias_jid = peer_info.jid
 
         self.client._new_user_added_event.set()
 

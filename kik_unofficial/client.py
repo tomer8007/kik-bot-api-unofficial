@@ -701,8 +701,9 @@ class KikClient:
                 return
 
         query = iq_element.query
-        xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
-        self._handle_response(xml_namespace, iq_element)
+        if query is not None and hasattr(query, 'attrs'):
+            xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
+            self._handle_response(xml_namespace, iq_element)
 
     def _handle_response(self, xmlns, iq_element):
         """

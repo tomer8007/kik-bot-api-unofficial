@@ -126,6 +126,16 @@ class ParsingUtilities:
             frame = clip.get_frame(1)
             img = Image.fromarray(frame)
 
+            # Get original dimensions
+            original_width, original_height = img.size
+
+            # Calculate new dimensions (50% of original)
+            new_width = int(original_width * 0.5)
+            new_height = int(original_height * 0.5)
+
+            # Resize image
+            img = img.resize((new_width, new_height), Image.ANTIALIAS)
+
             buffered = io.BytesIO()
             img.save(buffered, format="JPEG")
             img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")

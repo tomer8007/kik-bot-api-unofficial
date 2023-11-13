@@ -3,8 +3,9 @@
 A Kik bot that just logs every event that it gets (new message, message read, etc.),
 and echos back whatever chat messages it receives.
 """
+import argparse
+import json
 
-import yaml
 import os
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -15,17 +16,21 @@ from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoR
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
 
+
 def main():
     # The credentials file where you store the bot's login information
-    creds_file = "creds.yaml"
-    
-    # Changes the current working directory to /examples
-    if not os.path.isfile(creds_file):
-        os.chdir("examples")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--creds', default='creds.json', help='Path to credentials file')
+    args = parser.parse_args()
 
-    # load the bot's credentials from creds.yaml
-    with open(creds_file) as f:
-        creds = yaml.safe_load(f)
+    # Changes the current working directory to /examples
+    if not os.path.isfile(args.creds):
+        print("Can't find credentials file.")
+        return
+
+    # load the bot's credentials from creds.json
+    with open(args.creds, "r") as f:
+        creds = json.load(f)
 
     # create the bot
     bot = EchoBot(creds)
@@ -35,13 +40,14 @@ class EchoBot(KikClientCallback):
     def __init__(self, creds: dict):
         username = creds['username']
         password = creds.get('password') or input("Enter your password: ")
-        
+
         # optional parameters
         device_id = creds['device_id']
         android_id = creds['android_id']
-        node = creds.get('node') # If you don't know it, set it to None
-        
-        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, enable_logging=True)
+        node = creds.get('node')  # If you don't know it, set it to None
+
+        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id,
+                                enable_logging=True)
         self.client.wait_for_messages()
 
     # Initialization and Authentication
@@ -60,10 +66,10 @@ class EchoBot(KikClientCallback):
 
     def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
         print(f"[+] '{chat_message.from_jid}' from group ID {chat_message.group_jid} says: {chat_message.body}")
-    
+
     def on_image_received(self, image_message: chatting.IncomingImageMessage):
         print(f"[+] Image message was received from {image_message.from_jid}")
-        
+
     # Events and Statuses
     def on_message_delivered(self, response: chatting.IncomingMessageDeliveredEvent):
         print(f"[+] Chat message with ID {response.message_id} is delivered.")
@@ -75,7 +81,8 @@ class EchoBot(KikClientCallback):
         print(f'[+] {response.from_jid} is now {"" if response.is_typing else "not "}typing.')
 
     def on_group_is_typing_event_received(self, response: chatting.IncomingGroupIsTypingEvent):
-        print(f'[+] {response.from_jid} is now {"" if response.is_typing else "not "}typing in group {response.group_jid}')
+        print(
+            f'[+] {response.from_jid} is now {"" if response.is_typing else "not "}typing in group {response.group_jid}')
 
     def on_roster_received(self, response: FetchRosterResponse):
         print("[+] Chat partners:\n" + '\n'.join([str(member) for member in response.peers]))
@@ -91,7 +98,7 @@ class EchoBot(KikClientCallback):
 
     def on_status_message_received(self, response: chatting.IncomingStatusResponse):
         print(f"[+] Status message from {response.from_jid}: {response.status}")
-        
+
     def on_friend_attribution(self, response: chatting.IncomingFriendAttribution):
         print(f"[+] Friend attribution request from {response.referrer_jid}")
 

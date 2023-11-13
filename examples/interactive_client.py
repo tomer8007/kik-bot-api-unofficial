@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import logging
+import os
 import sys
 import time
 import threading
@@ -76,12 +78,20 @@ def chat():
             client.send_chat_message(peer_jid, message)
 
 def main():
+    # The credentials file where you store the bot's login information
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    parser.add_argument('-c', '--creds', default='creds.json', help='Path to credentials file')
     args = parser.parse_args()
-    
-    with open(args.credentials) as f:
-        creds = yaml.safe_load(f)
+
+    # Changes the current working directory to /examples
+    if not os.path.isfile(args.creds):
+        print("Can't find credentials file.")
+        return
+
+    # load the bot's credentials from creds.json
+    with open(args.creds, "r") as f:
+        creds = json.load(f)
+
     device_id = creds['device_id']
     android_id = creds['android_id']
     username = creds['username']
@@ -99,7 +109,7 @@ def main():
 
     # create the client
     callback = InteractiveChatClient()
-    client = KikClient(callback=callback, kik_username=username, kik_password=password, kik_node=node, device_id=device_id, android_id=android_id)
+    client = KikClient(callback=callback, kik_username=username, kik_password=password, kik_node=node, device_id=device_id, android_id=android_id, enable_logging=True, log_level=2)
     client.wait_for_messages()
 
 if __name__ == '__main__':

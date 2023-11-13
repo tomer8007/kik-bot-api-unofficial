@@ -8,7 +8,7 @@ import datetime
 
 
 # turn on logging with basic configuration
-def set_up_basic_logging(log_level, logger_name, log_file_path):
+def set_up_basic_logging(log_level, logger_name, log_file_path=None):
     """
     Set up basic logging using CustomLogger.
 
@@ -63,11 +63,11 @@ class ColoredFormatter(logging.Formatter):
             level_name = 'WARNING'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTYELLOW_EX}'
         elif record.levelno == logging.ERROR:
-            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTRED_EX}#{reset}]'
+            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTRED_EX}-{reset}]'
             level_name = 'ERROR'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTRED_EX}'
         elif record.levelno == logging.CRITICAL:
-            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}*{reset}]'
+            level_icon = f'[{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}#{reset}]'
             level_name = 'CRITICAL'
             highlight_color = f'{Style.BRIGHT}{Fore.LIGHTMAGENTA_EX}'
         else:
@@ -78,7 +78,7 @@ class ColoredFormatter(logging.Formatter):
         for word in message.split():
             if word.startswith('<<') and word.endswith('>>'):
                 message = message.replace(word, f'{highlight_color}{word[2:-2]}{reset}')
-        return f'{time} {level_color}{level_name}:{reset} {level_icon} [Thread-{record.thread}:{record.threadName}] {message.replace(level_name + ": ", "")}'
+        return f'{time} {level_color}{level_name}:{reset} {level_icon} [{record.threadName}] {message.replace(level_name + ": ", "")}'
 
 
 class CustomLogger:

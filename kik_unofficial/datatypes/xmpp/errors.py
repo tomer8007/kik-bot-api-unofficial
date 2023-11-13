@@ -62,12 +62,20 @@ class LoginError(KikError):
         print(f"To continue, complete the captcha in this URL using a browser: {self.captcha_url}")
         captcha_response = input("Next, intercept the request starting with 'https://kik.com/captcha-url' using F12, "
                                  "and paste the response parameter here: ")
-        
+
         # Remove the 'response=' part if it exists (if they just copy the response, .find('=') will return -1, we add 1 to that to get 0, which is the start of the string, so it will still work)
         captcha_response = captcha_response[captcha_response.find('=') + 1:]
-        
+
         kik_client.login(kik_client.username, kik_client.password, captcha_response)
 
     def __str__(self):
         return self.message
 
+
+class ServiceRequestError(XMPPResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        error = data.error
+        self.error_code = int(error['code'])
+        self.type = error['type']
+        self.message_id = data.attrs["id"]

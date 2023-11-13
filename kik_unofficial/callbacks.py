@@ -2,7 +2,7 @@ from typing import Union
 
 from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
 from kik_unofficial.datatypes.xmpp.chatting import *
-from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
+from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError, ServiceRequestError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement, TempBanElement
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
@@ -132,6 +132,9 @@ class KikClientCallback:
         pass
 
     def on_connection_failed(self, response: ConnectionFailedResponse):
+        pass
+
+    def on_service_request_error(self, response: ServiceRequestError):
         pass
 
     def on_captcha_received(self, response: CaptchaElement):

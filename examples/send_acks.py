@@ -4,7 +4,9 @@ A bot that sends acknowledgements for every message in the account's past messag
 """
 
 import argparse
+import json
 import logging
+import os
 import sys
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
@@ -19,14 +21,19 @@ password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
 
 
 def main():
+    # The credentials file where you store the bot's login information
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    parser.add_argument('-c', '--creds', default='creds.json', help='Path to credentials file')
     args = parser.parse_args()
-    
-    with open(args.credentials) as f:
-        creds = yaml.safe_load(f)
-    if not creds.get('password'):
-        creds['password'] = input('Password: ')
+
+    # Changes the current working directory to /examples
+    if not os.path.isfile(args.creds):
+        print("Can't find credentials file.")
+        return
+
+    # load the bot's credentials from creds.json
+    with open(args.creds, "r") as f:
+        creds = json.load(f)
     
     # set up logging
     logger = logging.getLogger()

@@ -3,14 +3,17 @@ import time
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 
+
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
+
 
 class OutgoingAcknowledgement(XMPPElement):
     """
     Represents an outgoing acknowledgement for a message ID
     """
+
     def __init__(self, sender_jid, is_receipt, ack_id, group_jid):
         super().__init__()
         self.sender_jid = sender_jid
@@ -41,13 +44,15 @@ class OutgoingAcknowledgement(XMPPElement):
                 '<history attach="false" />'
                 '</query>'
                 '</iq>'
-        )
+                )
         return data.encode()
+
 
 class OutgoingHistoryRequest(XMPPElement):
     """
     Represents an outgoing request for the account's messaging history
     """
+
     def __init__(self):
         super().__init__()
 
@@ -60,14 +65,15 @@ class OutgoingHistoryRequest(XMPPElement):
                 '<history attach="true" />'
                 '</query>'
                 '</iq>'
-        )
+                )
         return data.encode()
-    
+
 
 class HistoryResponse(XMPPResponse):
     """
     Represents a Kik messaging history response.
     """
+
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.id = data["id"]
@@ -79,30 +85,30 @@ class HistoryResponse(XMPPResponse):
             for message in data.query.history:
                 if message["type"] == "receipt":
                     args = {
-                            'type':'receipt',
-                            'from_jid': message["from"],
-                            'receipt_type':message.receipt["type"],
-                            'id':message.receipt.msgid["id"]
-                            }
+                        'type': 'receipt',
+                        'from_jid': message["from"],
+                        'receipt_type': message.receipt["type"],
+                        'id': message.receipt.msgid["id"]
+                    }
                     self.messages.append(Struct(**args))
                 elif message["type"] == "chat":
                     args = {
-                            'type':'chat',
-                            'id':message["id"],
-                            'from_jid':message["from"],
-                            'body': message.body.text if message.body else None,
-                            'preview': message.preview.text if message.preview else None,
-                            'timestamp': message.kik["timestamp"]
-                            }
+                        'type': 'chat',
+                        'id': message["id"],
+                        'from_jid': message["from"],
+                        'body': message.body.text if message.body else None,
+                        'preview': message.preview.text if message.preview else None,
+                        'timestamp': message.kik["timestamp"]
+                    }
                     self.messages.append(Struct(**args))
                 elif message["type"] == "groupchat":
                     args = {
-                            'type': 'groupchat',
-                            'id': message["id"],
-                            'from_jid': message["from"],
-                            'body': message.body.text if message.body else None,
-                            'preview': message.preview.text if message.preview else None,
-                            'timestamp': message.kik["timestamp"],
-                            'group_jid': message.g["jid"]
-                            }
+                        'type': 'groupchat',
+                        'id': message["id"],
+                        'from_jid': message["from"],
+                        'body': message.body.text if message.body else None,
+                        'preview': message.preview.text if message.preview else None,
+                        'timestamp': message.kik["timestamp"],
+                        'group_jid': message.g["jid"]
+                    }
                     self.messages.append(Struct(**args))

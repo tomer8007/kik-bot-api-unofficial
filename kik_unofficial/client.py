@@ -72,14 +72,14 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
-        self.exiting = False
+        self.is_exiting = False
         self.is_expecting_connection_reset = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
         self._known_users_information = set()
         self._new_user_added_event = Event()
-        self.alias_jid_cache = {}
+        self.friend_request_mapping = {}
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self._connect()
@@ -95,10 +95,10 @@ class KikClient:
     def wait_for_messages(self):
         for i in range(5):
             self.kik_connection_thread.join()
-            if i == 0 and not self.exiting:
+            if i == 0 and not self.is_exiting:
                 self.logger.warning("Connection has <<disconnected>>, trying again...")
 
-            if self.exiting:
+            if self.is_exiting:
                 break
             time.sleep(1)
 
@@ -200,7 +200,7 @@ class KikClient:
         Sends an image chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
-        :param file: The path to the image file OR its bytes OR an IOBase object to send.
+        :param image_file: The path to the image file OR its bytes OR an IOBase object to send.
         :param allow_save: Allow Saving of the image. bool
         :param allow_forward: Allow Forwarding of the Image. bool
         """
@@ -220,8 +220,8 @@ class KikClient:
         Sends a video message to another person or a group with the given JID/username.
         WARNING: videos above 15 MB (15728640 bytes) will be rejected by Kik's upload server.
 
-        :param forward: Allow forwarding of the video. bool
-        :param save: Allow saving of the video. bool
+        :param allow_forward: Allow forwarding of the video. bool
+        :param allow_save: Allow saving of the video. bool
         :param auto_play: Causes the video to auto-play when it is on the screen. bool
         :param muted: Mutes the video when played. bool
         :param looping: Loops the video when played. bool
@@ -327,7 +327,7 @@ class KikClient:
     def add_friend(self, peer_jid):
         message = roster.AddFriendRequest(peer_jid)
         if "_a@talk" in peer_jid:
-            self.alias_jid_cache[message.message_id] = peer_jid
+            self.friend_request_mapping[message.message_id] = peer_jid
 
         return self._send_xmpp_element(message)
 
@@ -579,16 +579,19 @@ class KikClient:
         self.logger.info(f"Changing account email to '{new_email}'")
         return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
 
-    def disconnect(self, exiting=False):
+    def disconnect(self, is_exiting=False):
         """
         Closes the connection to kik's servers.
+        param is_exiting: If True will stop the connection loop
         """
         self.logger.warning("Disconnecting.")
         self.connection.close()
         self.is_expecting_connection_reset = True
 
-        if exiting:
-            self.exiting = True
+        # if is_exiting is True we stop the main loop and exit
+        # in some cases we don't want to do this because we want to restart a connection.
+        if is_exiting:
+            self.is_exiting = True
             self.loop.stop()
 
     # -----------------
@@ -869,25 +872,22 @@ class KikConnection(Protocol):
             self.loop.call_soon_threadsafe(self.api._on_new_data_received, data)
             return
 
-        elements = self.split_elements(data)
-        for el in elements:
+        is_multipacket, is_start, tag = self.analyze_and_parse_packet(data)
 
-            is_multipacket, is_start, tag = self.analyze_and_parse_packet(data)
-
-            # Normal packet handling
-            if not is_multipacket:
-                # split elements if there is more than one
-                # send each elements through
-
+        if not is_multipacket:
+            # split elements if there is more than one
+            # send each elements through
+            elements = self.split_elements(data)
+            for el in elements:
                 self.loop.call_soon_threadsafe(self.api._on_new_data_received, el)
-            else:
-                # Add incoming data to buffer for further processing
-                self.data_array.append((time.time(), tag, is_start, data))
+        else:
+            # Add incoming data to buffer for further processing
+            self.data_array.append((time.time(), tag, is_start, data))
 
-                self.process_partial_data()
+            self.process_partial_data()
 
-            if not self.cleanup_task:
-                self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
+        if not self.cleanup_task:
+            self.cleanup_task = self.loop.call_later(self.cleanup_interval, self.cleanup_buffer)
 
     @staticmethod
     def split_elements(data_bytes):
@@ -898,7 +898,8 @@ class KikConnection(Protocol):
             b'<pong/>',
             b'<iq .*?>.*?</iq>',
             b'<stc .*?>.*?</stc>',
-            b'<ack .*?/>'
+            b'<ack .*?/>',
+            b'<message .*?>.*?</message>'
         ]
         elements = []
         for pattern in element_patterns:
@@ -907,68 +908,49 @@ class KikConnection(Protocol):
             for match in matches:
                 data_bytes = data_bytes.replace(match, b'', 1)
 
-        complete_message_pattern = b'<message .*?>.*?</message>'
-        start_message_pattern = b'<message .*?>.*?(?=<message|$)'
-        end_message_pattern = b'.*?</message>'
-
-        complete_messages = re.findall(complete_message_pattern, data_bytes, re.DOTALL)
-        for match in complete_messages:
-            data_bytes = data_bytes.replace(match, b'', 1)
-        start_messages = re.findall(start_message_pattern, data_bytes, re.DOTALL)
-        for match in start_messages:
-            data_bytes = data_bytes.replace(match, b'', 1)
-        end_messages = re.findall(end_message_pattern, data_bytes, re.DOTALL)
-
-        elements.extend(complete_messages)
-        elements.extend(start_messages)
-        elements.extend(end_messages)
-
         return elements
 
     def process_partial_data(self):
-        """Processes multi-packet data, combining them as needed."""
-        to_remove = []
+        to_remove = set()  # Use a set to avoid duplicate indexes
         i = 0
 
         while i < len(self.data_array):
             timestamp, tag, is_start, packet_data = self.data_array[i]
 
             if not is_start:
-                # Handle stray end tags
-                if i == 0:
-                    to_remove.append(i)
+                if i == 0:  # Handle stray end tags at the beginning
+                    to_remove.add(i)
                 i += 1
                 continue
 
             # Start tag processing
             combined_data = packet_data
+            combined = False  # Flag to check if combination happened
 
-            # Check for next packet
+            # Check for the next packet
             if i + 1 < len(self.data_array):
                 _, next_tag, next_is_start, next_packet_data = self.data_array[i + 1]
 
-                # Mismatched start-end tags, skip
-                if next_is_start or tag != next_tag:
-                    i += 1
-                    continue
+                if not next_is_start and tag == next_tag:
+                    combined_data += next_packet_data
+                    combined = True
 
-                combined_data += next_packet_data
-            else:
-                i += 1
-                continue
+            # Process combined data
+            if combined:
+                elements = self.split_elements(combined_data)
+                for el in elements:
+                    if self.is_valid_xml(el):
+                        self.loop.call_soon_threadsafe(self.api._on_new_data_received, el)
 
-            # Attempt to parse the combined data
-            if self.is_valid_xml(combined_data):
-                self.loop.call_soon_threadsafe(self.api._on_new_data_received, combined_data)
-                to_remove.extend([i, i + 1])
+                # Mark both packets for removal
+                to_remove.add(i)
+                to_remove.add(i + 1)
                 i += 2
-                continue
             else:
-                self.logger.warning(f"Invalid XML encountered: {combined_data}")
                 i += 1
 
         # Cleanup processed data entries
-        for index in reversed(to_remove):
+        for index in sorted(to_remove, reverse=True):
             del self.data_array[index]
 
     @staticmethod

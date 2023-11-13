@@ -64,7 +64,7 @@ class OutgoingChatImage(XMPPElement):
         super().__init__()
         self.peer_jid = peer_jid
         self.is_group = is_group
-        self.parsed_image = ParsingUtilities.parse_image(file_location)
+        self.parsed_image = ParsingUtilities().parse_image(file_location)
         self.timestamp = time.time()
         self.allow_forward = allow_forward
         self.allow_save = allow_save
@@ -125,7 +125,7 @@ class OutgoingVideoMessage(XMPPElement):
         super().__init__()
         self.peer_jid = peer_jid
         self.is_group = is_group
-        self.parsed_video = ParsingUtilities.parse_video(video_location)
+        self.parsed_video = ParsingUtilities().parse_video(video_location)
         self.allow_forward = allow_forward
         self.allow_save = allow_save
         self.auto_play = auto_play
@@ -138,7 +138,7 @@ class OutgoingVideoMessage(XMPPElement):
         timestamp = str(int(round(time.time() * 1000)))
 
         app_id = "com.kik.ext.video-gallery"
-        preview_data = self.parsed_video['thumbnail_base64']
+        preview_data = self.parsed_video['thumbnail']['base64']
 
         # Allow forward flag should always be included
         video_config = f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'

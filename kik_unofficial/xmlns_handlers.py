@@ -232,9 +232,9 @@ class PeersInfoResponseHandler(XmppHandler):
             # Check to see if message id = to a friend request we sent
             # If so add the alias_jid to peer_info
             if "_a@talk.kik.com" not in peer_info.jid:
-                if peers_info.message_id in self.client.alias_jid_cache:
-                    peer_info.alias_jid = self.client.alias_jid_cache[peers_info.message_id]
-                    del self.client.alias_jid_cache[peers_info.message_id]
+                if peers_info.message_id in self.client.friend_request_mapping:
+                    peer_info.alias_jid = self.client.friend_request_mapping[peers_info.message_id]
+                    del self.client.friend_request_mapping[peers_info.message_id]
                 else:
                     peer_info.alias_jid = "Unavailable"
 

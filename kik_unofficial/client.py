@@ -773,7 +773,6 @@ class KikClient:
         if not jid.endswith('_g@groups.kik.com'):
             return False
         group_id = jid[0:13]
-        print(group_id)
         if not group_id.isdigit():
             return False
 

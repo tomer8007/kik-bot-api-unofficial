@@ -65,20 +65,16 @@ class StanzaHandler(ContentHandler, ErrorHandler):
     def __init__(self, log):
         super().__init__()
         self.log = log
-        self.current_stanza = BeautifulSoup(features='xml')
         self.depth = 0
         self.expected_name = None
-        self.stanzas = []
 
     def startElement(self, name, attrs) -> None:
-        # print('start: ' + name + ', depth: ' + str(self.depth + 1))
         self.depth += 1
         if self.expected_name is None:
             self.expected_name = name
 
     def endElement(self, name) -> None:
         self.depth -= 1
-        # print('end: ' + name + ', depth: ' + str(self.depth))
         if self.depth == 0:
             if self.expected_name != name:
                 raise SAXException(

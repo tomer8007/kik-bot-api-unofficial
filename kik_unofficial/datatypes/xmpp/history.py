@@ -13,15 +13,15 @@ class KikHistoryItem:
         self.id = message['id']
         self.correspondent_jid = message['from']
 
+        from kik_unofficial.client import KikClient
         g = message.find('g', recursive=False)
-        if g:
+
+        if g and KikClient.is_group_jid(g['jid']):
             self.bin_jid = g['jid']
+            self.is_group = True
         else:
             self.bin_jid = self.correspondent_jid
             self.is_group = False
-
-        from kik_unofficial.client import KikClient
-        self.is_group = KikClient.is_group_jid(self.bin_jid)
 
         request_element = message.find('request', recursive=False)
         if request_element and request_element['xmlns'] == 'kik:message:receipt' and request_element['d'] == 'true':

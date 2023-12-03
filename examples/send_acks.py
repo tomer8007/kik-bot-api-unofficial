@@ -6,13 +6,14 @@ A bot that sends acknowledgements for every message in the account's past messag
 import argparse
 import logging
 import sys
+import yaml
 
 import kik_unofficial.datatypes.xmpp.chatting as chatting
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import LoginError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
-from kik_unofficial.datatypes.xmpp.history import HistoryResponse
+from kik_unofficial.datatypes.xmpp.history import HistoryResponse, KikHistoryItem
 
 username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
 password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
@@ -52,28 +53,18 @@ class AckBot(KikClientCallback):
         print(f"Full name: {response.first_name} {response.last_name}")
 
     def on_message_history_response(self, response: HistoryResponse):
-        if hasattr(response, 'messages'):
-            self.client.send_ack(response.from_jid, False, response.id)
-
-            for msg in response.messages:
-                print(msg.type)
-                if msg.type == 'chat':
-                    self.client.send_ack(msg.from_jid, False, msg.id)
-                elif msg.type == 'groupchat':
-                    self.client.send_ack(msg.from_jid, False, msg.id, msg.group_jid)
-                elif msg.type == 'receipt':
-                    self.client.send_ack(msg.from_jid, True, msg.id)
-
-            if response.more:
-                self.client.request_messaging_history()
+        if len(response.messages) > 0:
+            self.client.send_ack(messages=response.messages, request_history=response.more)
+        elif response.more:
+            self.client.request_messaging_history()
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         print(f"[+] '{chat_message.from_jid}' says: {chat_message.body}")
-        self.client.send_ack(chat_message.from_jid, False, chat_message.message_id)
+        self.client.send_ack(KikHistoryItem(chat_message.raw_element))
 
     def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
         print(f"[+] '{chat_message.from_jid}' from group ID {chat_message.group_jid} says: {chat_message.body}")
-        self.client.send_ack(chat_message.from_jid, False, chat_message.message_id, chat_message.group_jid)
+        self.client.send_ack(KikHistoryItem(chat_message.raw_element))
 
     # Error handling
 

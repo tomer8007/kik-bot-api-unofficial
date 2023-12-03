@@ -410,12 +410,12 @@ class KikClient:
     # Other Operations
     # ----------------------
 
-    def send_ack(self, sender_jid, is_receipt: bool, message_id, group_jid=None):
+    def send_ack(self, messages: list[history.KikHistoryItem] | history.KikHistoryItem | None, request_history: bool = False):
         """
-        Sends an acknowledgement for a provided message ID
+        Sends an acknowledgement for a list of messages.
         """
-        self.log.info(f"Sending acknowledgement for message ID {message_id}")
-        return self._send_xmpp_element(history.OutgoingAcknowledgement(sender_jid, is_receipt, message_id, group_jid))
+        self.log.info(f"Sending acknowledgement for {len(messages)} message(s)")
+        return self._send_xmpp_element(history.OutgoingAcknowledgement(messages=messages, request_history=request_history))
 
     def request_messaging_history(self):
         """
@@ -555,13 +555,14 @@ class KikClient:
         while not self.connected:
             self.log.debug("Waiting for connection.")
             time.sleep(0.1)
-        if type(message.serialize()) is list:
+
+        packets = message.serialize()
+        if isinstance(packets, list):
             self.log.debug("Sending multi packet data.")
-            packets = message.serialize()
-            for p in packets:
-                self.loop.call_soon_threadsafe(self.connection.send_raw_data, p)
+            for packet in packets:
+                self.loop.call_soon_threadsafe(self.connection.send_raw_data, packet)
         else:
-            self.loop.call_soon_threadsafe(self.connection.send_raw_data, message.serialize())
+            self.loop.call_soon_threadsafe(self.connection.send_raw_data, packets)
 
         return message.message_id
 

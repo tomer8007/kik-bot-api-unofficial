@@ -170,8 +170,23 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
 
 
 class ConnectionFailedResponse:
+    """
+    Describes an error response when attempting to connect.
+    """
     def __init__(self, data: BeautifulSoup):
-        self.message = data.find('msg').text
+        """
+        :param is_auth_revoked: True if the password / device ID pair was invalidated (auth rejected)
+        :param message: the error message received. Will be an empty string if is_auth_revoked = False
+
+        :param is_backoff:True if a backoff was requested by Kik's server
+        :param backoff_seconds: the number of seconds that Kik requested the client to wait for before reconnecting. Will be undefined if is_backoff = False
+        """
+        self.is_auth_revoked = data.find('noauth', recursive=False) is not None
+        self.message = data.find('msg').text if self.is_auth_revoked else ''
+
+        self.is_backoff = data.find('wait', recursive=False) is not None
+        if self.is_backoff:
+            self.backoff_seconds = int(data.find('wait', recursive=False).get('t'))
 
 
 class CaptchaElement:

@@ -20,7 +20,7 @@ class CryptographicUtils:
 
     @staticmethod
     def make_kik_timestamp():
-        j = int(round(time.time()))
+        j = int(round(time.time() * 1000))
 
         i1 = (-16777216 & j) >> 24
         i2 = (16711680 & j) >> 16

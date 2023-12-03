@@ -33,7 +33,7 @@ class KikClient:
 
     def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
                  kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
-                 enable_logging: bool = False, log_file_path: str = None, disable_auth_cert: bool = False) -> None:
+                 enable_logging: bool = False, log_file_path: str = None, disable_auth_cert: bool = True) -> None:
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -49,7 +49,9 @@ class KikClient:
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
         :param enable_logging: If true, turns on logging to stdout (default: False)
         :param log_file_path: If set will create a daily rotated log file and archive for 7 days.
-        :param disable_auth_cert: If true, auth certs will not be generated on every connection. This greatly improves startup time.
+        :param disable_auth_cert: If true, auth certs will not be generated on every connection.
+            This greatly improves startup time.
+            True by default.
         """
         # turn on logging with basic configuration
         if enable_logging:

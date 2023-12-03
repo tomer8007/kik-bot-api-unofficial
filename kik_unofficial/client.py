@@ -573,9 +573,7 @@ class KikClient:
         """
         # choose the handler based on the XML tag name
 
-        if xml_element.name == "k":
-            self._handle_received_k_element(xml_element)
-        elif xml_element.name == "iq":
+        if xml_element.name == "iq":
             self._handle_received_iq_element(xml_element)
         elif xml_element.name == "message":
             self._handle_xmpp_message(xml_element)
@@ -593,14 +591,17 @@ class KikClient:
         else:
             self.log.warning(f'Unknown element type: {xml_element.name}')
 
-    def _handle_received_k_element(self, k_element: BeautifulSoup):
+    def _handle_received_k_element(self, k_element: BeautifulSoup) -> bool:
         """
         The 'k' element appears to be kik's connection-related stanza.
         It lets us know if a connection or a login was successful or not.
 
         :param k_element: The XML element we just received from kik.
+        :return: true if connection succeeded
         """
-        if k_element['ok'] == "1":
+        connected = k_element['ok'] == "1"
+
+        if connected:
             self.connected = True
 
             if 'ts' in k_element.attrs:
@@ -619,6 +620,7 @@ class KikClient:
                 # Force a login attempt
                 self.kik_node = None
             self.callback.on_connection_failed(error)
+        return connected
 
     def _handle_received_iq_element(self, iq_element: BeautifulSoup):
         """
@@ -797,10 +799,9 @@ class KikConnection:
             parser = KikXmlParser(self.reader, self.log)
 
             k = await parser.read_initial_k()
-            self.log.debug("Bind response for %s: %s", self.api.username, k)
-            self.loop.call_soon_threadsafe(self.api._on_new_stanza_received, k)
+            self.log.debug("%s bind: %s", self.api.username, k)
 
-            if k.attrs['ok'] != '1':
+            if not self.api._handle_received_k_element(k):
                 self.api.is_expecting_connection_reset = True
                 return
 
@@ -809,7 +810,7 @@ class KikConnection:
                 self.log.debug("Received: %s", stanza)
                 self.loop.call_soon_threadsafe(self.api._on_new_stanza_received, stanza)
         except Exception as e:
-            self.log.error("Received error in main loop: %s", e)
+            self.log.warning("Received error in main loop: %s", e)
         finally:
             self.is_closed = True
             self.api._on_connection_lost()

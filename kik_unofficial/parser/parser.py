@@ -30,13 +30,16 @@ class KikXmlParser:
 
         while True:
             packet = await self.reader.readuntil(separator=b'>')
+            if xml == b'':
+                if packet == b'</k>' or packet == b'</stream:stream>':
+                    raise SAXException(f"stream closed: {packet.decode('utf-8')}")
+
             xml += packet
 
             try:
                 parser.feed(packet)
             except StopIteration:
-                stanza = self._parse_from_bytes(xml)
-                return stanza
+                return self._parse_from_bytes(xml)
 
     def _make_parser(self):
         parser = defusedxml.sax.make_parser()

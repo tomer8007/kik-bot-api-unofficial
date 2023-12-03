@@ -12,14 +12,19 @@ class KikHistoryItem:
         self.type = message['type']
         self.id = message['id']
         self.correspondent_jid = message['from']
-        if message.g:
-            from kik_unofficial.client import KikClient
-            self.bin_jid = message.g['jid']
-            self.is_group = KikClient.is_group_jid(self.bin_jid)
+
+        g = message.find('g', recursive=False)
+        if g:
+            self.bin_jid = g['jid']
         else:
             self.bin_jid = self.correspondent_jid
             self.is_group = False
-        if message.request and message.request['xmlns'] == 'kik:message:receipt' and message.request['d'] == 'true':
+
+        from kik_unofficial.client import KikClient
+        self.is_group = KikClient.is_group_jid(self.bin_jid)
+
+        request_element = message.find('request', recursive=False)
+        if request_element and request_element['xmlns'] == 'kik:message:receipt' and request_element['d'] == 'true':
             self.requests_delivered_receipt = True
         else:
             self.requests_delivered_receipt = False
@@ -122,5 +127,5 @@ class HistoryResponse(XMPPResponse):
 
         if data.query.history:
             self.more = data.query.history.has_attr('more')
-            for message in data.query.history.find_all('msg'):
+            for message in data.query.history.find_all('msg', recursive=False):
                 self.messages.append(KikHistoryItem(message))

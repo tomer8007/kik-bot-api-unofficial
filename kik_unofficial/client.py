@@ -19,7 +19,7 @@ from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.parser.parser import KikXmlParser
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
-from kik_unofficial.content import profile_pictures, content
+from kik_unofficial.http_requests import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
 

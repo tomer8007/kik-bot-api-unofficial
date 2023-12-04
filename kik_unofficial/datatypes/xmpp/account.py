@@ -1,5 +1,5 @@
 import datetime
-import time
+from typing import Union
 
 from bs4 import BeautifulSoup
 
@@ -70,7 +70,25 @@ class GetMyProfileResponse(XMPPResponse):
 
 
 def get_text_safe(data: BeautifulSoup, tag: str):
-    return data.find(tag).text if data.find(tag) else None
+    element = data.find(tag, recursive=False)
+    return element.text if element else None
+
+
+class GetMutedConvosResponse(XMPPResponse):
+    def __init__(self, data: BeautifulSoup, convos: list):
+        super().__init__(data)
+        self.convos = convos
+
+    def __repr__(self):
+        return f'GetMutedConvosResponse(convos={self.convos})'
+
+    class MutedConvo:
+        def __init__(self, jid: str, mute_expires: Union[int, None]):
+            self.jid = jid
+            self.mute_expires = mute_expires
+
+        def __repr__(self):
+            return f'MutedConvo(jid={self.jid}, mute_expires={self.mute_expires})'
 
 
 class ChangeNameRequest(XMPPElement):
@@ -97,8 +115,8 @@ class ChangePasswordRequest(XMPPElement):
         self.email = email
         self.username = username
 
-    def serialize(self):
-        passkey_e = CryptographicUtils.key_from_password(self.email, self.old_password)
+    def serialize(self) -> bytes:
+        passkey_e = CryptographicUtils.key_from_password(self.email, self.new_password)
         passkey_u = CryptographicUtils.key_from_password(self.username, self.new_password)
         data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:iq:user-profile">'
@@ -110,14 +128,13 @@ class ChangePasswordRequest(XMPPElement):
 
 
 class ChangeEmailRequest(XMPPElement):
-    def __init__(self, password, old_email, new_email):
+    def __init__(self, password, new_email):
         super().__init__()
         self.password = password
-        self.old_email = old_email
         self.new_email = new_email
 
-    def serialize(self):
-        passkey_e = CryptographicUtils.key_from_password(self.old_email, self.password)
+    def serialize(self) -> bytes:
+        passkey_e = CryptographicUtils.key_from_password(self.new_email, self.password)
         data = (f'<iq type="set" id="{self.message_id}">'
                 f'<query xmlns="kik:iq:user-profile">'
                 f'<email>{self.new_email}</email>'

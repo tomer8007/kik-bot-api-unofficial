@@ -24,7 +24,7 @@ class RegisterRequest(XMPPElement):
         self.device_id = device_id
         self.android_id = android_id
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         passkey_e = CryptographicUtils.key_from_password(self.email, self.password)
         passkey_u = CryptographicUtils.key_from_password(self.username, self.password)
         captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
@@ -41,18 +41,17 @@ class RegisterRequest(XMPPElement):
                 f'{captcha}'
                 f'<version>{kik_version_info["kik_version"]}</version>'
                 '<device-type>android</device-type>'
-                '<model>Nexus 7</model>'
-                '<android-sdk>25</android-sdk>'
-                '<registrations-since-install>1</registrations-since-install>'
+                '<model>Samsung Galaxy S23 Ultra</model>'
+                '<android-sdk>34</android-sdk>'
+                '<registrations-since-install>0</registrations-since-install>'
                 '<install-date>unknown</install-date>'
                 '<logins-since-install>0</logins-since-install>'
                 '<prefix>CAN</prefix>'
                 '<lang>en_US</lang>'
-                '<brand>google</brand>'
+                '<brand>samsung</brand>'
                 f'<android-id>{self.android_id}</android-id>'
                 '</query>'
                 '</iq>')
-
 
         return data.encode()
 

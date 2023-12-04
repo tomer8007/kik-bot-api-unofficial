@@ -1,10 +1,10 @@
 import hashlib
 import logging
 import requests
-import time
 from threading import Thread
 
 from kik_unofficial.datatypes.exceptions import KikUploadError
+from kik_unofficial.datatypes.xmpp.chatting import OutgoingChatImage
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.device_configuration import kik_version_info
 
@@ -13,9 +13,9 @@ log = logging.getLogger('kik_unofficial')
 SALT = "YA=57aSA!ztajE5"
 
 
-def upload_gallery_image(OutgoingChatImage, jid, username, password):
-    url = f"https://platform.kik.com/content/files/{OutgoingChatImage.content_id}"
-    send(url, OutgoingChatImage, jid, username, password)
+def upload_gallery_image(outgoing_chat_image: OutgoingChatImage, jid, username, password):
+    url = f"https://platform.kik.com/content/files/{outgoing_chat_image.content_id}"
+    send(url, outgoing_chat_image, jid, username, password)
 
 
 def send(url, image, jid, username, password):

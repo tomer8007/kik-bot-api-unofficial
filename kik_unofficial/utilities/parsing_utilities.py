@@ -1,5 +1,4 @@
 import base64
-import math
 import pathlib
 import io
 import os
@@ -54,9 +53,9 @@ class ParsingUtilities:
 
     @staticmethod
     def parse_image(file_location: str or bytes or pathlib.Path or io.IOBase) -> dict:
-        '''
+        """
         Converts images to .jpg and compresses/upscales them so that large image files can be sent after compression.
-        '''
+        """
         preview_out = io.BytesIO()
         image_out = io.BytesIO()
         image_out.name = "temp.jpg"
@@ -82,7 +81,7 @@ class ParsingUtilities:
         final_og = image_out.getvalue()
         final_pre = preview_out.getvalue()
 
-        base64 = ParsingUtilities.read_file_as_base64(final_pre)
+        base64_data = ParsingUtilities.read_file_as_base64(final_pre)
         sha1_og = ParsingUtilities.read_file_as_sha1(final_og)
         sha1_scaled = ParsingUtilities.read_file_as_sha1(final_pre)
         block_scaled = blockhash(preview_image, 16)
@@ -93,7 +92,7 @@ class ParsingUtilities:
         img.close()
 
         return {
-            'base64': base64,
+            'base64': base64_data,
             'size': size,
             'original': final_og,
             'SHA1': sha1_og,

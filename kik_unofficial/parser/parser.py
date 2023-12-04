@@ -17,7 +17,7 @@ class KikXmlParser:
     async def read_initial_k(self) -> BeautifulSoup:
         response = await self.reader.readuntil(separator=b'>')
         if not response.startswith(b'<k '):
-            raise Exception('unexpected init stream response tag: ' + response.decode('utf-8'))
+            raise ValueError('unexpected init stream response tag: ' + response.decode('utf-8'))
         if b' ok="1"' in response or b'</k>' in response:
             return self._parse_from_bytes(response)
         else:
@@ -88,6 +88,7 @@ class StanzaHandler(ContentHandler, ErrorHandler):
 
     def fatalError(self, exception):
         self.log.error(exception)
+        raise exception
 
     def warning(self, exception):
         self.log.warn(exception)

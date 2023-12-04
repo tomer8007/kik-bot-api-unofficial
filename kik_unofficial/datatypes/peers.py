@@ -22,12 +22,13 @@ class User(Peer):
     """
     def __init__(self, xml_data: BeautifulSoup):
         if 'jid' not in xml_data.attrs:
-            raise KikApiException(f"No jid in user xml {xml_data}")
+            raise KikApiException(f'No jid in user xml {xml_data}')
         super().__init__(xml_data['jid'])
         self.username = xml_data.username.text if xml_data.username else None
         self.display_name = xml_data.find('display-name').text if xml_data.find('display-name') else None
         self.pic = xml_data.pic.text if xml_data.pic else None
-        self.verified = bool(xml_data.verified)
+        self.pic_updated_timestamp = int(xml_data.pic.ts) if xml_data.pic else None
+        self.verified = xml_data.verified is not None
         if xml_data.entity:
             self._parse_entity(xml_data.entity.text)
 
@@ -52,6 +53,22 @@ class User(Peer):
         return f"User(jid={self.jid}, username={self.username}, display_name={self.display_name})"
 
 
+class RosterUser(User):
+    def __init__(self, xml_data: BeautifulSoup):
+        """
+        Represents a user (person) in Kik, as received from the roster.
+        Includes the same fields as User but includes is_blocked.
+        """
+        super().__init__(xml_data)
+        self.is_blocked = xml_data.blocked is not None  # True if the authenticated user has this user blocked
+
+    def __str__(self):
+        return f"{self.display_name} ({self.username}){' (blocked)' if self.is_blocked else ''}"
+
+    def __repr__(self):
+        return f"RosterUser(jid={self.jid}, username={self.username}, display_name={self.display_name}, is_blocked={self.is_blocked})"
+
+
 class Group(Peer):
     """
     Represents a group of kik users.
@@ -61,8 +78,8 @@ class Group(Peer):
         if 'jid' not in xml_data.attrs:
             raise KikApiException("No jid in group xml")
         super().__init__(xml_data['jid'])
-        self.members = [GroupMember(m) for m in xml_data.findAll('m')]
-        self.banned_members = [GroupMember(m) for m in xml_data.findAll('b')]
+        self.members = [GroupMember(m) for m in xml_data.findAll('m', recursive=False)]
+        self.banned_members = [GroupMember(m) for m in xml_data.findAll('b', recursive=False)]
         self.code = xml_data.code.text if xml_data.code else None
         self.pic = xml_data.pic.text if xml_data.pic else None
         self.name = xml_data.n.text if xml_data.n else None
@@ -81,3 +98,4 @@ class GroupMember(Peer):
         super().__init__(xml_data.text)
         self.is_admin = xml_data.get('a') == '1'
         self.is_owner = xml_data.get('s') == '1'
+        self.is_dm_disabled = xml_data.get('dmd') == '1'

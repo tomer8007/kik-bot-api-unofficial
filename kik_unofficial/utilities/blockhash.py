@@ -178,6 +178,8 @@ if __name__ == '__main__':
         interpolation = Image.BICUBIC
     elif args.interpolation == 4:
         interpolation = Image.ANTIALIAS
+    else:
+        raise ValueError(f'unknown interpolation, expected 1 to 4 inclusive, got {args.interpolation}')
 
     method = blockhash_even if args.quick else blockhash
     

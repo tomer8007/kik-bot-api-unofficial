@@ -19,6 +19,7 @@ class AddToGroupRequest(XMPPElement):
                 '</iq>')
         return data.encode()
 
+
 class ChangeGroupNameRequest(XMPPElement):
     def __init__(self, group_jid, new_name):
         super().__init__()

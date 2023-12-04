@@ -30,7 +30,7 @@ setup(
     keywords=['kik', 'bot', 'kikbot', 'kik-messenger-platform', 'api', 'unofficial', 'python',],
     packages=find_packages(exclude=['docs', 'test']),
     install_requires=['pbkdf2', 'rsa', 'lxml', 'bs4', 'protobuf>=4.21.0', 'requests', 'pillow', 'pyDes', 'python-dotenv'],
-    extras_require={'dev': [],'test': []},
+    extras_require={'dev': [], 'test': []},
     package_data={'kik_unofficial': []},
     entry_points={'console_scripts': ['kikapi=kik_unofficial.cmdline:execute']},
 )

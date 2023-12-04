@@ -1,30 +1,57 @@
 import base64
+import time
 from typing import List, Union
+from lxml import etree
 
 from bs4 import BeautifulSoup
-from kik_unofficial.datatypes.peers import Group, User
+from lxml.etree import Element
+
+from kik_unofficial.datatypes.peers import Group, User, RosterUser
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.protobuf.groups.v1 import group_search_service_pb2
+from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.datatypes.exceptions import KikParsingException
+from kik_unofficial.utilities import jid_utilities
 
 
 class FetchRosterRequest(XMPPElement):
     """
     Represents a request to get the chat partners list (the roster)
+
+    :param is_batched: pass in True if the last successful roster request had `FetchRosterResponse.more == True`
+    :param timestamp: pass in the roster timestamp from the last successful roster request. `FetchRosterResponse.timestamp`
+    :param mts: pass in the roster mts from the last successful roster request. `FetchRosterResponse.mts`
     """
-    def __init__(self, is_big=True, timestamp=None):
+    def __init__(self, is_batched: bool, timestamp: Union[str, None] = None, mts: Union[str, None] = None):
         super().__init__()
         self.timestamp = timestamp
-        self.is_big = is_big
+        self.mts = mts
+        self.is_batched = is_batched
 
-    def serialize(self) -> bytes:
-        ts = f' ts="{self.timestamp}" ' if self.timestamp else ' '
-        data = (
-            f'<iq type="get" id="{self.message_id}">'
-            f'<query p="8"{ts}b="{int(self.is_big)}" xmlns="jabber:iq:roster" />'
-            '</iq>'
-        )
-        return data.encode()
+    def serialize(self) -> Element:
+        iq = etree.Element('iq')
+        iq.set('type', 'get')
+        iq.set('id', self.message_id)
+
+        query = etree.SubElement(iq, 'query')
+
+        v9 = self._needs_v9_protocol()
+        query.set('p', '9' if v9 else '8')
+
+        if self.timestamp is not None:
+            query.set('ts', str(self.timestamp))
+            if self.is_batched:
+                query.set('b', '1')
+            if self.mts is not None and v9:
+                query.set('mts', str(self.mts))
+
+        query.set('xmlns', 'jabber:iq:roster')
+        return iq
+
+    @staticmethod
+    def _needs_v9_protocol():
+        version_number = int(kik_version_info['kik_version'].replace('.', ''))
+        # 15.56.0.28947 is the first version where the protocol was changed to 9 (mts)
+        return version_number >= 15_56_0_28947
 
 
 class FetchRosterResponse(XMPPResponse):
@@ -36,45 +63,53 @@ class FetchRosterResponse(XMPPResponse):
         self.peers = [self.parse_peer(element) for element in iter(data.query)]
         self.more = data.query.get('more')
         self.timestamp = data.query.get('ts')
+        self.mts = data.query.get('mts')
+        self.is_roster_full = False
 
-    @staticmethod
-    def parse_peer(element):
-        if element.name in ('g', "remove-group"):
+    def parse_peer(self, element):
+        if element.name in ('g', 'remove-group'):
+            # 'remove-group' indicates that the group JID is no longer in the callers roster.
+            # 'g' contains new or updated accounts in the roster.
             return Group(element)
-        elif element.name in ('item', "remove"):
-            # remove deletes accounts / accounts no longer in the roster
-            return User(element)
+        elif element.name in ('item', 'remove'):
+            # 'remove' indicates that the user JID is no longer in the callers roster.
+            # 'item' contains new or updated accounts in the roster.
+            return RosterUser(element)
+        elif element.name == 'full':
+            # If encountered, Kik is indicating that a full refresh is needed.
+            # Client should delete the 'ts' and 'mts' page tokens from its cache / storage,
+            # and request roster after 30-60 seconds without any page tokens specified.
+            self.is_roster_full = True
         else:
             raise KikParsingException(f"Unsupported peer element tag: {element.name}")
-        
 
 
-class QueryUsersInfoRequest(XMPPElement):
+class PeersInfoRequest(XMPPElement):
     """
-    Represents a request to get basic information (display name, JID, etc.) of one or more users
+    Represents a request to get basic information (display name, JID, etc.) of 1-50 user JIDs
     """
     def __init__(self, peer_jids: Union[str, List[str]]):
         super().__init__()
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
+        if len(self.peer_jids) == 0:
+            raise ValueError("Can't request an empty list of peer_jids")
+        if len(self.peer_jids) > 50:
+            raise ValueError(f"Can't request more than 50 peer_jids at a time, got {len(self.peer_jids)}")
 
     def serialize(self) -> bytes:
-        items = []
+        items = ''
         for jid in self.peer_jids:
-            if "@" in jid:
-                items.append(f'<item jid="{jid}" />')
+            if jid_utilities.is_pm_jid(jid) or jid_utilities.is_alias_jid(jid):
+                items += f'<item jid="{jid}" />'
             else:
-                # this is in fact not a JID, but a username
-                items.append(f'<item username="{jid}" />')
-
-        xmlns = 'kik:iq:friend:batch' if len(items) > 1 else "kik:iq:friend"
+                raise ValueError("Usernames cannot be requested using FriendBatchRequest")
 
         data = (f'<iq type="get" id="{self.message_id}">'
-                f'<query xmlns="{xmlns}">'
-                f'{"".join(items)}'
-                '</query>'
+                f'<query xmlns="kik:iq:friend:batch">{items}</query>'
                 '</iq>')
 
         return data.encode()
+
 
 class PeersInfoResponse(XMPPResponse):
     """
@@ -82,8 +117,53 @@ class PeersInfoResponse(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        items = data.query.find_all('item')
-        self.users = [User(item) for item in items]
+        self.users = []  # type: list[User]
+        self.failed_user_jids = []  # type: list[str]
+
+
+class FriendBatchResponse(PeersInfoResponse):
+    """
+    Represents the response to a peers query request, which contains the basic information of the peers
+    """
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        success = data.query.success
+        if success:
+            items = success.find_all('item', recursive=False)
+            self.users = [User(item) for item in items]
+
+        failed = data.query.failed
+        if failed:
+            items = failed.find_all('item', recursive=False)
+            self.failed_user_jids = [item['jid'] for item in items]
+
+
+class QueryUserByUsernameRequest(XMPPElement):
+    """
+    Represents a request to get basic information (display name, JID, etc.) of one username
+
+    Only one username can be retrieved per request.
+    """
+    def __init__(self, username: str):
+        super().__init__()
+        self.username = username
+
+    def serialize(self) -> bytes:
+        data = (f'<iq type="get" id="{self.message_id}">'
+                f'<query xmlns="kik:iq:friend">'
+                f'<item username="{self.username}" />'
+                '</query>'
+                '</iq>')
+        return data.encode()
+
+
+class QueryUserByUsernameResponse(PeersInfoResponse):
+    """
+    Represents the response to a username query request, which contains the basic information of the peer
+    """
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
+        self.users = [User(data.query.item)]
 
 
 class AddFriendRequest(XMPPElement):
@@ -94,12 +174,14 @@ class AddFriendRequest(XMPPElement):
         super().__init__()
         self.peer_jid = peer_jid
 
-    def serialize(self):
-        data = f'<iq type="set" id="{self.message_id}">' \
-               '<query xmlns="kik:iq:friend">' \
-               f'<add jid="{self.peer_jid}" />' \
-               '</query>' \
-               '</iq>'
+    def serialize(self) -> bytes:
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:iq:friend">'
+            f'<add jid="{self.peer_jid}" />'
+            '</query>'
+            '</iq>'
+        )
         return data.encode()
 
 
@@ -111,7 +193,7 @@ class RemoveFriendRequest(XMPPElement):
         super().__init__()
         self.peer_jid = peer_jid
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         data = (
             f'<iq type="set" id="{self.message_id}">'
             '<query xmlns="kik:iq:friend">'
@@ -122,56 +204,95 @@ class RemoveFriendRequest(XMPPElement):
         return data.encode()
 
 
-class GroupSearchRequest(XMPPElement):
+class BlockUserRequest(XMPPElement):
     """
-    Represents a request to search for groups by name
+    Represents a request to block a user.
     """
-    def __init__(self, search_query):
+    def __init__(self, peer_jid):
         super().__init__()
-        self.search_query = search_query
+        self.peer_jid = peer_jid
 
-    def serialize(self):
-        search_query = self.search_query
-        if search_query.startswith("#"):
-            search_query = search_query[1:]
-
-        encoded_search_query = base64.b64encode(("\x0a" + chr(len(search_query)) + search_query).encode(), b"-_").decode()
-        if encoded_search_query.endswith("="):
-            encoded_search_query = encoded_search_query[:encoded_search_query.index("=")]
-
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:iq:xiphias:bridge" service="mobile.groups.v1.GroupSearch" method="FindGroups">'
-                f'<body>{encoded_search_query}</body></query></iq>')
+    def serialize(self) -> bytes:
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:iq:friend">'
+            f'<block jid="{self.peer_jid}" />'
+            '</query>'
+            '</iq>'
+        )
         return data.encode()
 
 
-class GroupSearchResponse(XMPPResponse):
+class UnblockUserRequest(XMPPElement):
     """
-    Represents a response to a groups search, that was previously conducted using a query
+    Represents a request to unblock a user.
     """
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
+    def __init__(self, peer_jid):
+        super().__init__()
+        self.peer_jid = peer_jid
 
-        encoded_results = base64.b64decode(data.find("body").text.encode(), b"-_")
-        results = group_search_service_pb2.FindGroupsResponse()
-        results.ParseFromString(encoded_results)
-        self.groups = []  # type: List[self.GroupSearchEntry]
-        self.groups.extend(self.GroupSearchEntry(result) for result in results.match)
+    def serialize(self) -> bytes:
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:iq:friend">'
+            f'<unblock jid="{self.peer_jid}" />'
+            '</query>'
+            '</iq>'
+        )
+        return data.encode()
 
-    class GroupSearchEntry:
-        """
-        Represents a group entry that was found in the search results
-        """
-        def __init__(self, result):
-            self.jid = f"{result.jid.local_part}@groups.kik.com"
-            self.hashtag = result.display_data.hashtag
-            self.display_name = result.display_data.display_name
-            self.picture_url = result.display_data.display_pic_base_url
-            self.member_count = result.member_count
-            self.group_join_token = result.group_join_token.token
 
-        def __repr__(self):
-            return f"GroupSearchEntry(jid={self.jid}, hashtag={self.hashtag}, name={self.display_name}, members={self.member_count})"
+class GetMutedUsersRequest(XMPPElement):
+    """
+    Represents a request to mute a user.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def serialize(self) -> bytes:
+        data = f'<iq type="get" id="{self.message_id}"><query xmlns="kik:iq:convos" /></iq>'
+        return data.encode()
+
+
+class MuteUserRequest(XMPPElement):
+    """
+    Represents a request to mute a user.
+    """
+    def __init__(self, peer_jid, expires: time = None):
+        super().__init__()
+        self.peer_jid = peer_jid
+        self.expires = expires
+
+    def serialize(self) -> bytes:
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:iq:convos">'
+            f'<convo jid="{self.peer_jid}">'
+            f'<mute expires="{self.expires}" />' if self.expires else '<mute />'
+            '</convo>'
+            '</query>'
+            '</iq>'
+        )
+        return data.encode()
+
+
+class UnmuteUserRequest(XMPPElement):
+    """
+    Represents a request to unmute a user.
+    """
+    def __init__(self, peer_jid):
+        super().__init__()
+        self.peer_jid = peer_jid
+
+    def serialize(self) -> bytes:
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:iq:convos">'
+            f'<convo jid="{self.peer_jid}"><unmute /></convo>'
+            '</query>'
+            '</iq>'
+        )
+        return data.encode()
 
 
 class GroupJoinRequest(XMPPElement):
@@ -186,9 +307,7 @@ class GroupJoinRequest(XMPPElement):
         self.group_jid = group_jid
 
     def serialize(self) -> bytes:
-        join_token = base64.b64encode(self.join_token, b"-_").decode()
-        if join_token.endswith("="):
-            join_token = join_token[:join_token.index("=")]
+        join_token = base64.urlsafe_b64encode(self.join_token).decode('utf-8').rstrip('=')
         data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
                 f'<g jid="{self.group_jid}" action="join">'

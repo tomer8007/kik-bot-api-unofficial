@@ -37,12 +37,12 @@ class FetchRosterRequest(XMPPElement):
         v9 = self._needs_v9_protocol()
         query.set('p', '9' if v9 else '8')
 
-        if self.timestamp is not None:
-            query.set('ts', str(self.timestamp))
-            if self.is_batched:
-                query.set('b', '1')
-            if self.mts is not None and v9:
-                query.set('mts', str(self.mts))
+        if self.timestamp:
+            query.set('ts', self.timestamp)
+        if self.mts and v9:
+            query.set('mts', self.mts)
+        if self.is_batched:
+            query.set('b', '1')
 
         query.set('xmlns', 'jabber:iq:roster')
         return iq
@@ -268,7 +268,7 @@ class MuteUserRequest(XMPPElement):
             f'<iq type="set" id="{self.message_id}">'
             '<query xmlns="kik:iq:convos">'
             f'<convo jid="{self.peer_jid}">'
-            f'<mute expires="{self.expires}" />' if self.expires else '<mute />'
+            f'<mute expires="{int(round(self.expires * 1000))}" />' if self.expires else '<mute />'
             '</convo>'
             '</query>'
             '</iq>'

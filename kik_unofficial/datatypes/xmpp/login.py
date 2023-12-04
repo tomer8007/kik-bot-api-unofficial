@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 import hmac
+import uuid
 
 import rsa
 from bs4 import BeautifulSoup
@@ -91,7 +92,7 @@ class MakeAnonymousStreamInitTag(XMPPElement):
 
         device = self.device_id
         timestamp = str(CryptographicUtils.make_kik_timestamp())
-        sid = CryptographicUtils.make_kik_uuid()
+        sid = str(uuid.uuid4())
 
         signature = rsa.sign(f"{can + device}:{kik_version}:{timestamp}:{sid}".encode(), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
@@ -149,7 +150,7 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
         jid = f"{self.node}@talk.kik.com"
         jid_with_resource = f"{jid}/CAN{self.device_id}"
         timestamp = str(CryptographicUtils.make_kik_timestamp())
-        sid = CryptographicUtils.make_kik_uuid()
+        sid = str(uuid.uuid4())
 
         # some super secret cryptographic stuff
 

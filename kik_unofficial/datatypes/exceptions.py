@@ -25,14 +25,6 @@ class KikCaptchaException(KikErrorException):
 class KikLoginException(KikErrorException):
     pass
 
- 
-class KikInvalidAckException(KikErrorException):
-    pass
-
-
-class KikEmptyResponseException(KikErrorException):
-    pass
-
 
 class KikApiException(Exception):
     pass

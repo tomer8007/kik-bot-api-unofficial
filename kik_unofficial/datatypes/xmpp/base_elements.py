@@ -87,7 +87,7 @@ class XMPPResponseMetadata:
 
         """
         True if this message requires push.
-        When true, Kik sends a push notification to the user
+        When true, Kik sends a push notification to the user.
         (iOS clients receive message info, Android receives an invisible push that is designed to wake up the XMPP connection)
         """
         self.push = data['push'] == 'true'

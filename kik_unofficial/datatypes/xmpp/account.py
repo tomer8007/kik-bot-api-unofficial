@@ -142,6 +142,3 @@ class ChangeEmailRequest(XMPPElement):
                 f'</query>'
                 f'</iq>')
         return data.encode()
-
-
-

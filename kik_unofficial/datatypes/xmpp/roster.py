@@ -6,10 +6,9 @@ from lxml import etree
 from bs4 import BeautifulSoup
 from lxml.etree import Element
 
-from kik_unofficial.datatypes.peers import Group, User, RosterUser
+from kik_unofficial.datatypes.peers import Group, User, Peer, RosterUser
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.device_configuration import kik_version_info
-from kik_unofficial.datatypes.exceptions import KikParsingException
 from kik_unofficial.utilities import jid_utilities
 
 
@@ -60,28 +59,37 @@ class FetchRosterResponse(XMPPResponse):
     """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.peers = [self.parse_peer(element) for element in iter(data.query)]
-        self.more = data.query.get('more')
+        self.peers = []              # type: list[Peer]
+        self.removed_users = []      # type: list[str]
+        self.removed_groups = []     # type: list[str]
+        self.more = data.query.get('more') == '1'
         self.timestamp = data.query.get('ts')
         self.mts = data.query.get('mts')
         self.is_roster_full = False
 
+        for element in iter(data.query):
+            self.parse_peer(element)
+
     def parse_peer(self, element):
-        if element.name in ('g', 'remove-group'):
-            # 'remove-group' indicates that the group JID is no longer in the callers roster.
-            # 'g' contains new or updated accounts in the roster.
-            return Group(element)
-        elif element.name in ('item', 'remove'):
-            # 'remove' indicates that the user JID is no longer in the callers roster.
+        name = element.name
+
+        if name == 'item':
             # 'item' contains new or updated accounts in the roster.
-            return RosterUser(element)
-        elif element.name == 'full':
+            self.peers.append(RosterUser(element))
+        elif name == 'g':
+            # 'g' contains new or updated accounts in the roster.
+            self.peers.append(Group(element))
+        elif name == 'remove':
+            # 'remove' indicates that the user JID is no longer in the callers roster.
+            self.removed_users.append(element['jid'])
+        elif name == 'remove-group':
+            # 'remove-group' indicates that the group JID is no longer in the callers roster.
+            self.removed_groups.append(element['jid'])
+        elif name == 'full':
             # If encountered, Kik is indicating that a full refresh is needed.
             # Client should delete the 'ts' and 'mts' page tokens from its cache / storage,
             # and request roster after 30-60 seconds without any page tokens specified.
             self.is_roster_full = True
-        else:
-            raise KikParsingException(f"Unsupported peer element tag: {element.name}")
 
 
 class PeersInfoRequest(XMPPElement):

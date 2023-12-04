@@ -16,7 +16,7 @@ class Peer:
 
 
 class User(Peer):
-    """"
+    """
     Represents a user (person) in kik messenger.
     Every user has a username, display name, etc.
     """
@@ -27,7 +27,7 @@ class User(Peer):
         self.username = xml_data.username.text if xml_data.username else None
         self.display_name = xml_data.find('display-name').text if xml_data.find('display-name') else None
         self.pic = xml_data.pic.text if xml_data.pic else None
-        self.pic_updated_timestamp = int(xml_data.pic.ts) if xml_data.pic else None
+        self.pic_updated_timestamp = int(xml_data.pic['ts']) if xml_data.pic else None
         self.verified = xml_data.verified is not None
         if xml_data.entity:
             self._parse_entity(xml_data.entity.text)
@@ -54,6 +54,9 @@ class User(Peer):
 
 
 class RosterUser(User):
+    """
+    Represents a user roster entry.
+    """
     def __init__(self, xml_data: BeautifulSoup):
         """
         Represents a user (person) in Kik, as received from the roster.

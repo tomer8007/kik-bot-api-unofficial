@@ -72,7 +72,7 @@ class User(Peer):
             raise KikApiException(f'No jid in user xml {data}')
         super().__init__(data['jid'])
         self.username = get_text_safe(data, 'username')
-        self.display_name = get_text_safe(data, 'display_name')
+        self.display_name = get_text_safe(data, 'display-name')
         self.verified = data.find('verified', recursive=False) is not None
         if data.entity:
             self._parse_entity(data.entity.text)

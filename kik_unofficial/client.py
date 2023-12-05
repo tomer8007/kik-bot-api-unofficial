@@ -519,7 +519,7 @@ class KikClient:
 
         :param filename: The path to the file OR its bytes OR an IOBase object to set
         """
-        self.log.info(f"Setting the profile picture to file '{filename}'")
+        self.log.info(f"Changing profile picture for {self.username}")
         profile_pictures.set_profile_picture(
             filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
         )
@@ -530,7 +530,7 @@ class KikClient:
 
         :param filename: The path to the image file OR its bytes OR an IOBase object to set
         """
-        self.log.info(f"Setting the background picture to filename '{filename}'")
+        self.log.info(f"Changing background picture for {self.username}")
         profile_pictures.set_background_picture(
             filename, f'{self.kik_node}@talk.kik.com', self.username, self.password)
 
@@ -544,7 +544,7 @@ class KikClient:
         :param group_jid: the JID of the group to change the picture for
         :param silent: If true, no status message is generated when the picture is changed
         """
-        self.log.info(f"Setting the background picture to filename '{filename}'")
+        self.log.info(f"Changing group picture for {self.username} in {group_jid} (silent={silent})")
         profile_pictures.set_group_picture(
             filename, f'{self.kik_node}@talk.kik.com', group_jid, self.username, self.password, silent)
 

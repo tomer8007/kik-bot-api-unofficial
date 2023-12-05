@@ -114,7 +114,7 @@ class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
         super().__init__(peer_jid, is_typing)
 
     def serialize_message(self, message: Element) -> None:
-        self.add_kik_element(message, push=False, qos=True)
+        self.add_kik_element(message, push=False, qos=False)
         is_typing = etree.SubElement(message, 'is-typing')
         is_typing.set('val', 'true' if self.is_typing else 'false')
 

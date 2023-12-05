@@ -266,17 +266,19 @@ class MuteUserRequest(XMPPElement):
     """
     Represents a request to mute a user.
     """
-    def __init__(self, peer_jid, expires: time = None):
+    def __init__(self, peer_jid, expires: Union[time, None] = None):
         super().__init__()
         self.peer_jid = peer_jid
         self.expires = expires
 
     def serialize(self) -> bytes:
+        mute_tag = f'<mute expires="{int(round(self.expires * 1000))}" />' if self.expires else '<mute />'
+
         data = (
             f'<iq type="set" id="{self.message_id}">'
             '<query xmlns="kik:iq:convos">'
             f'<convo jid="{self.peer_jid}">'
-            f'<mute expires="{int(round(self.expires * 1000))}" />' if self.expires else '<mute />'
+            f'{mute_tag}'
             '</convo>'
             '</query>'
             '</iq>'

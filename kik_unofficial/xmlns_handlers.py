@@ -85,7 +85,8 @@ class XMPPGroupChatMessageHandler(XMPPChatMessageHandler):
 
 class HistoryHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
-        self.callback.on_message_history_response(HistoryResponse(data))
+        if data.find('query', recursive=False).find('history', recursive=False) is not None:
+            self.callback.on_message_history_response(HistoryResponse(data))
 
 
 class UserProfileHandler(XmppHandler):

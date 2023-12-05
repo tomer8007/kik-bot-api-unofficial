@@ -2,7 +2,6 @@ from typing import Union, final
 
 from bs4 import BeautifulSoup
 from lxml import etree
-import time
 
 from lxml.etree import Element
 
@@ -24,12 +23,9 @@ class OutgoingAcknowledgement(XMPPElement):
         else:
             self.messages = []
 
-        if len(self.messages) == 0 and not self.request_history:
-            raise ValueError('invalid arguments to OutgoingAcknowledgement (no messages and request_history is false)')
-
     @final
     def serialize(self) -> Element:
-        timestamp = KikServerClock.get_server_time()
+        timestamp = str(KikServerClock.get_server_time())
 
         iq = etree.Element('iq')
         iq.set('type', 'set')
@@ -48,29 +44,28 @@ class OutgoingAcknowledgement(XMPPElement):
         return iq
 
     def _compute_msg_acks(self, msg_acks):
-        temp_map = {}
-
+        sender_map = dict()
         for message in self.messages:
-            map_key = message.bin_jid + message.correspondent_jid + str(message.is_group)
-            if map_key in temp_map:
-                items = temp_map.get(map_key)
+            map_key = message.from_jid
+            if message.is_group:
+                map_key += message.group_jid
+
+            if map_key in sender_map:
+                items = sender_map.get(map_key)
             else:
                 items = list[XMPPResponse]()
-                temp_map[map_key] = items
-
+                sender_map[map_key] = items
             items.append(message)
 
-        batches = list(iter(temp_map.values()))
-        for batch in batches:
+        for batch in sender_map.values():
             owner = batch[0]
-            bin_jid = owner.group_jid if owner.group_jid else owner.from_jid
             correspondent_jid = owner.from_jid
-            needs_group_tag = owner.group_jid is not None and bin_jid != correspondent_jid
+            needs_group_tag = owner.group_jid is not None and owner.group_jid != correspondent_jid
 
             sender = etree.SubElement(msg_acks, 'sender')
-            sender.set('jid', correspondent_jid)
+            sender.set('jid', owner.from_jid)
             if needs_group_tag:
-                sender.set('g', bin_jid)
+                sender.set('g', owner.group_jid)
 
             for message in batch:
                 ack_id = etree.SubElement(sender, 'ack-id')

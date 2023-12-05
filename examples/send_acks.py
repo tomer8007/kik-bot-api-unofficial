@@ -53,10 +53,7 @@ class AckBot(KikClientCallback):
         print(f"Full name: {response.first_name} {response.last_name}")
 
     def on_message_history_response(self, response: HistoryResponse):
-        if len(response.messages) > 0:
-            self.client.send_ack(messages=response.messages, request_history=response.more)
-        elif response.more:
-            self.client.request_messaging_history()
+        self.client.send_ack(messages=response.messages, request_history=response.more)
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         print(f"[+] '{chat_message.from_jid}' says: {chat_message.body}")

@@ -164,6 +164,9 @@ class GroupSearchResponse(XiphiasResponse):
         super().__init__(data, message=FindGroupsResponse())
         self.groups = [self.GroupSearchEntry(result) for result in self.message.match]  # type: List[GroupSearchResponse.GroupSearchEntry]
 
+    def __repr__(self):
+        return f"GroupSearchResponse(groups={self.groups})"
+
     class GroupSearchEntry:
         """
         Represents a group entry that was found in the search results

@@ -158,7 +158,7 @@ class IncomingIsTypingEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         is_typing = data.find('is-typing', recursive=False)
-        self.is_typing = is_typing == 'true' if is_typing else False
+        self.is_typing = is_typing['val'] == 'true' if is_typing and 'val' in is_typing.attrs else False
 
 
 class IncomingGroupIsTypingEvent(IncomingIsTypingEvent):

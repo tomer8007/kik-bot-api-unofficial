@@ -4,7 +4,7 @@ import time
 import traceback
 from threading import Thread, Event
 from typing import Union, List
-from asyncio import StreamWriter
+from asyncio import StreamReader, StreamWriter
 from bs4 import BeautifulSoup
 
 import kik_unofficial.callbacks as callbacks
@@ -35,9 +35,19 @@ class KikClient:
     The main kik class with which you're managing a kik connection and sending commands
     """
 
-    def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
-                 enable_logging: bool = False, log_file_path: str = None, disable_auth_cert: bool = True) -> None:
+    def __init__(
+            self,
+            callback: callbacks.KikClientCallback,
+            kik_username: str,
+            kik_password: str,
+            kik_node: str = None,
+            device_id: str = None,
+            android_id: str = random_android_id(),
+            log_level: int = 1,
+            enable_logging: bool = False,
+            log_file_path: str = None,
+            disable_auth_cert: bool = True
+    ) -> None:
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -74,7 +84,6 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
-        self.is_expecting_connection_reset = False
         self.is_permanent_disconnection = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -101,6 +110,9 @@ class KikClient:
     def wait_for_messages(self, max_retries: int = 5):
         for _ in range(max_retries):
             self.kik_connection_thread.join()
+            if self.is_permanent_disconnection:
+                self.log.info("Permanent disconnect, exiting...")
+                break
             self.log.info("Connection has disconnected, trying again...")
             time.sleep(2)
 
@@ -566,13 +578,12 @@ class KikClient:
 
         :permanent: if True, the client will not reconnect and future attempts to reconnect will fail.
         """
-        if not self.connection or self.connection.is_closed:
-            return
-
-        self.log.warning("Disconnecting.")
-        self.connection.close()
-        self.is_expecting_connection_reset = True
         self.is_permanent_disconnection = True if self.is_permanent_disconnection else permanent
+        if self.connection:
+            self.log.info("Disconnecting.")
+            self.connection.close()
+        else:
+            self.log.error("Can't disconnect, no connection")
 
     # -----------------
     # Internal methods
@@ -736,18 +747,6 @@ class KikClient:
         else:
             self.log.warning(f'Received unknown XMPP element type: {data}')
 
-    def _on_connection_lost(self):
-        """
-        Gets called when the connection to kik's servers is (unexpectedly) lost.
-        It could be that we received a connection reset packet for example.
-        :return:
-        """
-        self.connected = False
-        if not self.is_expecting_connection_reset:
-            self.log.warning("The connection was unexpectedly lost")
-
-        self.is_expecting_connection_reset = False
-
     def _kik_connection_thread_function(self):
         """
         The Kik Connection thread main function.
@@ -755,7 +754,7 @@ class KikClient:
         """
         # If there is already a connection going, then wait for it to stop
         if self.connection and not self.connection.is_closed:
-            self.loop.call_soon_threadsafe(self.connection.close)
+            self.connection.close()
             self.log.debug("Waiting for the previous connection to stop.")
             while not self.connection.is_closed:
                 self.log.debug("Still waiting for the previous connection to stop.")
@@ -765,7 +764,7 @@ class KikClient:
 
         # create the connection and launch the asyncio loop
         self.connection = KikConnection(self)
-        task = self.loop.create_task(self.connection.main_loop())
+        task = self.loop.create_task(self.connection.read_loop())
 
         self.loop.run_until_complete(task)
         self.log.debug("Main loop ended.")
@@ -805,14 +804,15 @@ class KikConnection:
     def __init__(self, api: KikClient):
         self.api = api
         self.log = api.log
+        self.reader = None  # type: StreamReader | None
         self.writer = None  # type: StreamWriter | None
         self.is_closed = False
 
     # noinspection PyProtectedMember
-    async def main_loop(self):
+    async def read_loop(self):
         try:
-            reader, self.writer = await asyncio.open_connection(host=HOST, port=PORT, ssl=ssl.create_default_context())
-            parser = KikXmlParser(reader, self.log)
+            self.reader, self.writer = await asyncio.open_connection(host=HOST, port=PORT, ssl=ssl.create_default_context())
+            parser = KikXmlParser(self.reader, self.log)
 
             self.log.info("Connected.")
             self.api._on_connection_made()
@@ -821,18 +821,20 @@ class KikConnection:
             self.log.debug("%s bind: %s", self.api.username, k)
 
             if not self.api._handle_received_k_element(k):
-                self.api.is_expecting_connection_reset = True
+                self.close()
                 return
 
-            while True:
+            while not self.is_closed:
                 stanza = await parser.read_next_stanza()
                 self.log.debug("Received: %s", stanza)
                 self.api.loop.call_soon_threadsafe(self.api._on_new_stanza_received, stanza)
         except Exception:
             self.log.warning("Received error in main loop: %s", traceback.format_exc())
         finally:
-            self.is_closed = True
-            self.api._on_connection_lost()
+            self.api.connected = False
+            if not self.is_closed:
+                self.log.warning("Connection unexpectedly lost")
+            self.close()
 
     def send_raw_data(self, data: bytes):
         if not self.writer:
@@ -844,7 +846,8 @@ class KikConnection:
             self.writer.write(data)
 
     def close(self):
-        if self.writer and not self.writer.is_closing():
+        if not self.is_closed and self.writer and not self.writer.is_closing():
+            self.is_closed = True
             self.writer.write(b'</k>')
             self.writer.close()
 

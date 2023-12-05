@@ -5,16 +5,14 @@ Defines classes for dealing with generic chatting (text messaging, read receipts
 import time
 from typing import Union
 
-import requests
-import json
-import base64
-from io import BytesIO
-from PIL import Image
 from bs4 import BeautifulSoup
+from lxml import etree
+from lxml.etree import Element
 
 from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse, XMPPContentResponse, \
     XMPPReceiptResponse, XMPPOutgoingContentMessageElement, XMPPOutgoingMessageElement, XMPPOutgoingIsTypingMessageElement
+from kik_unofficial.http_requests.tenor_client import KikTenorClient
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe
 
 
@@ -27,15 +25,12 @@ class OutgoingChatMessage(XMPPOutgoingMessageElement):
         super().__init__(peer_jid)
         self.body = body
 
-    def serialize(self) -> bytes:
-        data = (f'<message type="{self.message_type}" to="{self.peer_jid}" id="{self.message_id}" cts="{self.timestamp}">'
-                f'<body>{ParsingUtilities.escape_xml(self.body)}</body>'
-                f'<preview>{ParsingUtilities.escape_xml(self.body[:20])}</preview>'
-                f'<kik push="true" qos="true" timestamp="{self.timestamp}" />'
-                '<request xmlns="kik:message:receipt" r="true" d="true" />'
-                '<ri></ri>'
-                '</message>')
-        return data.encode()
+    def serialize_message(self, message: Element) -> None:
+        etree.SubElement(message, 'body').text = self.body
+        etree.SubElement(message, 'preview').text = self.body[:20]
+        self.add_kik_element(message, push=True, qos=True)
+        self.add_request_element(message, request_delivered=True, request_read=True)
+        self.add_empty_element(message, 'ri')
 
 
 class OutgoingChatImage(XMPPOutgoingContentMessageElement):
@@ -44,39 +39,23 @@ class OutgoingChatImage(XMPPOutgoingContentMessageElement):
    """
 
     def __init__(self, peer_jid, file_location, forward=True):
-        super().__init__(peer_jid)
+        super().__init__(peer_jid, 'com.kik.ext.gallery')
         self.allow_forward = forward
         self.parsed = ParsingUtilities.parse_image(file_location)
 
-    def serialize(self) -> bytes:
-        data = (
-            f'<message to="{self.peer_jid}" id="{self.message_id}" cts="{self.timestamp}" type="{self.message_type}" xmlns="{self.xmlns}">'
-            f'<kik timestamp="{self.timestamp}" qos="true" push="true" />'
-            '<request xmlns="kik:message:receipt" d="true" r="true" />'
-            f'<content id="{self.content_id}" v="2" app-id="com.kik.ext.gallery">'
-            '<strings>'
-            '<app-name>Gallery</app-name>'
-            f'<file-size>{self.parsed["size"]}</file-size>'
-            f'<allow-forward>{str(self.allow_forward).lower()}</allow-forward>'
-            '<disallow-save>false</disallow-save>'
-            '<file-content-type>image/jpeg</file-content-type>'
-            f'<file-name>{self.content_id}.jpg</file-name>'
-            '</strings>'
-            '<extras />'
-            '<hashes>'
-            f'<sha1-original>{self.parsed["SHA1"]}</sha1-original>'
-            f'<sha1-scaled>{self.parsed["SHA1Scaled"]}</sha1-scaled>'
-            f'<blockhash-scaled>{self.parsed["blockhash"]}</blockhash-scaled>'
-            '</hashes>'
-            '<images>'
-            f'<preview>{self.parsed["base64"]}</preview>'
-            '<icon></icon>'
-            '</images>'
-            '<uris />'
-            '</content>'
-            '</message>'
-        )
-        return data.encode()
+    def serialize_content(self) -> None:
+        self.add_string('app-name', "Gallery")
+        self.add_string('file-size', str(self.parsed['size']))
+        self.set_allow_forward(self.allow_forward)
+        self.set_allow_save(True)
+        self.add_string('file-content-type', 'image/jpeg')
+        self.add_string('file-name', f'{self.content_id}.jpg')
+
+        self.add_hash('sha1-original', self.parsed["SHA1"])
+        self.add_hash('sha1-scaled', self.parsed["SHA1Scaled"])
+        self.add_hash('blockhash-scaled', self.parsed["blockhash"])
+
+        self.add_image('preview', self.parsed['base64'])
 
 
 class IncomingChatMessage(XMPPResponse):
@@ -115,76 +94,65 @@ class OutgoingReadReceipt(XMPPOutgoingMessageElement):
         super().__init__(peer_jid)
         self.group_jid = group_jid
         self.receipt_message_ids = receipt_message_id if isinstance(receipt_message_id, list) else [receipt_message_id]
+        self.message_type = 'receipt'
 
-    def serialize(self) -> bytes:
-        data = (f'<message type="receipt" id="{self.message_id}" to="{self.peer_jid}" cts="{self.timestamp}">'
-                f'<kik push="false" qos="true" timestamp="{self.timestamp}" />'
-                '<receipt xmlns="kik:message:receipt" type="read">'
-                f'{''.join([f'<msgid id="{msg_id}" />' for msg_id in self.receipt_message_ids])}'
-                '</receipt>'
-                f'{f'<g jid="{self.group_jid}" />' if self.group_jid else ''}'
-                '</message>')
-        return data.encode()
+    def serialize_message(self, message: Element) -> None:
+        self.add_kik_element(message, push=True, qos=True)
+        receipt = etree.SubElement(message, 'receipt')
+        receipt.set('xmlns', 'kik:message:receipt')
+        receipt.set('type', 'read')
+        for receipt_id in self.receipt_message_ids:
+            msgid = etree.SubElement(receipt, 'msgid')
+            msgid.set('id', receipt_id)
+
+        if self.group_jid:
+            g = etree.SubElement(message, 'g')
+            g.set('jid', self.group_jid)
 
 
 class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
     def __init__(self, peer_jid, is_typing):
         super().__init__(peer_jid, is_typing)
 
-    def serialize(self) -> bytes:
-        data = (f'<message type="{self.message_type}" to="{self.peer_jid}" id="{self.message_id}">'
-                f'<kik push="false" qos="false" timestamp="{self.timestamp}" />'
-                f'<is-typing val="{'true' if self.is_typing else 'false'}" />'
-                '</message>')
-        return data.encode()
+    def serialize_message(self, message: Element) -> None:
+        self.add_kik_element(message, push=False, qos=True)
+        is_typing = etree.SubElement(message, 'is-typing')
+        is_typing.set('val', 'true' if self.is_typing else 'false')
 
 
 class OutgoingLinkShareEvent(XMPPOutgoingContentMessageElement):
     def __init__(self, peer_jid, link, title, text, app_name):
-        super().__init__(peer_jid)
+        super().__init__(peer_jid, 'com.kik.cards')
         self.link = link
         self.title = title
         self.text = text
         self.app_name = app_name
 
-    def serialize(self) -> bytes:
-        data = (f'<message type="{self.message_type}" xmlns="{self.xmlns}" to="{self.peer_jid}" id="{self.message_id}" cts="{self.timestamp}">'
-                '<pb></pb>'
-                f'<kik push="true" qos="true" timestamp="{self.timestamp}" />'
-                '<request xmlns="kik:message:receipt" r="true" d="true" />'
-                f'<content id="{self.content_id}" app-id="com.kik.cards" v="2">'
-                '<strings>'
-                f'<app-name>{self.app_name}</app-name>'
-                '<layout>article</layout>'
-                f'<title>{self.title}</title>'
-                f'<text>{self.text}</text>'
-                '<allow-forward>true</allow-forward>'
-                '</strings>'
-                '<extras />'
-                '<hashes />'
-                '<images>'
-                '</images>'
-                '<uris>'
-                f'<uri platform="cards">{self.link}</uri>'
-                '<uri></uri>'
-                '<uri>http://cdn.kik.com/cards/unsupported.html</uri>'
-                '</uris>'
-                '</content>'
-                '</message>')
+    def serialize_content(self) -> None:
+        self.add_string('app-name', self.app_name)
+        self.add_string('layout', 'article')
+        self.add_string('title', self.title)
+        self.add_string('text', self.text)
+        self.add_string('allow-forward', 'true')
 
-        return data.encode()
+        self.add_uri(platform='cards', url=self.link)
+        self.add_uri(url='')
+        self.add_uri(url='http://cdn.kik.com/cards/unsupported.html')
 
 
 class IncomingMessageReadEvent(XMPPReceiptResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.receipt_message_id = self.receipt_ids[0]
 
 
 class IncomingMessageDeliveredEvent(XMPPReceiptResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.receipt_message_id = self.receipt_ids[0]
+
+
+class IncomingGroupReceiptsEvent(XMPPReceiptResponse):
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data)
 
 
 class IncomingIsTypingEvent(XMPPResponse):
@@ -225,11 +193,6 @@ class IncomingGroupSysmsg(XMPPResponse):
         self.sysmsg = sysmsg.text
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
-
-
-class IncomingGroupReceiptsEvent(XMPPReceiptResponse):
-    def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
 
 
 class IncomingFriendAttribution(XMPPResponse):
@@ -293,59 +256,28 @@ class OutgoingGIFMessage(XMPPOutgoingContentMessageElement):
     """
 
     def __init__(self, peer_jid, search_term, api_key):
-        super().__init__(peer_jid)
+        super().__init__(peer_jid, app_id='com.kik.ext.gif')
         self.allow_forward = True
-        self.gif_preview, self.gif_data = self.get_gif_data(search_term, api_key)
+        self.gif_preview, self.gif_data = KikTenorClient(api_key).search_for_gif(search_term)
 
-    def serialize(self) -> bytes:
-        data = (
-            f'<message cts="{self.timestamp}" type="{self.message_type}" to="{self.peer_jid}" id="{self.message_id}" xmlns="{self.xmlns}">'
-            f'<kik push="true" timestamp="{self.timestamp}" qos="true" />'
-            '<pb/>'
-            f'<content id="{self.content_id}" v="2" app-id="com.kik.ext.gif">'
-            '<strings>'
-            '<app-name>GIF</app-name>'
-            '<layout>video</layout>'
-            f'<allow-forward>{'true' if self.allow_forward else 'false'}</allow-forward>'
-            '<disallow-save>true</disallow-save>'
-            '<video-should-autoplay>true</video-should-autoplay>'
-            '<video-should-loop>true</video-should-loop>'
-            '<video-should-be-muted>true</video-should-be-muted>'
-            '</strings>'
-            '<images>'
-            '<icon></icon>'
-            f'<preview>{self.gif_preview}</preview>'
-            '</images>'
-            '<uris>'
-            f'<uri priority="0" type="video" file-content-type="video/mp4">{self.gif_data["mp4"]["url"]}</uri>'
-            f'<uri priority="1" type="video" file-content-type="video/webm">{self.gif_data["webm"]["url"]}</uri>'
-            f'<uri priority="0" type="video" file-content-type="video/tinymp4">{self.gif_data["tinymp4"]["url"]}</uri>'
-            f'<uri priority="1" type="video" file-content-type="video/tinywebm">{self.gif_data["tinywebm"]["url"]}</uri>'
-            f'<uri priority="0" type="video" file-content-type="video/nanomp4">{self.gif_data["nanomp4"]["url"]}</uri>'
-            f'<uri priority="1" type="video" file-content-type="video/nanowebm">{self.gif_data["nanowebm"]["url"]}</uri>'
-            '</uris>'
-            '</content>'
-            '<request r="true" d="true" xmlns="kik:message:receipt" />'
-            '</message>'
-        )
-        return data.encode()
+    def serialize_content(self) -> None:
+        self.add_string('app-name', 'GIF')
+        self.add_string('layout', 'video')
+        self.set_allow_forward(self.allow_forward)
+        self.set_allow_save(False)
+        self.set_video_autoplay(True)
+        self.set_video_loop(True)
+        self.set_video_muted(True)
 
-    def get_gif_data(self, search_term, api_key):
-        if not api_key:
-            raise Exception("A tenor.com API key is required to search for GIFs images. please get one and change it")
+        self.add_image('icon', '')
+        self.add_image('preview', self.gif_preview)
 
-        r = requests.get(f"https://tenor.googleapis.com/v2/search?q={search_term}&key={api_key}&limit=1")
-        if r.status_code == 200:
-            gif = json.loads(r.content.decode('ascii'))
-            response = requests.get(gif["results"][0]["media_formats"]["nanogifpreview"]["url"])
-            img = Image.open(BytesIO(response.content))
-            buffered = BytesIO()
-
-            img.convert("RGB").save(buffered, format="JPEG")
-            img_str = base64.b64encode(buffered.getvalue()).decode('ascii')
-            return img_str, gif["results"][0]["media_formats"]
-        else:
-            return ""
+        self.add_uri(url=self.gif_data["mp4"]["url"], priority='0', type='video', file_content_type='video/mp4')
+        self.add_uri(url=self.gif_data["webm"]["url"], priority='1', type='video', file_content_type='video/webm')
+        self.add_uri(url=self.gif_data["tinymp4"]["url"], priority='0', type='video', file_content_type='video/tinymp4')
+        self.add_uri(url=self.gif_data["tinywebm"]["url"], priority='1', type='video', file_content_type='video/tinywebm')
+        self.add_uri(url=self.gif_data["nanomp4"]["url"], priority='0', type='video', file_content_type='video/nanomp4')
+        self.add_uri(url=self.gif_data["nanowebm"]["url"], priority='1', type='video', file_content_type='video/nanowebm')
 
 
 class IncomingVideoMessage(XMPPContentResponse):

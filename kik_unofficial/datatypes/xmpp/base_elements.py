@@ -1,9 +1,10 @@
 import base64
 import binascii
 import uuid
-from typing import Union
+from typing import Union, final
 
 from bs4 import BeautifulSoup
+from lxml import etree
 from lxml.etree import Element
 
 from kik_unofficial.utilities import jid_utilities
@@ -26,13 +27,128 @@ class XMPPOutgoingMessageElement(XMPPElement):
         self.is_group = jid_utilities.is_group_jid(peer_jid)
         self.timestamp = str(KikServerClock.get_server_time())
         self.message_type = "groupchat" if self.is_group else "chat"
-        self.xmlns = "kik:groups" if self.is_group else "jabber:client"
+
+    @final
+    def serialize(self) -> Element:
+        message = etree.Element('message')
+        message.set('type', self.message_type)
+        if self.is_group:
+            message.set('xmlns', 'kik:groups')
+        message.set('to', self.peer_jid)
+        message.set('id', self.message_id)
+        if not self.message_type == 'is-typing':
+            message.set('cts', self.timestamp)
+        self.serialize_message(message)
+        return message
+
+    def serialize_message(self, message: Element) -> None:
+        raise NotImplementedError
+
+    @final
+    def add_kik_element(self, message: Element, push: bool = True, qos: bool = True) -> None:
+        kik = etree.SubElement(message, 'kik')
+        kik.set('push', 'true' if push else 'false')
+        kik.set('qos', 'true' if qos else 'false')
+        kik.set('timestamp', self.timestamp)
+
+    @final
+    def add_request_element(self, message: Element, request_delivered: bool = True, request_read: bool = False) -> None:
+        if not request_read and not request_delivered:
+            return
+        request = etree.SubElement(message, 'request')
+        request.set('xmlns', 'kik:message:receipt')
+        request.set('d', 'true' if request_delivered else 'false')
+        request.set('r', 'true' if request_read else 'false')
+
+    @final
+    def add_empty_element(self, message: Element, name: str) -> None:
+        etree.SubElement(message, name).text = ''
 
 
 class XMPPOutgoingContentMessageElement(XMPPOutgoingMessageElement):
-    def __init__(self, peer_jid: str):
+    def __init__(self, peer_jid: str, app_id: str):
         super().__init__(peer_jid)
         self.content_id = str(uuid.uuid4())  # content ids arent cryptographic
+        self.app_id = app_id
+        self._content = None
+        self._content_strings = None
+        self._content_images = None
+        self._content_hashes = None
+        self._content_extras = None
+        self._content_uris = None
+
+    def serialize_content(self) -> None:
+        raise NotImplementedError
+
+    @final
+    def serialize_message(self, message: Element) -> None:
+        self.add_empty_element(message, 'pb')
+        self.add_kik_element(message, push=True, qos=True)
+        self.add_request_element(message, request_delivered=True, request_read=True)
+        content = etree.SubElement(message, 'content')
+        content.set('id', self.content_id)
+        content.set('app-id', self.app_id)
+        content.set('v', '2')
+        self._content = content
+        self._content_strings = etree.SubElement(content, 'strings')
+        self._content_images = etree.SubElement(content, 'images')
+        self._content_hashes = etree.SubElement(content, 'hashes')
+        self._content_extras = etree.SubElement(content, 'extras')
+        self._content_uris = etree.SubElement(content, 'uris')
+        self.serialize_content()
+
+    @final
+    def set_allow_forward(self, allow_forward: bool) -> None:
+        self.add_string('allow-forward', 'true' if allow_forward else 'false')
+
+    @final
+    def set_allow_save(self, allow_save: bool) -> None:
+        self.add_string('disallow-save', 'false' if allow_save else 'true')
+
+    @final
+    def set_video_autoplay(self, auto_play: bool) -> None:
+        self.add_string('video-should-autoplay', 'true' if auto_play else 'false')
+
+    @final
+    def set_video_loop(self, loop: bool) -> None:
+        self.add_string('video-should-loop', 'false' if loop else 'true')
+
+    @final
+    def set_video_muted(self, muted: bool) -> None:
+        self.add_string('video-should-be-muted', 'true' if muted else 'false')
+
+    @final
+    def add_string(self, name: str, value: str) -> None:
+        etree.SubElement(self._content_strings, name).text = value
+
+    @final
+    def add_image(self, name: str, image_base64: str) -> None:
+        if name not in ('icon', 'preview', 'png-preview'):
+            raise ValueError(f'invalid image name {name}, must be icon, preview, png-preview')
+        etree.SubElement(self._content_images, name).text = image_base64
+
+    @final
+    def add_hash(self, name: str, value: str) -> None:
+        if name not in ('sha1-original', 'sha1-scaled', 'blockhash-scaled'):
+            raise ValueError(f'invalid hash name {name}, must be sha1-original, preview, blockhash-scaled')
+        etree.SubElement(self._content_hashes, name).text = value
+
+    @final
+    def add_extra(self, name: str, value: str) -> None:
+        etree.SubElement(self._content_extras, name).text = value
+
+    @final
+    def add_uri(self, url: str, platform: str = None, type: str = None, file_content_type: str = None, priority: str = None) -> None:
+        uri = etree.SubElement(self._content_uris, 'uri')
+        uri.text = url
+        if platform:
+            uri.set('platform', platform)
+        if type:
+            uri.set('type', type)
+        if file_content_type:
+            uri.set('file-content-type', file_content_type)
+        if priority:
+            uri.set('priority', priority)
 
 
 class XMPPOutgoingIsTypingMessageElement(XMPPOutgoingMessageElement):
@@ -183,4 +299,5 @@ class XMPPReceiptResponse(XMPPResponse):
         receipt = data.find('receipt', recursive=False)
         self.type = receipt['type']
         self.receipt_ids = [m['id'] for m in receipt.findAll('msgid')]
+        self.receipt_message_id = self.receipt_ids[0]
 

@@ -173,7 +173,7 @@ class XMPPOutgoingContentMessageElement(XMPPOutgoingMessageElement):
 
         :param loop: True if the client should play the video on a loop
         """
-        self.add_string('video-should-loop', 'false' if loop else 'true')
+        self.add_string('video-should-loop', 'true' if loop else 'false')
 
     @final
     def set_video_muted(self, muted: bool) -> None:

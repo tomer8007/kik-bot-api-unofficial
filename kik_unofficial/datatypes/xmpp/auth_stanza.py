@@ -16,13 +16,13 @@ identifierHex = "30820122300d06092a864886f70d01010105000382010f00"
 
 class AuthStanza(XMPPElement):
     client = None
-    key_bytes: bytes = None
-    secret_key: bytes = None
-    public_key: bytes = None
-    private_key: bytes = None
-    encrypted_public_key: bytes = None
-    decrypted_public_key: bytes = None
-    revalidate_time: int = None
+    des_key_bytes: bytes = None
+    des_secret_key: bytes = None
+    rsa_public_key: bytes = None
+    rsa_private_key: bytes = None
+    encrypted_rsa_public_key: bytes = None
+    decrypted_rsa_public_key: bytes = None
+    cert_revalidate_time: int = None
     cert_url: str = None
 
     def __init__(self, client):
@@ -41,7 +41,7 @@ class AuthStanza(XMPPElement):
         """
         Revalidates the keys after n amount of time which is provided by Kik
         """
-        if KikServerClock.get_server_time() < self.revalidate_time:
+        if KikServerClock.get_server_time() < self.cert_revalidate_time:
             return
         stanza = self.serialize()
         log.info('Revalidating the authentication certificate')
@@ -69,8 +69,8 @@ class AuthStanza(XMPPElement):
         Generate new 2048 bits RSA keys, could take from about a second to six
         """
         (pubkey, privkey) = rsa.newkeys(2048)
-        self.public_key = bytes.fromhex(identifierHex) + pubkey.save_pkcs1('DER')
-        self.private_key = bytes.fromhex(identifierHex) + privkey.save_pkcs1('DER')
+        self.rsa_public_key = bytes.fromhex(identifierHex) + pubkey.save_pkcs1('DER')
+        self.rsa_private_key = bytes.fromhex(identifierHex) + privkey.save_pkcs1('DER')
 
     def get_key_phrase(self) -> bytes:
         """
@@ -93,16 +93,16 @@ class AuthStanza(XMPPElement):
         """
         Generates all the secrets then encrypts and decrypts the public key
         """
-        if not self.public_key:
+        if not self.rsa_public_key:
             self.generate_keys()
-        if not (self.key_bytes and self.secret_key):
+        if not (self.des_key_bytes and self.des_secret_key):
             key = self.get_des_key(self.get_des_secret())
             self.get_parity_bit(key, 0)
-        if not self.decrypted_public_key:
-            des = pyDes.des(self.secret_key, mode=pyDes.ECB, padmode=pyDes.PAD_PKCS5)
-            self.encrypted_public_key = des.encrypt(self.public_key)
-            self.decrypted_public_key = des.decrypt(self.encrypted_public_key)
-        return self.decrypted_public_key
+        if not self.decrypted_rsa_public_key:
+            des = pyDes.des(self.des_secret_key, mode=pyDes.ECB, padmode=pyDes.PAD_PKCS5)
+            self.encrypted_rsa_public_key = des.encrypt(self.rsa_public_key)
+            self.decrypted_rsa_public_key = des.decrypt(self.encrypted_rsa_public_key)
+        return self.decrypted_rsa_public_key
 
     def get_public_key_base64(self) -> str:
         """
@@ -116,20 +116,20 @@ class AuthStanza(XMPPElement):
         """
         if not isinstance(key, bytes):
             key = bytes(key)
-        self.key_bytes = key[:8]  # DES keys are only 8 bytes in length
-        return self.key_bytes
+        self.des_key_bytes = key[:8]  # DES keys are only 8 bytes in length
+        return self.des_key_bytes
 
     def get_key(self) -> bytes:
         """
         Returns the normal DESKey bytes
         """
-        return self.key_bytes
+        return self.des_key_bytes
 
     def get_secret_key(self) -> bytes:
         """
         Returns the secret of the DESKey
         """
-        return self.secret_key
+        return self.des_secret_key
 
     def get_parity_bit(self, byte_array: bytes, i: int = 0) -> bytes:
         """
@@ -140,8 +140,8 @@ class AuthStanza(XMPPElement):
             b = tmp[i] & 254
             tmp[i] = (((bin(b).count('1') & 1) ^ 1) | b)
             i = i + 1
-        self.secret_key = bytes(tmp)
-        return self.secret_key
+        self.des_secret_key = bytes(tmp)
+        return self.des_secret_key
 
     def get_signature(self) -> str:
         """
@@ -169,7 +169,7 @@ class AuthStanza(XMPPElement):
         current = KikServerClock.get_server_time()
         revalidate = int(data.certificate.revalidate.text)
         self.cert_url = data.certificate.url.text
-        self.revalidate_time = current + (revalidate * 1000)
+        self.cert_revalidate_time = current + (revalidate * 1000)
         self.client.loop.call_later(revalidate, self.revalidate)
         log.info('Successfully validated the authentication certificate')
 
@@ -177,11 +177,11 @@ class AuthStanza(XMPPElement):
         """
         Removes all the generated data to build a new Key
         """
-        self.key_bytes = None
-        self.secret_key = None
-        self.public_key = None
-        self.private_key = None
-        self.encrypted_public_key = None
-        self.decrypted_public_key = None
-        self.revalidate_time = None
+        self.des_key_bytes = None
+        self.des_secret_key = None
+        self.rsa_public_key = None
+        self.rsa_private_key = None
+        self.encrypted_rsa_public_key = None
+        self.decrypted_rsa_public_key = None
         self.cert_url = None
+        self.cert_revalidate_time = None

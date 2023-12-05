@@ -282,9 +282,9 @@ class XMPPResponse:
 
         if data.name in ('message', 'msg'):
             self.type = data['type']
-            self.xmlns = data['xmlns']
             self.from_jid = data['from']
-            self.to_jid = data['to']
+            self.xmlns = data['xmlns'] if 'xmlns' in data.attrs else None
+            self.to_jid = data['to'] if 'to' in data.attrs else None
 
             g = data.find('g', recursive=False)
             self.group_jid = g['jid'] if g and 'jid' in g.attrs and jid_utilities.is_group_jid(g['jid']) else None
@@ -295,8 +295,8 @@ class XMPPResponse:
 
             request = data.find('request', recursive=False)
             if request and request['xmlns'] == 'kik:message:receipt':
-                self.request_delivered_receipt = request['d'] == 'true'
-                self.request_read_receipt = request['r'] == 'true'
+                self.request_delivered_receipt = request['d'] == 'true' if 'd' in request.attrs else False
+                self.request_read_receipt = request['r'] == 'true' if 'r' in request.attrs else False
             else:
                 self.request_delivered_receipt = False
                 self.request_read_receipt = False

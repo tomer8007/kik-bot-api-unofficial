@@ -156,10 +156,14 @@ class RosterResponseHandler(XmppHandler):
 
 class PeersInfoResponseHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
-        if data.query['xmlns'] == 'kik:iq:friend':
+        query = data.find('query', recursive=False)
+        xmlns = query['xmlns']
+        if xmlns == 'kik:iq:friend' and query.find('item', recursive=False):
             peers_info = QueryUserByUsernameResponse(data)
-        else:
+        elif xmlns == 'kik:iq:friend:batch':
             peers_info = FriendBatchResponse(data)
+        else:
+            return
 
         # add this user to the list of known users if it wasn't encountered before
         for peer_info in peers_info.users:

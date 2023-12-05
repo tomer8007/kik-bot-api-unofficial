@@ -104,7 +104,7 @@ def get_local_part(jid: str) -> str:
     This is commonly used for xiphias messages, but it also can be useful
     for database storage, as the domain parts will never change.
 
-    ted_w6w@talk.kik.com -> ted_w6w
+    ted_w6w@talk.kik.com -> ted
     kikteam@talk.kik.com -> kikteam
 
     Raises a ValueError if the JID is invalid.

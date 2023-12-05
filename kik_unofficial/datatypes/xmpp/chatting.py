@@ -21,7 +21,7 @@ class OutgoingChatMessage(XMPPOutgoingMessageElement):
     Represents an outgoing text chat message to another kik entity (member or group)
     """
 
-    def __init__(self, peer_jid, body):
+    def __init__(self, peer_jid: str, body: str):
         super().__init__(peer_jid)
         self.body = body
 
@@ -38,7 +38,7 @@ class OutgoingChatImage(XMPPOutgoingContentMessageElement):
    Represents an outgoing image chat message to another kik entity (member or group)
    """
 
-    def __init__(self, peer_jid, file_location, forward=True):
+    def __init__(self, peer_jid: str, file_location, forward: bool = True):
         super().__init__(peer_jid, app_id='com.kik.ext.gallery')
         self.allow_forward = forward
         self.parsed = ParsingUtilities.parse_image(file_location)
@@ -84,7 +84,7 @@ class OutgoingReadReceipt(XMPPOutgoingMessageElement):
     Represents an outgoing read receipt to a specific user, for one or more messages
     """
 
-    def __init__(self, peer_jid, receipt_message_id: Union[str, list[str]], group_jid=None):
+    def __init__(self, peer_jid: str, receipt_message_id: Union[str, list[str]], group_jid: Union[str, None] = None):
         super().__init__(peer_jid)
         self.group_jid = group_jid
         self.receipt_message_ids = receipt_message_id if isinstance(receipt_message_id, list) else [receipt_message_id]
@@ -105,7 +105,11 @@ class OutgoingReadReceipt(XMPPOutgoingMessageElement):
 
 
 class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
-    def __init__(self, peer_jid, is_typing):
+    """
+    Represents an outgoing is-typing event
+    """
+
+    def __init__(self, peer_jid: str, is_typing: bool):
         super().__init__(peer_jid, is_typing)
 
     def serialize_message(self, message: Element) -> None:
@@ -115,12 +119,17 @@ class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
 
 
 class OutgoingLinkShareEvent(XMPPOutgoingContentMessageElement):
-    def __init__(self, peer_jid, link, title, text, app_name):
+    """
+    Represents an outgoing link share event. This appears as a card in the mobile clients.
+    """
+
+    def __init__(self, peer_jid: str, link: str, title: str, text: str, app_name: str, preview_bytes: Union[bytes, None]):
         super().__init__(peer_jid, app_id='com.kik.cards')
         self.link = link
         self.title = title
         self.text = text
         self.app_name = app_name
+        self.preview_bytes = preview_bytes
 
     def serialize_content(self) -> None:
         self.add_string('app-name', self.app_name)
@@ -128,6 +137,9 @@ class OutgoingLinkShareEvent(XMPPOutgoingContentMessageElement):
         self.add_string('title', self.title)
         self.add_string('text', self.text)
         self.set_allow_forward(True)
+
+        if self.preview_bytes:
+            self.add_image('preview', self.preview_bytes)
 
         self.add_uri(platform='cards', url=self.link)
         self.add_uri(url='')
@@ -249,7 +261,7 @@ class OutgoingGIFMessage(XMPPOutgoingContentMessageElement):
     Represents an outgoing GIF message to another kik entity (member or group)
     """
 
-    def __init__(self, peer_jid, search_term, api_key):
+    def __init__(self, peer_jid: str, search_term: str, api_key: str):
         super().__init__(peer_jid, app_id='com.kik.ext.gif')
         self.allow_forward = True
         self.gif_preview, self.gif_data = KikTenorClient(api_key).search_for_gif(search_term)

@@ -75,15 +75,15 @@ class XMPPOutgoingMessageElement(XMPPElement):
         Adds a request element. Request elements are indicators to the receiving client for sending receipts.
 
         :param message: the message parameter from serialize_message()
-        :param request_delivered: if True, the receiving client sends a delivered back when the message is received
+        :param request_delivered: if True, the receiving client sends a delivered receipt when the message is received
         :param request_read: if True, the receiving client sends a read receipt when the message is opened or read
         """
         if not request_read and not request_delivered:
             return
         request = etree.SubElement(message, 'request')
         request.set('xmlns', 'kik:message:receipt')
-        request.set('d', 'true' if request_delivered else 'false')
         request.set('r', 'true' if request_read else 'false')
+        request.set('d', 'true' if request_delivered else 'false')
 
     @final
     def add_empty_element(self, message: Element, name: str) -> None:
@@ -187,6 +187,20 @@ class XMPPOutgoingContentMessageElement(XMPPOutgoingMessageElement):
 
     @final
     def add_string(self, name: str, value: str) -> None:
+        """
+        Adds a string key / value pair to the content.
+
+        Strings include metadata about the content that determines a wide range of behaviors.
+
+        :param name: the string name
+        :param value: the string value
+        """
+        if name.startswith('int-'):
+            # Internal prefix, not allowed when serializing the content
+            return
+        if name == 'file-url':
+            # Server replaces this value based on the content ID
+            return
         etree.SubElement(self._content_strings, name).text = value
 
     @final
@@ -425,6 +439,6 @@ class XMPPReceiptResponse(XMPPResponse):
         super().__init__(data)
         receipt = data.find('receipt', recursive=False)
         self.type = receipt['type']
-        self.receipt_ids = [m['id'] for m in receipt.findAll('msgid')]
+        self.receipt_ids = [m['id'] for m in receipt.find_all('msgid', recursive=False)]
         self.receipt_message_id = self.receipt_ids[0]
 

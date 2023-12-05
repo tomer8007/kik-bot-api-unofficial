@@ -64,13 +64,8 @@ class IncomingChatMessage(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-
-        self.status = get_text_safe(data, 'status')
         self.preview = get_text_safe(data, 'preview')
         self.body = get_text_safe(data, 'body')
-
-        is_typing = data.find('is-typing', recursive=False)
-        self.is_typing = is_typing['val'] == 'true' if is_typing else None
 
 
 class IncomingGroupChatMessage(IncomingChatMessage):

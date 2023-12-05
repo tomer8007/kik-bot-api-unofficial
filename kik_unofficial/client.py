@@ -1,4 +1,6 @@
 import asyncio
+import io
+import pathlib
 import ssl
 import time
 import traceback
@@ -475,7 +477,7 @@ class KikClient:
         self.log.info(f"Checking for Uniqueness of username '{username}'")
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
-    def set_profile_picture(self, filename):
+    def set_profile_picture(self, filename: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the profile picture of the current user
 
@@ -486,7 +488,7 @@ class KikClient:
             filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
         )
 
-    def set_background_picture(self, filename):
+    def set_background_picture(self, filename: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the background picture of the current user
 
@@ -496,7 +498,7 @@ class KikClient:
         profile_pictures.set_background_picture(
             filename, f'{self.kik_node}@talk.kik.com', self.username, self.password)
 
-    def set_group_picture(self, filename, group_jid: str, silent: bool = False):
+    def set_group_picture(self, filename: str or bytes or pathlib.Path or io.IOBase, group_jid: str, silent: bool = False):
         """
         Sets the profile picture for a group JID.
 

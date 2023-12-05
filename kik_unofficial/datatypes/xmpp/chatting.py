@@ -211,7 +211,7 @@ class IncomingStatusResponse(XMPPResponse):
         status = data.find('status', recursive=False)
         self.status = status.text
         self.special_visibility = status['special-visibility'] == 'true'
-        self.status_jid = status['jid'] if status and 'jid' in status.attrs else None
+        self.status_jid = status['jid'] if 'jid' in status.attrs else None
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
 

@@ -3,7 +3,11 @@ import pathlib
 import io
 import os
 import hashlib
+from typing import Union
+
 from PIL import Image
+from bs4 import BeautifulSoup
+
 from kik_unofficial.utilities.blockhash import blockhash
 
 
@@ -20,6 +24,11 @@ def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     else:
         raise ValueError('File cannot be a type of %s', type(file_location))
     return data
+
+
+def get_text_safe(data: BeautifulSoup, tag: str) -> Union[str, None]:
+    element = data.find(tag, recursive=False)
+    return element.text if element else None
 
 
 class ParsingUtilities:

@@ -3,9 +3,11 @@ from typing import Union
 
 from bs4 import BeautifulSoup
 
+from kik_unofficial.datatypes.peers import ProfilePic
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
+from kik_unofficial.utilities.parsing_utilities import get_text_safe
 
 
 class GetMyProfileRequest(XMPPElement):
@@ -22,30 +24,38 @@ class GetMyProfileRequest(XMPPElement):
 class GetMyProfileResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.first_name = get_text_safe(data, "first")
-        self.last_name = get_text_safe(data, "last")
-        self.username = get_text_safe(data, "username")
+        query = data.query
+        self.first_name = get_text_safe(query, "first")
+        self.last_name = get_text_safe(query, "last")
+        self.username = get_text_safe(query, "username")
         # Birthday set upon registration using date format yyyy-MM-dd
         # Server seems to default to 2000-01-01 if a birthday wasn't set during sign up
-        self.birthday = get_text_safe(data, "birthday")
+        self.birthday = get_text_safe(query, "birthday")
         # Token that is used to start the OAuth flow for Kik Live API requests
-        self.session_token = get_text_safe(data, "session-token")
+        self.session_token = get_text_safe(query, "session-token")
         # Token expiration date in ISO 8601 format
         # When the token expires, requesting your profile information again
         # should return the new session token.
-        self.session_token_expiration = get_text_safe(data, "session-token-expiration")
-        self.notify_new_people = get_text_safe(data, "notify-new-people") == "true"
-        self.verified = bool(data.verified)
-        if data.find("email"):
-            self.email = data.find("email").text
-            self.email_is_confirmed = data.find("email").get("confirmed") == "true"
+        self.session_token_expiration = get_text_safe(query, "session-token-expiration")
+        self.notify_new_people = get_text_safe(query, "notify-new-people") == "true"
+        self.verified = query.find("verified", recursive=False) is not None
+
+        email = query.find("email", recursive=False)
+        if email:
+            self.email = email.text
+            self.email_is_confirmed = email.get("confirmed") == "true"
         else:
             self.email = None
             self.email_is_confirmed = False
-        self.pic_url = data.find("pic").text if data.find("pic") else None
 
-    # Once the session token is expired, call get_my_profile again to get the new token
+        self.profile_pic = ProfilePic.parse(query)
+
     def is_valid_token(self):
+        """
+        Checks if the session token is valid for use when authenticating against Kik Live.
+
+        Once the session token is expired, call get_my_profile again to get the new token
+        """
         if self.session_token is None or self.session_token_expiration is None:
             return False
         now = datetime.datetime.now()
@@ -61,17 +71,12 @@ class GetMyProfileResponse(XMPPResponse):
                f'\nDisplay name: {self.first_name} {self.last_name}' \
                f'\nBirthday: {self.birthday}' \
                f'\nEmail: {self.email} (confirmed: {self.email_is_confirmed})' \
-               f'\nPic: {self.pic_url + "/orig.jpg" if self.pic_url else "none"}'
+               f'\nPic: {self.profile_pic.url if self.profile_pic else "none"}'
 
     def __repr__(self):
         return f"GetMyProfileResponse(first_name={self.first_name}, last_name={self.last_name}, username={self.username}, birthday={self.birthday}, " \
                f"session_token={self.session_token}, session_token_expiration={self.session_token_expiration}, notify_new_people={self.notify_new_people}, " \
-               f"verified={self.verified}, email={self.email}, email_is_confirmed={self.email_is_confirmed}, pic_url={self.pic_url})"
-
-
-def get_text_safe(data: BeautifulSoup, tag: str):
-    element = data.find(tag, recursive=False)
-    return element.text if element else None
+               f"verified={self.verified}, email={self.email}, email_is_confirmed={self.email_is_confirmed}, pic={self.profile_pic})"
 
 
 class GetMutedConvosResponse(XMPPResponse):

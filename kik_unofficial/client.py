@@ -773,8 +773,8 @@ class KikClient:
             xmlns_handlers.XMPPChatMessageHandler(self.callback, self).handle(data)
         elif message_type == "groupchat":
             xmlns_handlers.XMPPGroupChatMessageHandler(self.callback, self).handle(data)
-        elif message_type == 'receipt' and data.receipt:
-            receipt_type = data.receipt['type']
+        elif message_type == 'receipt' and data.find('receipt', recursive=False):
+            receipt_type = data.find('receipt', recursive=False)['type']
             if message.is_group:
                 self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(data))
             elif receipt_type == 'delivered':

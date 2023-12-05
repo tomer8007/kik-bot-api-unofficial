@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse, XMPPContentResponse, \
     XMPPReceiptResponse, XMPPOutgoingContentMessageElement, XMPPOutgoingMessageElement, XMPPOutgoingIsTypingMessageElement
-from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe
 
 
 class OutgoingChatMessage(XMPPOutgoingMessageElement):
@@ -87,14 +87,9 @@ class IncomingChatMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
 
-        status = data.find('status', recursive=False)
-        self.status = status.text if status else None
-
-        preview = data.find('preview', recursive=False)
-        self.preview = preview.text if preview else None
-
-        body = data.find('body', recursive=False)
-        self.body = body.text if body else None
+        self.status = get_text_safe(data, 'status')
+        self.preview = get_text_safe(data, 'preview')
+        self.body = get_text_safe(data, 'body')
 
         is_typing = data.find('is-typing', recursive=False)
         self.is_typing = is_typing['val'] == 'true' if is_typing else None
@@ -107,10 +102,8 @@ class IncomingGroupChatMessage(IncomingChatMessage):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-
         # Messages from public groups include an alias user which can be resolved with client.xiphias_get_users_by_alias
-        alias_sender = data.find('alias-sender', recursive=False)
-        self.alias_sender = alias_sender.text == 'true' if alias_sender else None
+        self.alias_sender = get_text_safe(data, 'alias-sender')
 
 
 class OutgoingReadReceipt(XMPPOutgoingMessageElement):
@@ -197,7 +190,8 @@ class IncomingMessageDeliveredEvent(XMPPReceiptResponse):
 class IncomingIsTypingEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.is_typing = data.find('is-typing', recursive=False)['val'] == 'true'
+        is_typing = data.find('is-typing', recursive=False)
+        self.is_typing = is_typing == 'true' if is_typing else False
 
 
 class IncomingGroupIsTypingEvent(IncomingIsTypingEvent):
@@ -412,4 +406,4 @@ class IncomingErrorMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.error = data.error
-        self.error_message = self.error.find('text').text if self.error.find('text') else None
+        self.error_message = get_text_safe(self.error, 'text')

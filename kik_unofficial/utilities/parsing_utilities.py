@@ -26,8 +26,15 @@ def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     return data
 
 
-def get_text_safe(data: BeautifulSoup, tag: str) -> Union[str, None]:
-    element = data.find(tag, recursive=False)
+def get_text_safe(element: BeautifulSoup, tag: str) -> Union[str, None]:
+    """
+    Returns the text of a direct child, if present.
+
+    Returns None if not present.
+    """
+    if element is None:
+        return None
+    element = element.find(tag, recursive=False)
     return element.text if element else None
 
 

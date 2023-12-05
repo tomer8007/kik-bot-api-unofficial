@@ -1,7 +1,4 @@
 import requests
-import base64
-from io import BytesIO
-from PIL import Image
 
 
 class KikTenorClient:
@@ -10,7 +7,7 @@ class KikTenorClient:
             raise Exception("A tenor.com API key is required to search for GIFs")
         self.headers = {'X-Goog-Api-Key': api_key}
 
-    def search_for_gif(self, search_term: str):
+    def search_for_gif(self, search_term: str) -> tuple[bytes, dict]:
         params = {'q': search_term, 'limit': '1'}
         r = requests.get(f"https://tenor.googleapis.com/v2/search", params=params, headers=self.headers)
         r.raise_for_status()
@@ -19,9 +16,6 @@ class KikTenorClient:
         media_formats = gif["media_formats"]
 
         thumbnail_url = media_formats["nanogifpreview"]["url"]
-        buffer = BytesIO()
-        thumbnail = Image.open(BytesIO(requests.get(thumbnail_url).content))
-        thumbnail.convert("RGB").save(buffer, format="JPEG")
+        thumbnail_bytes = requests.get(thumbnail_url).content
 
-        base64_thumbnail = base64.b64encode(buffer.getvalue()).decode('ascii')
-        return base64_thumbnail, media_formats
+        return thumbnail_bytes, media_formats

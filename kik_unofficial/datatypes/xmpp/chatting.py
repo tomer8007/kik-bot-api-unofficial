@@ -39,23 +39,22 @@ class OutgoingChatImage(XMPPOutgoingContentMessageElement):
    """
 
     def __init__(self, peer_jid, file_location, forward=True):
-        super().__init__(peer_jid, 'com.kik.ext.gallery')
+        super().__init__(peer_jid, app_id='com.kik.ext.gallery')
         self.allow_forward = forward
         self.parsed = ParsingUtilities.parse_image(file_location)
 
     def serialize_content(self) -> None:
-        self.add_string('app-name', "Gallery")
+        self.add_string('app-name', 'Gallery')
         self.add_string('file-size', str(self.parsed['size']))
         self.set_allow_forward(self.allow_forward)
-        self.set_allow_save(True)
         self.add_string('file-content-type', 'image/jpeg')
         self.add_string('file-name', f'{self.content_id}.jpg')
 
-        self.add_hash('sha1-original', self.parsed["SHA1"])
-        self.add_hash('sha1-scaled', self.parsed["SHA1Scaled"])
-        self.add_hash('blockhash-scaled', self.parsed["blockhash"])
+        self.add_hash('sha1-original', self.parsed['SHA1'])
+        self.add_hash('sha1-scaled', self.parsed['SHA1Scaled'])
+        self.add_hash('blockhash-scaled', self.parsed['blockhash'])
 
-        self.add_image('preview', self.parsed['base64'])
+        self.add_image('preview', self.parsed['image_bytes'])
 
 
 class IncomingChatMessage(XMPPResponse):
@@ -122,7 +121,7 @@ class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
 
 class OutgoingLinkShareEvent(XMPPOutgoingContentMessageElement):
     def __init__(self, peer_jid, link, title, text, app_name):
-        super().__init__(peer_jid, 'com.kik.cards')
+        super().__init__(peer_jid, app_id='com.kik.cards')
         self.link = link
         self.title = title
         self.text = text
@@ -133,7 +132,7 @@ class OutgoingLinkShareEvent(XMPPOutgoingContentMessageElement):
         self.add_string('layout', 'article')
         self.add_string('title', self.title)
         self.add_string('text', self.text)
-        self.add_string('allow-forward', 'true')
+        self.set_allow_forward(True)
 
         self.add_uri(platform='cards', url=self.link)
         self.add_uri(url='')
@@ -269,7 +268,7 @@ class OutgoingGIFMessage(XMPPOutgoingContentMessageElement):
         self.set_video_loop(True)
         self.set_video_muted(True)
 
-        self.add_image('icon', '')
+        self.add_image('icon', b'')
         self.add_image('preview', self.gif_preview)
 
         self.add_uri(url=self.gif_data["mp4"]["url"], priority='0', type='video', file_content_type='video/mp4')

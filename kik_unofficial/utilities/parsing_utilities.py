@@ -97,7 +97,7 @@ class ParsingUtilities:
         final_og = image_out.getvalue()
         final_pre = preview_out.getvalue()
 
-        base64_data = ParsingUtilities.read_file_as_base64(final_pre)
+        image_bytes = get_file_bytes(final_pre)
         sha1_og = ParsingUtilities.read_file_as_sha1(final_og)
         sha1_scaled = ParsingUtilities.read_file_as_sha1(final_pre)
         block_scaled = blockhash(preview_image, 16)
@@ -108,7 +108,7 @@ class ParsingUtilities:
         img.close()
 
         return {
-            'base64': base64_data,
+            'image_bytes': image_bytes,
             'size': size,
             'original': final_og,
             'SHA1': sha1_og,

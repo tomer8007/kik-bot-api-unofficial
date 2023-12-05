@@ -134,8 +134,10 @@ class XMPPOutgoingContentMessageElement(XMPPOutgoingMessageElement):
         etree.SubElement(self._content_hashes, name).text = value
 
     @final
-    def add_extra(self, name: str, value: str) -> None:
-        etree.SubElement(self._content_extras, name).text = value
+    def add_extra(self, key: str, value: str) -> None:
+        item = etree.SubElement(self._content_extras, 'item')
+        etree.SubElement(item, 'key').name = key
+        etree.SubElement(item, 'val').name = value
 
     @final
     def add_uri(self, url: str, platform: str = None, type: str = None, file_content_type: str = None, priority: str = None) -> None:

@@ -772,9 +772,10 @@ class KikClient:
         self._connect()
 
     def get_jid(self, username_or_jid):
-        if '@' in username_or_jid:
+        if jid_utilities.is_pm_jid(username_or_jid):
             # this is already a JID.
             return username_or_jid
+
         username = username_or_jid
 
         # first search if we already have it

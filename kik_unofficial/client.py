@@ -224,21 +224,55 @@ class KikClient:
         )
         return self._send_xmpp_element(image)
 
-    def send_read_receipt(self, message: XMPPResponse):
+    def send_read_receipt(self, peer_jid: str, receipt_message_id: Union[str, list[str]], group_jid=None):
         """
         Sends a receipt indicating that the message was read.
 
-        :param message: The message to send a delivered receipt for
+        :param peer_jid: The author of the message to send a receipt for
+        :param receipt_message_id: The ID of the message read. Can be a single ID or a list of IDs
+        :param group_jid: The Group JID if the message is from a group, else None
         """
-        self.log.info(f"Sending read receipt to {message.from_jid} for message ID {message.message_id}")
-        receipt = chatting.OutgoingReadReceipt(message.from_jid, message.message_id, message.group_jid)
+        self.log.info(f"Sending read receipt to {peer_jid} for message ID {receipt_message_id}")
+        receipt = chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid)
         return self._send_xmpp_element(receipt)
 
-    def send_delivered_receipt(self, message: XMPPResponse):
+    def send_read_receipt_with_message(self, messages: Union[XMPPResponse, list[XMPPResponse]]) -> list[str]:
+        """
+        Sends a receipt indicating that the message was read.
+
+        This makes it easy for callers to read incoming messages.
+
+        :param messages: The message to send a delivered receipt for, can be a single message or a list of messages
+        """
+        if isinstance(messages, list):
+            outgoing_ids = []
+            sender_map = dict()
+            for message in messages:
+                map_key = message.from_jid
+                if message.is_group:
+                    map_key += message.group_jid
+
+                if map_key in sender_map:
+                    items = sender_map.get(map_key)
+                else:
+                    items = list[XMPPResponse]()
+                    sender_map[map_key] = items
+                items.append(message)
+
+            for batch in sender_map.values():
+                outgoing_ids.append(self.send_read_receipt(
+                    peer_jid=batch[0].from_jid, receipt_message_id=[m.message_id for m in batch], group_jid=batch[0].group_jid))
+            return outgoing_ids
+        else:
+            return [self.send_read_receipt(
+                peer_jid=messages.from_jid, receipt_message_id=messages.message_id, group_jid=messages.group_jid)]
+
+    def send_delivered_receipt(self, message: Union[XMPPResponse, list[XMPPResponse]]):
         """
         Sends a receipt indicating that the message was delivered
 
-        :param message: The message to send a delivered receipt for
+        :param message: The message to send a delivered receipt for.
+                        This can be a single message or a list of messages.
         """
         self.log.info(f"Sending delivered receipt to {message.from_jid} for message ID {message.message_id}")
         return self._send_xmpp_element(history.OutgoingAcknowledgement(message))
@@ -306,11 +340,11 @@ class KikClient:
     def get_muted_users(self):
         return self._send_xmpp_element(roster.GetMutedUsersRequest())
 
-    def mute_user(self, peer_jid):
-        return self._send_xmpp_element(roster.BlockUserRequest(peer_jid))
+    def mute_user(self, peer_jid, expires: Union[time, None] = None):
+        return self._send_xmpp_element(roster.MuteUserRequest(peer_jid, expires))
 
     def unmute_user(self, peer_jid):
-        return self._send_xmpp_element(roster.UnblockUserRequest(peer_jid))
+        return self._send_xmpp_element(roster.UnmuteUserRequest(peer_jid))
 
     def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
         return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
@@ -446,8 +480,10 @@ class KikClient:
         """
         Sends an acknowledgement for a list of messages.
         """
-        self.log.info(f"Sending acknowledgement for {len(messages)} message(s)")
-        return self._send_xmpp_element(history.OutgoingAcknowledgement(messages=messages, request_history=request_history))
+        if isinstance(messages, list) and len(messages) == 0 and not request_history:
+            self.log.debug(f"Skipping acknowledgement request (no messages and not requesting history)")
+        else:
+            return self._send_xmpp_element(history.OutgoingAcknowledgement(messages=messages, request_history=request_history))
 
     def request_messaging_history(self):
         """
@@ -688,8 +724,11 @@ class KikClient:
                 elif error.find("service-unavailable", recursive=False):
                     raise Exception(f'Received a service Unavailable error for stanza with ID {iq_element.attrs["id"]}')
 
-        xml_namespace = iq_element.query['xmlns']
-        self._handle_response(xml_namespace, iq_element)
+        # Some successful IQ responses don't have a query element
+        query = iq_element.find('query', recursive=False)
+        if query:
+            xml_namespace = iq_element.query['xmlns']
+            self._handle_response(xml_namespace, iq_element)
 
     def _handle_response(self, xmlns, iq_element):
         """

@@ -5,6 +5,9 @@ alias_jid_re = re.compile('^[a-z0-9_-]{52}_[ab]$')
 group_alias_jid_re = re.compile('^[a-z0-9_-]{52}_a$')
 anon_alias_jid_re = re.compile('^[a-z0-9_-]{52}_b$')
 
+TALK_DOMAIN = 'talk.kik.com'
+GROUPS_DOMAIN = 'groups.kik.com'
+
 
 def is_valid_jid(jid: str) -> bool:
     """
@@ -93,3 +96,38 @@ def is_anon_alias_jid(jid: str) -> bool:
         return False
     local_part = jid[0:54]
     return re.match(anon_alias_jid_re, local_part) is not None
+
+
+def get_local_part(jid: str) -> str:
+    """
+    Extracts the local part from a group or user JID.
+    This is commonly used for xiphias messages, but it also can be useful
+    for database storage, as the domain parts will never change.
+
+    ted_w6w@talk.kik.com -> ted_w6w
+    kikteam@talk.kik.com -> kikteam
+
+    Raises a ValueError if the JID is invalid.
+    """
+    if not is_valid_jid(jid):
+        raise ValueError(f"invalid jid '{jid}'")
+    return jid[:jid.rindex('@')]  # substring before the last '@'
+
+
+def jid_to_username(jid: str) -> str:
+    """
+    Converts a real / PM JID to a username.
+
+    Raises a ValueError if the JID is invalid or not a PM JID,
+    as aliases can't be converted to usernames directly.
+    """
+    if not is_pm_jid(jid):
+        raise ValueError(f"Only PM / real jids can be directly converted into usernames. Got '{jid}'")
+    try:
+        index = jid.rindex('_')
+    except ValueError:
+        # Some jids don't have the underscore and 3 character suffix,
+        # such as kikteam@talk.kik.com
+        index = jid.rindex('@')
+
+    return jid[:index]

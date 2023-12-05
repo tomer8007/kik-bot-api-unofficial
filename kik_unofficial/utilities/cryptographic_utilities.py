@@ -195,7 +195,7 @@ class CryptographicUtils:
         # by using the minor and major version numbers
         # talk(major)(minor)0an.kik.com
 
-        split = kik_version_info['kik_version'].split('.')
+        split = kik_version_info['kik_version'].split(sep='.', maxsplit=3)
         ret = 'talk'
 
         for i in range(0, 2):

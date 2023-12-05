@@ -10,6 +10,7 @@ from kik_unofficial.protobuf.entity.v1.entity_service_pb2 import \
     GetUsersRequest, GetUsersResponse, GetUsersByAliasRequest, RequestedJid, GetUsersByAliasResponse
 
 from kik_unofficial.protobuf.groups.v1.group_search_service_pb2 import FindGroupsRequest, FindGroupsResponse
+from kik_unofficial.utilities import jid_utilities
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 
 GROUP_SEARCH_SERVICE_NAME = 'mobile.groups.v1.GroupSearch'
@@ -56,7 +57,7 @@ class UsersRequest(XiphiasRequest):
         request = GetUsersRequest()
         for peer_jid in self.peer_jids:
             jid = request.ids.add()
-            jid.local_part = peer_jid.split('@')[0]
+            jid.local_part = jid_utilities.get_local_part(peer_jid)
         return request
 
 
@@ -131,7 +132,7 @@ class UsersByAliasRequest(XiphiasRequest):
         request = GetUsersByAliasRequest()
         for peer_jid in self.alias_jids:
             jid = request.ids.add()  # type: RequestedJid
-            jid.alias_jid.local_part = peer_jid.split('@')[0]
+            jid.alias_jid.local_part = jid_utilities.get_local_part(peer_jid)
         return request
 
 

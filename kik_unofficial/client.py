@@ -846,8 +846,9 @@ class KikConnection:
             self.writer.write(data)
 
     def close(self):
-        if not self.is_closed and self.writer and not self.writer.is_closing():
+        if not self.is_closed:
             self.is_closed = True
-            self.writer.write(b'</k>')
-            self.writer.close()
+            if self.writer and not self.writer.is_closing():
+                self.writer.write(b'</k>')
+                self.writer.close()
 

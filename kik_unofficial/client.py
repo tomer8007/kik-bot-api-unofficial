@@ -726,13 +726,13 @@ class KikClient:
         """
         # The XML namespace is different for iOS and Android, handle the messages with their actual type
         message = XMPPResponse(data)
-        m_type = message.type
+        message_type = message.type
 
-        if m_type == "chat":
+        if message_type == "chat":
             xmlns_handlers.XMPPChatMessageHandler(self.callback, self).handle(data)
-        elif m_type == "groupchat":
+        elif message_type == "groupchat":
             xmlns_handlers.XMPPGroupChatMessageHandler(self.callback, self).handle(data)
-        elif m_type == 'receipt' and data.receipt:
+        elif message_type == 'receipt' and data.receipt:
             receipt_type = data.receipt['type']
             if message.is_group:
                 self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(data))
@@ -740,9 +740,9 @@ class KikClient:
                 self.callback.on_message_delivered(chatting.IncomingMessageDeliveredEvent(data))
             elif receipt_type == 'read':
                 self.callback.on_message_read(chatting.IncomingMessageReadEvent(data))
-        elif m_type == "is-typing":
+        elif message_type == "is-typing":
             self.callback.on_is_typing_event_received(chatting.IncomingIsTypingEvent(data))
-        elif m_type == "error":
+        elif message_type == "error":
             self.callback.on_error_message_received(chatting.IncomingErrorMessage(data))
         else:
             self.log.warning(f'Received unknown XMPP element type: {data}')

@@ -27,27 +27,35 @@ def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     return data
 
 
-def get_text_safe(element: Tag, tag: str) -> Union[str, None]:
+def get_text_safe(element: Tag, tag: str, default: Union[str, None] = None) -> Union[str, None]:
     """
     Returns the text of a direct child, if present.
 
-    Returns None if not present.
+    Returns `default` if not present.
+
+    :param element: the element to retrieve the child element from.
+    :param tag: the name of the child element to get the text from
+    :param default: the default value to return when the child element is not present (defaults to None)
     """
     if element is None:
         return None
     element = element.find(tag, recursive=False)
-    return element.text if element else None
+    return element.text if element and element.text else default
 
 
-def get_attribute_safe(element: Tag, key: str) -> Union[str, None]:
+def get_attribute_safe(element: Tag, key: str, default: Union[str, None] = None) -> Union[str, None]:
     """
     Returns the attribute value of the key, if present.
 
-    Returns None if not present.
+    Returns `default` if not present.
+
+    :param element: the element to retrieve the attribute from.
+    :param key: the name of the attribute to get
+    :param default: the default value to return when the attribute is not present (defaults to None)
     """
     if element is None:
         return None
-    return element[key] if key in element.attrs else None
+    return element[key] if key in element.attrs else default
 
 
 class ParsingUtilities:

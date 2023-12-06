@@ -14,6 +14,7 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, FriendBatchResponse, QueryUserByUsernameResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
 from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse, GroupSearchResponse
+from kik_unofficial.utilities.parsing_utilities import get_text_safe
 
 log = logging.getLogger('kik_unofficial')
 
@@ -32,7 +33,7 @@ class XMPPChatMessageHandler(XmppHandler):
         # We received a chat message.
         if data.find('content', recursive=False):
             self.handle_content(data)
-        elif data.find('body', recursive=False) and data.find('body', recursive=False).text:
+        elif get_text_safe(data, 'body'):
             # regular text message
             self.callback.on_chat_message_received(IncomingChatMessage(data))
         elif data.find('friend-attribution', recursive=False):
@@ -71,7 +72,7 @@ class XMPPGroupChatMessageHandler(XMPPChatMessageHandler):
     def handle(self, data: BeautifulSoup):
         if data.find('content', recursive=False):
             self.handle_content(data)
-        elif data.find('body', recursive=False) and data.find('body', recursive=False).text:
+        elif get_text_safe(data, 'body'):
             self.callback.on_group_message_received(IncomingGroupChatMessage(data))
         elif data.find('is-typing', recursive=False):
             self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))

@@ -13,7 +13,7 @@ from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse, XMPPContentResponse, \
     XMPPReceiptResponse, XMPPOutgoingContentMessageElement, XMPPOutgoingMessageElement, XMPPOutgoingIsTypingMessageElement
 from kik_unofficial.http_requests.tenor_client import KikTenorClient
-from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe, get_attribute_safe
 
 
 class OutgoingChatMessage(XMPPOutgoingMessageElement):
@@ -165,7 +165,7 @@ class IncomingIsTypingEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         is_typing = data.find('is-typing', recursive=False)
-        self.is_typing = is_typing['val'] == 'true' if is_typing and 'val' in is_typing.attrs else False
+        self.is_typing = get_attribute_safe(is_typing, 'val') == 'true'
 
 
 class IncomingGroupIsTypingEvent(IncomingIsTypingEvent):
@@ -179,7 +179,7 @@ class IncomingStatusResponse(XMPPResponse):
         status = data.find('status', recursive=False)
         self.status = status.text
         self.status_jid = status['jid']
-        self.special_visibility = status['special-visibility'] == 'true' if 'special-visibility' in status.attrs else False
+        self.special_visibility = get_attribute_safe(status, 'special-visibility') == 'true'
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
 
@@ -195,7 +195,7 @@ class IncomingGroupSysmsg(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         sysmsg = data.find('sysmsg', recursive=False)
-        self.sysmsg_xmlns = sysmsg['xmlns'] if 'xmlns' in sysmsg.attrs else None
+        self.sysmsg_xmlns = get_attribute_safe(sysmsg, 'xmlns')
         self.sysmsg = sysmsg.text
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
@@ -290,22 +290,22 @@ class IncomingVideoMessage(XMPPContentResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.video_url = self.file_url                              # type: str | None
-        self.file_content_type = self.strings['file-content-type']  # type: str | None
-        self.duration_milliseconds = self.strings['duration']       # type: str | None
-        self.file_size = self.strings['file-size']                  # type: str | None
+        self.file_content_type = self.strings.get('file-content-type')  # type: str | None
+        self.duration_milliseconds = self.strings.get('duration')       # type: str | None
+        self.file_size = self.strings.get('file-size')                  # type: str | None
 
 
 class IncomingCardMessage(XMPPContentResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.app_name = self.strings['app-name']    # type: str | None
-        self.card_icon = self.strings['card-icon']  # type: str | None
-        self.layout = self.strings['layout']        # type: str | None
-        self.title = self.strings['title']          # type: str | None
-        self.text = self.strings['text']            # type: str | None
-        self.allow_forward = self.strings['allow-forward'] == 'true'  # type: bool
-        self.icon = self.images['icon']                               # type: bytes | None
-        self.uri = self.uris[0] if self.uris and len(self.uris) > 0 else None
+        self.app_name = self.strings.get('app-name')    # type: str | None
+        self.card_icon = self.strings.get('card-icon')  # type: str | None
+        self.layout = self.strings.get('layout')        # type: str | None
+        self.title = self.strings.get('title')          # type: str | None
+        self.text = self.strings.get('text')            # type: str | None
+        self.allow_forward = self.strings.get('allow-forward') == 'true'  # type: bool
+        self.icon = self.images.get('icon')                               # type: bytes | None
+        self.uri = self.uris[0] if len(self.uris) > 0 else None
 
 
 class KikPingRequest(XMPPElement):

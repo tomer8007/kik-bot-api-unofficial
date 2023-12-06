@@ -395,11 +395,10 @@ class XMPPContentResponse(XMPPResponse):
         extras_element = self.content.find('extras', recursive=False)
         if extras_element:
             for extra in extras_element.find_all(recursive=False):
-                extra_key = extra.find('key', recursive=False)
-                extra_val = extra.find('val', recursive=False)
+                extra_key = get_text_safe(extra, 'key', default='')
+                extra_val = get_text_safe(extra, 'val', default='')
                 if extra_key and extra_val:
-                    if len(extra_key.text) > 0 and len(extra_val.text) > 0:
-                        self.extras[extra_key.text] = extra_val.text
+                    self.extras[extra_key] = extra_val
 
         hashes_element = self.content.find('hashes', recursive=False)
         if hashes_element:

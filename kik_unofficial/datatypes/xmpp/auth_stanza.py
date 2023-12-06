@@ -161,7 +161,7 @@ class AuthStanza(XMPPElement):
             log.error('kik:auth:cert [' + data.error.get('code') + '] ' + data.error.get_text())
             log.debug(str(data))
             return
-        if data.find_all('regenerate-key', recursive=True):
+        if data.find('regenerate-key', recursive=True):
             log.info('Regenerating the keys for certificate authentication')
             self.teardown()
             self.send_stanza()

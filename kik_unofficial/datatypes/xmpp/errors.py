@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPResponse
 from kik_unofficial.device_configuration import kik_version_info
+from kik_unofficial.utilities.parsing_utilities import get_text_safe
 
 CAPTCHA_CALLBACK_PARAMETER = "&callback_url=https://kik.com/captcha-url"
 
@@ -46,17 +47,10 @@ class KikDialogError(KikIqError):
     class Dialog:
         def __init__(self, dialog: BeautifulSoup):
             super().__init__()
-            dialog_title = dialog.find('dialog-title', recursive=False)
-            self.dialog_title = dialog_title.text if dialog_title else None
-
-            dialog_body = dialog.find('dialog-body', recursive=False)
-            self.dialog_body = dialog_body.text if dialog_body else None
-
-            button_text = dialog.find('button-text', recursive=False)
-            self.button_text = button_text.text if button_text else None
-
-            button_action = dialog.find('button-action', recursive=False)
-            self.button_action = button_action.text if button_action else None
+            self.dialog_title = get_text_safe(dialog, 'dialog-title')
+            self.dialog_body = get_text_safe(dialog, 'dialog-body')
+            self.button_text = get_text_safe(dialog, 'button-text')
+            self.button_action = get_text_safe(dialog, 'button-action')
 
 
 class KikCaptchaError(KikDialogError):
@@ -114,7 +108,7 @@ class SignUpError(KikCaptchaError):
         elif self.error.find('verify-phone', recursive=False):
             self.message = "Phone verification is required to sign up (not implemented)"
         elif self.error.find('message', recursive=False):
-            self.message = f"Custom message: {self.error.find('message', recursive=False).text}"
+            self.message = f"Custom message: {get_text_safe(self.error, 'message')}"
         elif self.error.find('internal-server-error', recursive=False):
             self.message = "Internal server error"
         elif self.error.find('bad-request', recursive=False):
@@ -143,7 +137,7 @@ class LoginError(KikCaptchaError):
         elif self.error.find('acct-terminated', recursive=False):
             self.message = "Account permanently banned or deactivated"
         elif self.error.find('message', recursive=False):
-            self.message = f"Custom message: {self.error.find('message', recursive=False).text}"
+            self.message = f"Custom message: {get_text_safe(self.error, 'message')}"
         elif self.error.find('internal-server-error', recursive=False):
             self.message = "Internal server error"
         elif self.error.find('bad-request', recursive=False):

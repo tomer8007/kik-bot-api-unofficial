@@ -358,8 +358,8 @@ class XMPPContentResponse(XMPPResponse):
         self.content = data.find('content', recursive=False)
         self.content_id = self.content['id']          # type: str
         self.app_id = self.content['app-id']          # type: str
-        self.server_sig = self.content['server-sig']  # type: str
         self.content_version = self.content['v']      # type: str
+        self.server_sig = self.content['server-sig'] if 'server-sig' in self.content.attrs else None  # type: str | None
 
         self.strings = {}  # type: dict[str, str]
         self.images = {}   # type: dict[str, bytes]

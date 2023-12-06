@@ -3,6 +3,7 @@ from xml.sax import ContentHandler, ErrorHandler, SAXException
 
 import defusedxml.sax
 from bs4 import BeautifulSoup
+from defusedxml.expatreader import DefusedExpatParser
 
 
 class KikXmlParser:
@@ -41,8 +42,8 @@ class KikXmlParser:
             except StopIteration:
                 return self._parse_from_bytes(xml)
 
-    def _make_parser(self):
-        parser = defusedxml.sax.make_parser()
+    def _make_parser(self) -> DefusedExpatParser:
+        parser = defusedxml.sax.make_parser()  # type: DefusedExpatParser
         parser.setContentHandler(self.handler)
         parser.setErrorHandler(self.handler)
         parser.forbid_dtd = True

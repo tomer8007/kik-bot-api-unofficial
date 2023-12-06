@@ -325,29 +325,68 @@ class KikClient:
         """
         return self._send_xmpp_element(roster.QueryUserByUsernameRequest(peer_username))
 
-    def add_friend(self, peer_jid):
+    def add_friend(self, peer_jid: str):
+        """
+        Add a user to your friends list. Doing this allows the user to add you to groups.
+
+        :param peer_jid: The JID of the user to remove from friends list
+        """
         return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
 
-    def remove_friend(self, peer_jid):
+    def remove_friend(self, peer_jid: str):
+        """
+        Removes a user from your friends list. Doing this prevents the user from adding you to groups,
+        and you will stop receiving roster updates containing profile information for this user.
+
+        :param peer_jid: The JID of the user to remove from friends list
+        """
         return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))
 
-    def block_user(self, peer_jid):
+    def block_user(self, peer_jid: str):
+        """
+        Blocks a user. Doing this prevents the user from adding you to groups (same as remove_friend),
+        and mobile clients hide the messages received.
+
+        :param peer_jid: The JID of the user to block
+        """
         return self._send_xmpp_element(roster.BlockUserRequest(peer_jid))
 
-    def unblock_user(self, peer_jid):
+    def unblock_user(self, peer_jid: str):
+        """
+        Unblocks a user. Doing this puts the user back in your friends list and allows the user to add you to groups.
+
+        :param peer_jid: The JID of the user to unblock
+        """
         return self._send_xmpp_element(roster.UnblockUserRequest(peer_jid))
 
     def get_muted_users(self):
+        """
+        Retrieves a list of muted users.
+
+        Clients will receive the muted user list as a callback to on_muted_convos_received().
+        """
         return self._send_xmpp_element(roster.GetMutedUsersRequest())
 
-    def mute_user(self, peer_jid, expires: Union[time, None] = None):
+    def mute_user(self, peer_jid: str, expires: Union[time, None] = None):
+        """
+        Mutes a user, this prevents push notifications from being sent to mobile clients.
+
+        :param peer_jid: The JID of the user to mute
+        :param expires: The time at which the mute status is automatically removed.
+                        The time must be in the future and no more than 30 days in the future.
+        """
         return self._send_xmpp_element(roster.MuteUserRequest(peer_jid, expires))
 
-    def unmute_user(self, peer_jid):
+    def unmute_user(self, peer_jid: str):
+        """
+        Unmutes a user.
+
+        :param peer_jid: The JID of the user to unmute
+        """
         return self._send_xmpp_element(roster.UnmuteUserRequest(peer_jid))
 
-    def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
-        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
+    def send_link(self, peer_jid: str, link: str, title: str, text: str = '', app_name: str = 'Webpage', preview_jpg_bytes: Union[bytes, None] = None):
+        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name, preview_jpg_bytes))
 
     def xiphias_get_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -372,17 +411,20 @@ class KikClient:
 
     def change_group_name(self, group_jid: str, new_name: str):
         """
-        Changes the a group's name to something new
+        Changes the name of the group.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The JID of the group whose name should be changed
-        :param new_name: The new name to give to the group
+        :param new_name: The new name to give to the group.
+                         Note: if you pass in an empty string, the group name is removed.
         """
         self.log.info(f"Requesting a group name change for JID {group_jid} to '{new_name}'")
         return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
-    def add_peer_to_group(self, group_jid, peer_jid):
+    def add_peer_to_group(self, group_jid: str, peer_jid: str):
         """
-        Adds someone to a group
+        Adds someone to a group.
+        The caller must be a current member the group for this request to succeed.
 
         :param group_jid: The JID of the group into which to add a user
         :param peer_jid: The JID of the user to add
@@ -390,9 +432,10 @@ class KikClient:
         self.log.info(f"Requesting to add user {peer_jid} into the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 
-    def remove_peer_from_group(self, group_jid, peer_jid):
+    def remove_peer_from_group(self, group_jid: str, peer_jid: str):
         """
-        Kicks someone out of a group
+        Kicks someone out of a group.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The group JID from which to remove the user
         :param peer_jid: The JID of the user to remove
@@ -400,9 +443,11 @@ class KikClient:
         self.log.info(f"Requesting removal of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
 
-    def ban_member_from_group(self, group_jid, peer_jid):
+    def ban_member_from_group(self, group_jid: str, peer_jid: str):
         """
-        Bans a member from the group
+        Bans a member from the group.
+        The caller must be a current owner or admin of the group for this request to succeed.
+        The user that is being banned must have joined the group at least once.
 
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to ban
@@ -410,17 +455,19 @@ class KikClient:
         self.log.info(f"Requesting ban of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
 
-    def unban_member_from_group(self, group_jid, peer_jid):
+    def unban_member_from_group(self, group_jid: str, peer_jid: str):
         """
-        Undos a ban of someone from a group
+        Unbans a currently banned member of a group.
+        The caller must be a current owner or admin of the group for this request to succeed.
+        The user that is being banned must have joined the group at least once.
 
         :param group_jid: The JID of the relevant group
-        :param peer_jid: The JID of the user to un-ban from the gorup
+        :param peer_jid: The JID of the user to unban from the group
         """
         self.log.info(f"Requesting un-banning of user {peer_jid} from the group {group_jid}")
         return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
-    def join_group_with_token(self, group_hashtag, group_jid, join_token):
+    def join_group_with_token(self, group_hashtag: str, group_jid: str, join_token):
         """
         Tries to join into a specific group, using a cryptographic token that was received earlier from a search
 
@@ -432,7 +479,7 @@ class KikClient:
         self.log.info(f"Trying to join the group '{group_hashtag}' with JID {group_jid}")
         return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
-    def leave_group(self, group_jid):
+    def leave_group(self, group_jid: str):
         """
         Leaves a specific group
 
@@ -441,9 +488,10 @@ class KikClient:
         self.log.info(f"Leaving group {group_jid}")
         return self._send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
-    def promote_to_admin(self, group_jid, peer_jid):
+    def promote_to_admin(self, group_jid: str, peer_jid: str):
         """
-        Turns some group member into an admin
+        Promotes a group member to admin.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The group JID for which the member will become an admin
         :param peer_jid: The JID of user to turn into an admin
@@ -451,9 +499,10 @@ class KikClient:
         self.log.info(f"Promoting user {peer_jid} to admin in group {group_jid}")
         return self._send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
 
-    def demote_admin(self, group_jid, peer_jid):
+    def demote_admin(self, group_jid: str, peer_jid: str):
         """
-        Turns an admin of a group into a regular user with no amidships capabilities.
+        Removes admin status from a group member.
+        The caller must be a current owner of the group for this request to succeed.
 
         :param group_jid: The group JID in which the rights apply
         :param peer_jid: The admin user to demote
@@ -462,15 +511,29 @@ class KikClient:
         self.log.info(f"Demoting user {peer_jid} to a regular member in group {group_jid}")
         return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
-    def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
+    def add_members(self, group_jid: str, peer_jids: Union[str, List[str]]):
         """
         Adds multiple users to a specific group at once
+        The caller must be a current member of the group for this request to succeed.
 
         :param group_jid: The group into which to join the users
         :param peer_jids: a list (or a single string) of JIDs to add to the group
         """
         self.log.info(f"Adding some members to the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
+
+    def set_dm_disabled_status(self, group_jid: str, is_dm_disabled: bool):
+        """
+        Enables or disables direct messaging for a public group.
+        The caller must be a current member of the group for this request to succeed.
+        Note: this only works for public groups. Private groups have no effect.
+
+        :param group_jid: The group to change the DM disabled status of.
+        :param is_dm_disabled: the new DM disabled status
+        """
+        self.log.info(f"Setting DM disabled status to {is_dm_disabled} for group {group_jid}")
+        client_jid = f'{self.kik_node}@talk.kik.com'  # Caller can only change their own dmd status
+        return self._send_xmpp_element(group_adminship.ChangeDmDisabledRequest(group_jid, client_jid, is_dm_disabled))
 
     # ----------------------
     # Other Operations
@@ -513,40 +576,40 @@ class KikClient:
         self.log.info(f"Checking for Uniqueness of username '{username}'")
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
-    def set_profile_picture(self, filename: str or bytes or pathlib.Path or io.IOBase):
+    def set_profile_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the profile picture of the current user
 
-        :param filename: The path to the file OR its bytes OR an IOBase object to set
+        :param file: The path to the file OR its bytes OR an IOBase object to set
         """
         self.log.info(f"Changing profile picture for {self.username}")
         profile_pictures.set_profile_picture(
-            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
+            file, f'{self.kik_node}@talk.kik.com', self.username, self.password
         )
 
-    def set_background_picture(self, filename: str or bytes or pathlib.Path or io.IOBase):
+    def set_background_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the background picture of the current user
 
-        :param filename: The path to the image file OR its bytes OR an IOBase object to set
+        :param file: The path to the image file OR its bytes OR an IOBase object to set
         """
         self.log.info(f"Changing background picture for {self.username}")
         profile_pictures.set_background_picture(
-            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password)
+            file, f'{self.kik_node}@talk.kik.com', self.username, self.password)
 
-    def set_group_picture(self, filename: str or bytes or pathlib.Path or io.IOBase, group_jid: str, silent: bool = False):
+    def set_group_picture(self, file: str or bytes or pathlib.Path or io.IOBase, group_jid: str, silent: bool = False):
         """
         Sets the profile picture for a group JID.
 
         The authenticated client must be an admin or owner of the group, otherwise this request will fail.
 
-        :param filename: The path to the image file OR its bytes OR an IOBase object to set
+        :param file: The path to the image file OR its bytes OR an IOBase object to set
         :param group_jid: the JID of the group to change the picture for
         :param silent: If true, no status message is generated when the picture is changed
         """
         self.log.info(f"Changing group picture for {self.username} in {group_jid} (silent={silent})")
         profile_pictures.set_group_picture(
-            filename, f'{self.kik_node}@talk.kik.com', group_jid, self.username, self.password, silent)
+            file, f'{self.kik_node}@talk.kik.com', group_jid, self.username, self.password, silent)
 
     def send_ping(self):
         """

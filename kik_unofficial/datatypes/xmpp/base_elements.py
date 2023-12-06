@@ -298,8 +298,8 @@ class XMPPResponse:
         if data.name in ('message', 'msg'):
             self.type = data['type']
             self.from_jid = data['from']
-            self.xmlns = data['xmlns'] if 'xmlns' in data.attrs else None
-            self.to_jid = data['to'] if 'to' in data.attrs else None
+            self.xmlns = get_attribute_safe(data, 'xmlns')
+            self.to_jid = get_attribute_safe(data, 'to')
 
             g = data.find('g', recursive=False)
             self.group_jid = g['jid'] if g and 'jid' in g.attrs and jid_utilities.is_group_jid(g['jid']) else None
@@ -309,48 +309,48 @@ class XMPPResponse:
             self.metadata = XMPPResponseMetadata(kik) if kik else None
 
             request = data.find('request', recursive=False)
-            if request and request['xmlns'] == 'kik:message:receipt':
-                self.request_delivered_receipt = request['d'] == 'true' if 'd' in request.attrs else False
-                self.request_read_receipt = request['r'] == 'true' if 'r' in request.attrs else False
+            if request and get_attribute_safe(request, 'xmlns') == 'kik:message:receipt':
+                self.request_delivered_receipt = get_attribute_safe(request, 'd') == 'true'
+                self.request_read_receipt = get_attribute_safe(request, 'r') == 'true'
             else:
                 self.request_delivered_receipt = False
                 self.request_read_receipt = False
 
 
 class XMPPResponseMetadata:
-    def __init__(self, data: BeautifulSoup):
+    def __init__(self, kik: BeautifulSoup):
         """
         The timestamp of the message, in unix millis.
 
         Note: callers may receive a string that isn't a valid number from nefarious clients.
         Callers must try catch int() conversion calls.
         """
-        self.timestamp = data['timestamp']
+        self.timestamp = get_attribute_safe(kik, 'timestamp') or str(KikServerClock.get_server_time())
 
         """
         True if this message is a part of QoS history.
         When true, this message must be acked through QoS.
         """
-        self.qos = data['qos'] == 'true'
+        self.qos = get_attribute_safe(kik, 'qos') != 'false'  # It is coded this way intentionally to match the mobile client
 
         """
         True if this message requires push.
         When true, Kik sends a push notification to the user.
         (iOS clients receive message info, Android receives an invisible push that is designed to wake up the XMPP connection)
         """
-        self.push = data['push'] == 'true'
+        self.push = get_attribute_safe(kik, 'push') == 'true'
 
         """
         The name of the Kik service that processed this message.
         This is a flag meant for use internally by Kik and clients shouldn't rely on its behavior.
         """
-        self.app = data['app']
+        self.app = get_attribute_safe(kik, 'app')
 
         """
         True if the message has been processed by Kik then forwarded to its recipients.
         This is a flag meant for use internally by Kik and clients shouldn't rely on its behavior.
         """
-        self.hop = data['hop'] == 'true' if 'hop' in data.attrs else None
+        self.hop = get_attribute_safe(kik, 'hop') == 'true'
 
 
 class XMPPContentResponse(XMPPResponse):

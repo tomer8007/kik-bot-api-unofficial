@@ -7,7 +7,7 @@ import uuid
 from typing import Union
 
 from PIL import Image
-from bs4 import BeautifulSoup
+from bs4 import Tag
 
 from kik_unofficial.utilities.blockhash import blockhash
 
@@ -27,7 +27,7 @@ def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     return data
 
 
-def get_text_safe(element: BeautifulSoup, tag: str) -> Union[str, None]:
+def get_text_safe(element: Tag, tag: str) -> Union[str, None]:
     """
     Returns the text of a direct child, if present.
 
@@ -37,6 +37,17 @@ def get_text_safe(element: BeautifulSoup, tag: str) -> Union[str, None]:
         return None
     element = element.find(tag, recursive=False)
     return element.text if element else None
+
+
+def get_attribute_safe(element: Tag, key: str) -> Union[str, None]:
+    """
+    Returns the attribute value of the key, if present.
+
+    Returns None if not present.
+    """
+    if element is None:
+        return None
+    return element[key] if key in element.attrs else None
 
 
 class ParsingUtilities:

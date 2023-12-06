@@ -10,6 +10,7 @@ from lxml.etree import Element
 from kik_unofficial.utilities import jid_utilities
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.utilities.kik_server_clock import KikServerClock
+from kik_unofficial.utilities.parsing_utilities import get_attribute_safe, get_text_safe
 
 
 class XMPPElement:
@@ -359,7 +360,7 @@ class XMPPContentResponse(XMPPResponse):
         self.content_id = self.content['id']          # type: str
         self.app_id = self.content['app-id']          # type: str
         self.content_version = self.content['v']      # type: str
-        self.server_sig = self.content['server-sig'] if 'server-sig' in self.content.attrs else None  # type: str | None
+        self.server_sig = get_attribute_safe(self.content, 'server-sig')  # type: str | None
 
         self.strings = {}  # type: dict[str, str]
         self.images = {}   # type: dict[str, bytes]
@@ -375,7 +376,8 @@ class XMPPContentResponse(XMPPResponse):
         strings_element = self.content.find('strings', recursive=False)
         if strings_element:
             for string in strings_element.find_all(recursive=False):
-                self.strings[string.name] = string.text
+                if string.text:
+                    self.strings[string.name] = string.text
 
         images_element = self.content.find('images', recursive=False)
         if images_element:
@@ -402,15 +404,17 @@ class XMPPContentResponse(XMPPResponse):
         hashes_element = self.content.find('hashes', recursive=False)
         if hashes_element:
             for hash_element in hashes_element.find_all(recursive=False):
-                hash_name = hash_element.name
-                if hash_name == 'sha1-original' or hash_name == 'sha1-scaled' or hash_name == 'blockhash-scaled':
-                    self.hashes[hash_name] = hash_element.text
+                if hash_element.text:
+                    hash_name = hash_element.name
+                    if hash_name == 'sha1-original' or hash_name == 'sha1-scaled' or hash_name == 'blockhash-scaled':
+                        self.hashes[hash_name] = hash_element.text
 
         uris = self.content.find('uris', recursive=False)
         for uri in uris.find_all('uri', recursive=False, limit=50):
-            self.uris.append(self.ContentUri(uri))
+            if uri.text:
+                self.uris.append(self.ContentUri(uri))
 
-        self.file_url = self.strings['file-url']
+        self.file_url = get_text_safe(strings_element, 'file-url')
         if self.file_url is not None:
             if not self.file_url.startswith('https://platform.kik.com'):
                 raise ValueError(f"invalid file-url (expected https://platform.kik.com, received {self.file_url})")
@@ -424,10 +428,10 @@ class XMPPContentResponse(XMPPResponse):
         For other content types, the link is opened in the browser when the content is tapped.
         """
         def __init__(self, uri: BeautifulSoup):
-            self.platform = uri['platform']
-            self.type = uri['type']
-            self.file_content_type = uri['file-content-type']
-            self.priority = uri['priority']
+            self.platform = get_attribute_safe(uri, 'platform')
+            self.type = get_attribute_safe(uri, 'type')
+            self.file_content_type = get_attribute_safe(uri, 'file-content-type')
+            self.priority = get_attribute_safe(uri, 'priority')
             self.url = uri.text
 
 

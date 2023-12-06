@@ -529,7 +529,8 @@ class KikClient:
         Note: this only works for public groups. Private groups have no effect.
 
         :param group_jid: The group to change the DM disabled status of.
-        :param is_dm_disabled: the new DM disabled status
+        :param is_dm_disabled: the new DM disabled status.
+                               True to close DMs in the group, False to open DMs in the group
         """
         self.log.info(f"Setting DM disabled status to {is_dm_disabled} for group {group_jid}")
         client_jid = f'{self.kik_node}@talk.kik.com'  # Caller can only change their own dmd status

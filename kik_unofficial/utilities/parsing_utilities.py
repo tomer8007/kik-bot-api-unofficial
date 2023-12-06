@@ -40,7 +40,7 @@ def get_text_safe(element: Tag, tag: str, default: Union[str, None] = None) -> U
     if element is None:
         return None
     element = element.find(tag, recursive=False)
-    return element.text if element and element.text else default
+    return element.text if element else default
 
 
 def get_attribute_safe(element: Tag, key: str, default: Union[str, None] = None) -> Union[str, None]:

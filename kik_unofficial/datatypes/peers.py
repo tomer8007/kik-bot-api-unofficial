@@ -132,10 +132,10 @@ class Group(Peer):
         if 'jid' not in data.attrs:
             raise KikApiException("No jid in group xml")
         super().__init__(data['jid'])
-        self.members = [GroupMember(m) for m in data.findAll('c', recursive=False)]  # creators of the group (used when a user initially creates a group)
-        self.members += [GroupMember(m) for m in data.findAll('m', recursive=False)]   # members in the group
-        self.banned_members = [GroupMember(m) for m in data.findAll('b', recursive=False)]  # banned member jids
-        self.removed_members = [GroupMember(m) for m in data.findAll('l', recursive=False)]  # jids of members that left (used for 'has left the chat' status message events)
+        self.members = [GroupMember(m) for m in data.find_all('c', recursive=False)]  # creators of the group (used when a user initially creates a group)
+        self.members += [GroupMember(m) for m in data.find_all('m', recursive=False)]   # members in the group
+        self.banned_members = [GroupMember(m) for m in data.find_all('b', recursive=False)]  # banned member jids
+        self.removed_members = [GroupMember(m) for m in data.find_all('l', recursive=False)]  # jids of members that left (used for 'has left the chat' status message events)
         self.code = get_text_safe(data, 'code')
         self.name = get_text_safe(data, 'n')
         self.is_public = data.get('is-public') == "true"

@@ -3,6 +3,7 @@ import pathlib
 import io
 import os
 import hashlib
+import uuid
 from typing import Union
 
 from PIL import Image
@@ -74,7 +75,7 @@ class ParsingUtilities:
         """
         preview_out = io.BytesIO()
         image_out = io.BytesIO()
-        image_out.name = "temp.jpg"
+        image_out.name = f"{str(uuid.uuid4())}.jpg"
 
         file_location = get_file_bytes(file_location)
         if isinstance(file_location, bytes):

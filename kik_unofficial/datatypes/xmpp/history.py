@@ -88,9 +88,10 @@ class HistoryResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.more = False
-        self.messages = []
+        self.messages = []  # type: list[XMPPResponse]
 
-        if data.query.history:
-            self.more = data.query.history.has_attr('more')
-            for message in data.query.history.find_all('msg', recursive=False):
+        history = data.find('query', recursive=False).find('history', recursive=False)
+        if history:
+            self.more = history['more'] == '1' if history.has_attr('more') else False
+            for message in history.find_all('msg', recursive=False):
                 self.messages.append(XMPPResponse(message))

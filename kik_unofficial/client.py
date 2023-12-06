@@ -545,8 +545,11 @@ class KikClient:
         """
         if isinstance(messages, list) and len(messages) == 0 and not request_history:
             self.log.debug(f"Skipping acknowledgement request (no messages and not requesting history)")
+        elif messages is None and not request_history:
+            self.log.debug(f"Skipping acknowledgement request (message is None and not requesting history)")
         else:
-            return self._send_xmpp_element(history.OutgoingAcknowledgement(messages=messages, request_history=request_history))
+            return self._send_xmpp_element(history.OutgoingAcknowledgement(
+                messages=messages, request_history=request_history))
 
     def request_messaging_history(self):
         """

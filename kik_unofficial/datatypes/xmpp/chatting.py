@@ -213,20 +213,18 @@ class IncomingFriendAttribution(XMPPResponse):
         self.body = None
 
         friend_attribution = data.find('friend-attribution', recursive=False)
-        if friend_attribution:
-            context = friend_attribution.find('context', recursive=False)
-            if context:
-                self.context_type = context['type']
-                self.referrer_jid = context['referrer']
-                self.referrer_group_jid = context['jid']
-                self.referrer_url = context['url']
-                self.referrer_name = context['name']
-                self.reply = context['reply'] == 'true'
+        context = friend_attribution.find('context', recursive=False)
+        if context:
+            self.context_type = get_attribute_safe(context, 'type')
+            self.referrer_jid = get_attribute_safe(context, 'referrer')
+            self.referrer_group_jid = get_attribute_safe(context, 'jid')
+            self.referrer_url = get_attribute_safe(context, 'url')
+            self.referrer_name = get_attribute_safe(context, 'name')
+            self.reply = get_attribute_safe(context, 'reply') == 'true'
 
             body = friend_attribution.find('body', recursive=False)
-            if body:
-                # mobile clients remove quotes from the beginning and end of the string
-                self.body = body.text.strip('"')
+            # mobile clients remove quotes from the beginning and end of the string
+            self.body = body.text.strip('"') if body else None
 
 
 class IncomingImageMessage(XMPPContentResponse):
@@ -238,11 +236,11 @@ class IncomingImageMessage(XMPPContentResponse):
 class IncomingGroupSticker(XMPPContentResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.sticker_pack_id = self.extras['sticker_pack_id']  # type: str | None
-        self.sticker_url = self.extras['sticker_url']          # type: str | None
-        self.sticker_id = self.extras['sticker_id']            # type: str | None
-        self.sticker_source = self.extras['sticker_source']    # type: str | None
-        self.png_preview = self.images['png-preview']          # type: bytes | None
+        self.sticker_pack_id = self.extras.get('sticker_pack_id')  # type: str | None
+        self.sticker_url = self.extras.get('sticker_url')          # type: str | None
+        self.sticker_id = self.extras.get('sticker_id')            # type: str | None
+        self.sticker_source = self.extras.get('sticker_source')    # type: str | None
+        self.png_preview = self.images.get('png-preview')          # type: bytes | None
 
 
 class IncomingGifMessage(XMPPContentResponse):

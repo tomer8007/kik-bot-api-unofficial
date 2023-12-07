@@ -39,6 +39,7 @@ class XMPPOutgoingMessageElement(XMPPElement):
         self.is_group = jid_utilities.is_group_jid(peer_jid)
         self.timestamp = str(KikServerClock.get_server_time())
         self.message_type = "groupchat" if self.is_group else "chat"
+        self._is_qos = False
 
     def serialize_message(self, message: Element) -> None:
         raise NotImplementedError
@@ -51,9 +52,12 @@ class XMPPOutgoingMessageElement(XMPPElement):
             message.set('xmlns', 'kik:groups')
         message.set('to', self.peer_jid)
         message.set('id', self.message_id)
-        if not self.message_type == 'is-typing':
-            message.set('cts', self.timestamp)
+
         self.serialize_message(message)
+
+        if self._is_qos:
+            # QoS messages require 'cts' to be sent
+            message.set('cts', self.timestamp)
         return message
 
     @final
@@ -65,6 +69,7 @@ class XMPPOutgoingMessageElement(XMPPElement):
         :param push: if True, the recipient will be sent a push notification by Kik.
         :param qos: if True, the message will be placed in the QoS pool (the client can receive it while disconnected)
         """
+        self._is_qos = qos
         kik = etree.SubElement(message, 'kik')
         kik.set('push', 'true' if push else 'false')
         kik.set('qos', 'true' if qos else 'false')
@@ -281,7 +286,7 @@ class XMPPOutgoingIsTypingMessageElement(XMPPOutgoingMessageElement):
     """
     def __init__(self, peer_jid: str, is_typing: bool):
         super().__init__(peer_jid)
-        self.message_type = 'is-typing'  # IsTyping messages always use this type, even if it's to a group
+        self.message_type = 'groupchat' if self.is_group else 'is-typing'
         self.is_typing = is_typing       # type: bool
 
 

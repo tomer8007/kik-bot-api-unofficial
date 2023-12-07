@@ -31,7 +31,9 @@ class XmppHandler:
 class XMPPChatMessageHandler(XmppHandler):
     def handle(self, data: BeautifulSoup):
         # We received a chat message.
+
         if data.find('content', recursive=False):
+            # This is a content message
             self.handle_content(data)
         elif get_text_safe(data, 'body'):
             # regular text message
@@ -52,7 +54,7 @@ class XMPPChatMessageHandler(XmppHandler):
             log.debug(f"[-] Received unknown chat message. contents: {str(data)}")
 
     def handle_content(self, data: BeautifulSoup):
-        content = data.content
+        content = data.find('content', recursive=False)
         app_id = content['app-id']
         if app_id == 'com.kik.cards':
             self.callback.on_card_received(IncomingCardMessage(data))

@@ -444,7 +444,7 @@ class XMPPReceiptResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         receipt = data.find('receipt', recursive=False)
-        self.type = receipt['type']
+        self.receipt_type = receipt['type']
         self.receipt_ids = [m['id'] for m in receipt.find_all('msgid', recursive=False)]
         self.receipt_message_id = self.receipt_ids[0]
 

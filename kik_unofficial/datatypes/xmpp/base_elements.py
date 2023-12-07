@@ -354,6 +354,9 @@ class XMPPResponseMetadata:
 
 
 class XMPPContentResponse(XMPPResponse):
+    """
+    This is an incoming content message from another user.
+    """
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.content = data.find('content', recursive=False)

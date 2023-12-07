@@ -166,8 +166,7 @@ class KikClient:
         self.log.info(f"Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
-    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20",
-                 captcha_result: str = None):
+    def register(self, email: str, username: str, password: str, first_name: str, last_name: str, birthday: str, captcha_result: str = None):
         """
         Sends a register request to sign up a new user to kik with the given details.
         """

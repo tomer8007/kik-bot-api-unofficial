@@ -10,7 +10,7 @@ from lxml.etree import Element
 from kik_unofficial.utilities import jid_utilities
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 from kik_unofficial.utilities.kik_server_clock import KikServerClock
-from kik_unofficial.utilities.parsing_utilities import get_attribute_safe, get_text_safe
+from kik_unofficial.utilities.parsing_utilities import get_optional_attribute, get_text_of_tag
 
 
 class XMPPElement:
@@ -303,8 +303,8 @@ class XMPPResponse:
         if data.name in ('message', 'msg'):
             self.type = data['type']
             self.from_jid = data['from']
-            self.xmlns = get_attribute_safe(data, 'xmlns')
-            self.to_jid = get_attribute_safe(data, 'to')
+            self.xmlns = get_optional_attribute(data, 'xmlns')
+            self.to_jid = get_optional_attribute(data, 'to')
 
             g = data.find('g', recursive=False)
             self.group_jid = g['jid'] if g and 'jid' in g.attrs and jid_utilities.is_group_jid(g['jid']) else None
@@ -314,9 +314,9 @@ class XMPPResponse:
             self.metadata = XMPPResponseMetadata(kik) if kik else None
 
             request = data.find('request', recursive=False)
-            if request and get_attribute_safe(request, 'xmlns') == 'kik:message:receipt':
-                self.request_delivered_receipt = get_attribute_safe(request, 'd') == 'true'
-                self.request_read_receipt = get_attribute_safe(request, 'r') == 'true'
+            if request and get_optional_attribute(request, 'xmlns') == 'kik:message:receipt':
+                self.request_delivered_receipt = get_optional_attribute(request, 'd') == 'true'
+                self.request_read_receipt = get_optional_attribute(request, 'r') == 'true'
             else:
                 self.request_delivered_receipt = False
                 self.request_read_receipt = False
@@ -330,32 +330,32 @@ class XMPPResponseMetadata:
         Note: callers may receive a string that isn't a valid number from nefarious clients.
         Callers must try catch int() conversion calls.
         """
-        self.timestamp = get_attribute_safe(kik, 'timestamp') or str(KikServerClock.get_server_time())
+        self.timestamp = get_optional_attribute(kik, 'timestamp') or str(KikServerClock.get_server_time())
 
         """
         True if this message is a part of QoS history.
         When true, this message must be acked through QoS.
         """
-        self.qos = get_attribute_safe(kik, 'qos') != 'false'  # It is coded this way intentionally to match the mobile client
+        self.qos = get_optional_attribute(kik, 'qos') != 'false'  # It is coded this way intentionally to match the mobile client
 
         """
         True if this message requires push.
         When true, Kik sends a push notification to the user.
         (iOS clients receive message info, Android receives an invisible push that is designed to wake up the XMPP connection)
         """
-        self.push = get_attribute_safe(kik, 'push') == 'true'
+        self.push = get_optional_attribute(kik, 'push') == 'true'
 
         """
         The name of the Kik service that processed this message.
         This is a flag meant for use internally by Kik and clients shouldn't rely on its behavior.
         """
-        self.app = get_attribute_safe(kik, 'app')
+        self.app = get_optional_attribute(kik, 'app')
 
         """
         True if the message has been processed by Kik then forwarded to its recipients.
         This is a flag meant for use internally by Kik and clients shouldn't rely on its behavior.
         """
-        self.hop = get_attribute_safe(kik, 'hop') == 'true'
+        self.hop = get_optional_attribute(kik, 'hop') == 'true'
 
 
 class XMPPContentResponse(XMPPResponse):
@@ -368,7 +368,7 @@ class XMPPContentResponse(XMPPResponse):
         self.content_id = self.content['id']          # type: str
         self.app_id = self.content['app-id']          # type: str
         self.content_version = self.content['v']      # type: str
-        self.server_sig = get_attribute_safe(self.content, 'server-sig')  # type: str | None
+        self.server_sig = get_optional_attribute(self.content, 'server-sig')  # type: str | None
 
         self.strings = {}  # type: dict[str, str]
         self.images = {}   # type: dict[str, bytes]
@@ -403,8 +403,8 @@ class XMPPContentResponse(XMPPResponse):
         extras_element = self.content.find('extras', recursive=False)
         if extras_element:
             for extra in extras_element.find_all(recursive=False):
-                extra_key = get_text_safe(extra, 'key', default='')
-                extra_val = get_text_safe(extra, 'val', default='')
+                extra_key = get_text_of_tag(extra, 'key', default='')
+                extra_val = get_text_of_tag(extra, 'val', default='')
                 if extra_key and extra_val:
                     self.extras[extra_key] = extra_val
 
@@ -421,7 +421,7 @@ class XMPPContentResponse(XMPPResponse):
             if uri.text:
                 self.uris.append(self.ContentUri(uri))
 
-        self.file_url = get_text_safe(strings_element, 'file-url')
+        self.file_url = get_text_of_tag(strings_element, 'file-url')
         if self.file_url is not None:
             if not self.file_url.startswith('https://platform.kik.com'):
                 raise ValueError(f"invalid file-url (expected https://platform.kik.com, received {self.file_url})")
@@ -435,10 +435,10 @@ class XMPPContentResponse(XMPPResponse):
         For other content types, the link is opened in the browser when the content is tapped.
         """
         def __init__(self, uri: BeautifulSoup):
-            self.platform = get_attribute_safe(uri, 'platform')
-            self.type = get_attribute_safe(uri, 'type')
-            self.file_content_type = get_attribute_safe(uri, 'file-content-type')
-            self.priority = get_attribute_safe(uri, 'priority')
+            self.platform = get_optional_attribute(uri, 'platform')
+            self.type = get_optional_attribute(uri, 'type')
+            self.file_content_type = get_optional_attribute(uri, 'file-content-type')
+            self.priority = get_optional_attribute(uri, 'priority')
             self.url = uri.text
 
 

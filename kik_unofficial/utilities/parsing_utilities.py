@@ -27,7 +27,7 @@ def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     return data
 
 
-def get_text_safe(element: Tag, tag: str, default: Union[str, None] = None) -> Union[str, None]:
+def get_text_of_tag(element: Tag, tag: str, default: Union[str, None] = None) -> Union[str, None]:
     """
     Returns the text of a direct child, if present.
 
@@ -43,7 +43,7 @@ def get_text_safe(element: Tag, tag: str, default: Union[str, None] = None) -> U
     return element.text if element else default
 
 
-def get_attribute_safe(element: Tag, key: str, default: Union[str, None] = None) -> Union[str, None]:
+def get_optional_attribute(element: Tag, key: str, default: Union[str, None] = None) -> Union[str, None]:
     """
     Returns the attribute value of the key, if present.
 
@@ -55,7 +55,22 @@ def get_attribute_safe(element: Tag, key: str, default: Union[str, None] = None)
     """
     if element is None:
         return None
-    return element[key] if key in element.attrs else default
+    value = element.get(key=key, default=default)
+    if isinstance(value, list):
+        value = value[0]
+    return value
+
+
+def is_tag_present(element: Tag, tag: str) -> bool:
+    """
+    Returns true if there is a direct child with the name of `tag`.
+
+    Returns `default` if not present.
+
+    :param element: the element to check the presence of a child element from.
+    :param tag: the name of the child element to check the presence of.
+    """
+    return element is not None and element.find(tag, recursive=False) is not None
 
 
 class ParsingUtilities:

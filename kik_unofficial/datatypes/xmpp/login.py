@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
+from kik_unofficial.utilities.parsing_utilities import is_tag_present
 
 kik_version = kik_version_info["kik_version"]
 
@@ -185,18 +186,18 @@ class ConnectionFailedResponse:
     """
     def __init__(self, data: BeautifulSoup):
         """True if the password / device ID pair was invalidated (auth rejected)"""
-        self.is_auth_revoked = data.noauth is not None
+        self.is_auth_revoked = is_tag_present(data, 'noauth')
         """the error message received. Will be an empty string if is_auth_revoked = False"""
-        self.message = data.noauth.msg.text if data.noauth else ''
+        self.message = data.noauth.msg.text if is_tag_present(data, 'noauth') else ''
 
         """True if a backoff was requested by Kik's server"""
-        self.is_backoff = data.wait is not None
+        self.is_backoff = is_tag_present(data, 'wait')
         if self.is_backoff:
             """
             the number of seconds that Kik requested the client to wait for before reconnecting. 
             Will be undefined if is_backoff = False
             """
-            self.backoff_seconds = int(data.wait['t'])
+            self.backoff_seconds = int(data.find('wait', recursive=False)['t'])
 
 
 class CaptchaElement:

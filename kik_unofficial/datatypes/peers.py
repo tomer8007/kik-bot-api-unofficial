@@ -4,7 +4,7 @@ from typing import Union
 
 from bs4 import BeautifulSoup
 
-from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_of_tag, is_tag_present
 from kik_unofficial.datatypes.exceptions import KikApiException
 from kik_unofficial.protobuf.entity.v1.entity_common_pb2 import EntityUser
 
@@ -71,9 +71,9 @@ class User(Peer):
         if 'jid' not in data.attrs:
             raise KikApiException(f'No jid in user xml {data}')
         super().__init__(data['jid'])
-        self.username = get_text_safe(data, 'username')
-        self.display_name = get_text_safe(data, 'display-name')
-        self.verified = data.find('verified', recursive=False) is not None
+        self.username = get_text_of_tag(data, 'username')
+        self.display_name = get_text_of_tag(data, 'display-name')
+        self.verified = is_tag_present(data, 'verified')
         if data.entity:
             self._parse_entity(data.entity.text)
 
@@ -114,7 +114,7 @@ class RosterUser(User):
         Includes the same fields as User but includes is_blocked.
         """
         super().__init__(data)
-        self.is_blocked = data.blocked is not None  # True if the authenticated user has this user blocked
+        self.is_blocked = is_tag_present(data, 'blocked')  # True if the authenticated user has this user blocked
 
     def __str__(self):
         return f"{self.display_name} ({self.username}){' (blocked)' if self.is_blocked else ''}"
@@ -136,8 +136,8 @@ class Group(Peer):
         self.members += [GroupMember(m) for m in data.find_all('m', recursive=False)]   # members in the group
         self.banned_members = [GroupMember(m) for m in data.find_all('b', recursive=False)]  # banned member jids
         self.removed_members = [GroupMember(m) for m in data.find_all('l', recursive=False)]  # jids of members that left (used for 'has left the chat' status message events)
-        self.code = get_text_safe(data, 'code')
-        self.name = get_text_safe(data, 'n')
+        self.code = get_text_of_tag(data, 'code')
+        self.name = get_text_of_tag(data, 'n')
         self.is_public = data.get('is-public') == "true"
         self.profile_pic = ProfilePic.parse(data)
 

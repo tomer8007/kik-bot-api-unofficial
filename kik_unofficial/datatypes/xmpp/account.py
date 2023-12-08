@@ -7,7 +7,7 @@ from kik_unofficial.datatypes.peers import ProfilePic
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.utilities.parsing_utilities import get_text_safe
+from kik_unofficial.utilities.parsing_utilities import get_text_of_tag, is_tag_present
 
 
 class GetMyProfileRequest(XMPPElement):
@@ -25,20 +25,20 @@ class GetMyProfileResponse(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         query = data.query
-        self.first_name = get_text_safe(query, "first")
-        self.last_name = get_text_safe(query, "last")
-        self.username = get_text_safe(query, "username")
+        self.first_name = get_text_of_tag(query, "first")
+        self.last_name = get_text_of_tag(query, "last")
+        self.username = get_text_of_tag(query, "username")
         # Birthday set upon registration using date format yyyy-MM-dd
         # Server seems to default to 2000-01-01 if a birthday wasn't set during sign up
-        self.birthday = get_text_safe(query, "birthday")
+        self.birthday = get_text_of_tag(query, "birthday")
         # Token that is used to start the OAuth flow for Kik Live API requests
-        self.session_token = get_text_safe(query, "session-token")
+        self.session_token = get_text_of_tag(query, "session-token")
         # Token expiration date in ISO 8601 format
         # When the token expires, requesting your profile information again
         # should return the new session token.
-        self.session_token_expiration = get_text_safe(query, "session-token-expiration")
-        self.notify_new_people = get_text_safe(query, "notify-new-people") == "true"
-        self.verified = query.find("verified", recursive=False) is not None
+        self.session_token_expiration = get_text_of_tag(query, "session-token-expiration")
+        self.notify_new_people = get_text_of_tag(query, "notify-new-people") == "true"
+        self.verified = is_tag_present(query, "verified")
 
         email = query.find("email", recursive=False)
         if email:

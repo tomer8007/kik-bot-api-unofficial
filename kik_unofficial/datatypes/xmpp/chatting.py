@@ -13,7 +13,7 @@ from kik_unofficial.datatypes.peers import Group
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse, XMPPContentResponse, \
     XMPPReceiptResponse, XMPPOutgoingContentMessageElement, XMPPOutgoingMessageElement, XMPPOutgoingIsTypingMessageElement
 from kik_unofficial.http_requests.tenor_client import KikTenorClient
-from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_safe, get_attribute_safe
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_of_tag, get_optional_attribute
 
 
 class OutgoingChatMessage(XMPPOutgoingMessageElement):
@@ -64,8 +64,8 @@ class IncomingChatMessage(XMPPResponse):
 
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
-        self.preview = get_text_safe(data, 'preview')
-        self.body = get_text_safe(data, 'body')
+        self.preview = get_text_of_tag(data, 'preview')
+        self.body = get_text_of_tag(data, 'body')
 
 
 class IncomingGroupChatMessage(IncomingChatMessage):
@@ -76,7 +76,7 @@ class IncomingGroupChatMessage(IncomingChatMessage):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         # Messages from public groups include an alias user which can be resolved with client.xiphias_get_users_by_alias
-        self.alias_sender = get_text_safe(data, 'alias-sender')
+        self.alias_sender = get_text_of_tag(data, 'alias-sender')
 
 
 class OutgoingReadReceipt(XMPPOutgoingMessageElement):
@@ -165,7 +165,7 @@ class IncomingIsTypingEvent(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         is_typing = data.find('is-typing', recursive=False)
-        self.is_typing = get_attribute_safe(is_typing, 'val') == 'true'
+        self.is_typing = get_optional_attribute(is_typing, 'val') == 'true'
 
 
 class IncomingGroupIsTypingEvent(IncomingIsTypingEvent):
@@ -179,7 +179,7 @@ class IncomingStatusResponse(XMPPResponse):
         status = data.find('status', recursive=False)
         self.status = status.text
         self.status_jid = status['jid']
-        self.special_visibility = get_attribute_safe(status, 'special-visibility') == 'true'
+        self.special_visibility = get_optional_attribute(status, 'special-visibility') == 'true'
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
 
@@ -195,7 +195,7 @@ class IncomingGroupSysmsg(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         sysmsg = data.find('sysmsg', recursive=False)
-        self.sysmsg_xmlns = get_attribute_safe(sysmsg, 'xmlns')
+        self.sysmsg_xmlns = get_optional_attribute(sysmsg, 'xmlns')
         self.sysmsg = sysmsg.text
         group = data.find('g', recursive=False)
         self.group = Group(group) if group and len(group.contents) > 0 else None
@@ -215,12 +215,12 @@ class IncomingFriendAttribution(XMPPResponse):
         friend_attribution = data.find('friend-attribution', recursive=False)
         context = friend_attribution.find('context', recursive=False)
         if context:
-            self.context_type = get_attribute_safe(context, 'type')
-            self.referrer_jid = get_attribute_safe(context, 'referrer')
-            self.referrer_group_jid = get_attribute_safe(context, 'jid')
-            self.referrer_url = get_attribute_safe(context, 'url')
-            self.referrer_name = get_attribute_safe(context, 'name')
-            self.reply = get_attribute_safe(context, 'reply') == 'true'
+            self.context_type = get_optional_attribute(context, 'type')
+            self.referrer_jid = get_optional_attribute(context, 'referrer')
+            self.referrer_group_jid = get_optional_attribute(context, 'jid')
+            self.referrer_url = get_optional_attribute(context, 'url')
+            self.referrer_name = get_optional_attribute(context, 'name')
+            self.reply = get_optional_attribute(context, 'reply') == 'true'
 
             body = friend_attribution.find('body', recursive=False)
             # mobile clients remove quotes from the beginning and end of the string
@@ -342,4 +342,4 @@ class IncomingErrorMessage(XMPPResponse):
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.error = data.error
-        self.error_message = get_text_safe(self.error, 'text')
+        self.error_message = get_text_of_tag(self.error, 'text')

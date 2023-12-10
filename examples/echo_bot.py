@@ -41,7 +41,7 @@ class EchoBot(KikClientCallback):
         android_id = creds['android_id']
         node = creds.get('node') # If you don't know it, set it to None
         
-        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, enable_logging=True)
+        self.client = KikClient(self, username, str(password), node, device_id=device_id, android_id=android_id, enable_console_logging=True)
         self.client.wait_for_messages()
 
     # Initialization and Authentication

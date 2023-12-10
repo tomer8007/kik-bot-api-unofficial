@@ -8,7 +8,7 @@ import datetime
 
 
 # turn on logging with basic configuration
-def set_up_basic_logging(log_level, logger_name, log_file_path):
+def set_up_basic_logging(log_level, logger_name, log_file_path, enable_console_output=True):
     """
     Set up basic logging using CustomLogger.
 
@@ -17,8 +17,8 @@ def set_up_basic_logging(log_level, logger_name, log_file_path):
         logger_name (str): The name of the logger.
         log_file_path (str): If a path is given a TimeRotated log file will be created.
     """
-    # Initialize your custom logger
-    return CustomLogger(log_level, logger_name, log_file_path)
+    
+    return CustomLogger(log_level, logger_name, log_file_path, enable_console_output)
 
 
 class ColoredFormatter(logging.Formatter):
@@ -83,13 +83,13 @@ class ColoredFormatter(logging.Formatter):
 
 class CustomLogger:
     """
-        Custom logger with colored console output and file logging.
+    Custom logger with colored console output and file logging.
 
-        Attributes:
-            logger (logging.Logger): The underlying logger instance.
+    Attributes:
+        logger (logging.Logger): The underlying logger instance.
     """
 
-    def __init__(self, log_level, logger_name, log_file_path):
+    def __init__(self, log_level, logger_name, log_file_path, enable_console_output=True):
         """
            Initialize the custom logger.
 
@@ -129,9 +129,11 @@ class CustomLogger:
 
             file_handler.setLevel(level_mapping.get(log_level, logging.INFO))
             file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s [%(thread)d/%(threadName)s]: %(message)s'))
+
             self.logger.addHandler(file_handler)
 
-        self.logger.addHandler(console_handler)
+        if enable_console_output:
+            self.logger.addHandler(console_handler)
 
     def info(self, msg, *args, **kwargs):
         self.logger.info(msg, *args, **kwargs)

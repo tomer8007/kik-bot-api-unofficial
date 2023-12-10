@@ -47,8 +47,8 @@ class KikClient:
             kik_node: str = None,
             device_id: str = None,
             android_id: str = random_android_id(),
-            log_level: int = 1,
-            enable_logging: bool = False,
+            log_level: int = 20,
+            enable_console_logging: bool = False,
             log_file_path: str = None,
             disable_auth_cert: bool = True
     ) -> None:
@@ -65,15 +65,14 @@ class KikClient:
                          authentication will happen faster and without a login. otherwise supply None.
         :param device_id: a unique device ID. If you don't supply one, a random one will be generated. (generated at _on_connection_made)
         :param android_id: a unique android ID. If you don't supply one, a random one will be generated.
-        :param enable_logging: If true, turns on logging to stdout (default: False)
+        :param enable_console_logging: If true, turns on logging to stdout (default: False)
         :param log_file_path: If set will create a daily rotated log file and archive for 7 days.
         :param disable_auth_cert: If true, auth certs will not be generated on every connection.
             This greatly improves startup time.
             True by default.
         """
         # turn on logging with basic configuration
-        if enable_logging:
-            self.log = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial", log_file_path=log_file_path)
+        self.log = set_up_basic_logging(log_level=log_level, logger_name="kik_unofficial", log_file_path=log_file_path, enable_console_output=enable_console_logging)
 
         self.username = kik_username
         self.password = kik_password

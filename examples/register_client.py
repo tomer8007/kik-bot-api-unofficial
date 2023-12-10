@@ -12,6 +12,7 @@ from kik_unofficial.datatypes.xmpp.login import LoginResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 
+
 class RegisterClient(KikClientCallback):
     def on_sign_up_ended(self, response: RegisterResponse):
         print(f"Registered on node {response.kik_node}.")
@@ -28,7 +29,7 @@ class RegisterClient(KikClientCallback):
             print(response.captcha_url)
             result = input("Captcha result:")
             client.register(args.email, args.username, args.password,
-                    args.firstname, args.lastname, args.birthday, result)
+                            args.firstname, args.lastname, args.birthday, result)
         else:
             print(f"Unable to register! error information:\r\n{response}")
 
@@ -53,18 +54,18 @@ if __name__ == '__main__':
     android_id = random_android_id()
     logging.basicConfig(format=KikClient.log_format(), level=logging.DEBUG)
     client = KikClient(callback=RegisterClient(),
-                       kik_username=None, kik_password=None, 
+                       kik_username=args.username, kik_password=args.password,
                        device_id=device_id, android_id=android_id)
     client.register(args.email, args.username, args.password,
-            args.firstname, args.lastname, args.birthday)
+                    args.firstname, args.lastname, args.birthday)
 
     file_obj = {
-            'device_id': device_id,
-            'android_id': android_id,
-            'username': args.username,
-            'password': args.password,
-            'node': client.kik_node,
-            }
+        'device_id': device_id,
+        'android_id': android_id,
+        'username': args.username,
+        'password': args.password,
+        'node': client.kik_node,
+    }
     with open(args.credentials_file, 'w') as f:
         yaml.dump(file_obj, f)
 

@@ -1,6 +1,9 @@
 import asyncio
+import io
+import pathlib
 import ssl
 import time
+import traceback
 from threading import Thread, Event
 from typing import Union, List
 from asyncio import StreamReader, StreamWriter
@@ -17,13 +20,16 @@ import kik_unofficial.xmlns_handlers as xmlns_handlers
 from kik_unofficial.datatypes.xmpp.auth_stanza import AuthStanza
 from kik_unofficial.datatypes.xmpp import account, xiphias
 from kik_unofficial.parser.parser import KikXmlParser
+from kik_unofficial.utilities import xml_utilities, jid_utilities
+from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
+from kik_unofficial.utilities.kik_server_clock import KikServerClock
 from kik_unofficial.utilities.threading_utils import run_in_new_thread
-from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.http_requests import profile_pictures, content
 from kik_unofficial.utilities.credential_utilities import random_device_id, random_android_id
 from kik_unofficial.utilities.logging_utils import set_up_basic_logging
 
-HOST, PORT = "talk1110an.kik.com", 5223
+HOST, PORT = CryptographicUtils.get_kik_host_name(), 5223
 
 
 class KikClient:
@@ -31,9 +37,19 @@ class KikClient:
     The main kik class with which you're managing a kik connection and sending commands
     """
 
-    def __init__(self, callback: callbacks.KikClientCallback, kik_username: str, kik_password: str,
-                 kik_node: str = None, device_id: str = None, android_id: str = random_android_id(), log_level: int = 1,
-                 enable_logging: bool = False, log_file_path: str = None, disable_auth_cert: bool = True) -> None:
+    def __init__(
+            self,
+            callback: callbacks.KikClientCallback,
+            kik_username: str,
+            kik_password: str,
+            kik_node: str = None,
+            device_id: str = None,
+            android_id: str = random_android_id(),
+            log_level: int = 1,
+            enable_logging: bool = False,
+            log_file_path: str = None,
+            disable_auth_cert: bool = True
+    ) -> None:
         """
         Initializes a connection to Kik servers.
         If you want to automatically login too, use the username and password parameters.
@@ -70,7 +86,6 @@ class KikClient:
         self.connected = False
         self.authenticated = False
         self.connection = None
-        self.is_expecting_connection_reset = False
         self.is_permanent_disconnection = False
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -80,6 +95,7 @@ class KikClient:
 
         self.should_login_on_connection = kik_username is not None and kik_password is not None
         self.disable_auth_cert = disable_auth_cert
+        self._last_ping_sent_time = 0
         self._connect()
 
     def _connect(self):
@@ -96,6 +112,9 @@ class KikClient:
     def wait_for_messages(self, max_retries: int = 5):
         for _ in range(max_retries):
             self.kik_connection_thread.join()
+            if self.is_permanent_disconnection:
+                self.log.info("Permanent disconnect, exiting...")
+                break
             self.log.info("Connection has disconnected, trying again...")
             time.sleep(2)
 
@@ -147,8 +166,7 @@ class KikClient:
         self.log.info(f"Logging in with {login_type} '{username}' and a given password {'*' * len(password)}...")
         return self._send_xmpp_element(login_request)
 
-    def register(self, email, username, password, first_name, last_name, birthday="1974-11-20",
-                 captcha_result: str = None):
+    def register(self, email: str, username: str, password: str, first_name: str, last_name: str, birthday: str, captcha_result: str = None):
         """
         Sends a register request to sign up a new user to kik with the given details.
         """
@@ -160,81 +178,103 @@ class KikClient:
         self.log.info(f"Sending sign up request (name: {first_name} {last_name}, email: {email})...")
         return self._send_xmpp_element(register_message)
 
-    def request_roster(self, is_big=True, timestamp=None):
+    def request_roster(self, is_batched: bool = False, timestamp: Union[str, None] = None, mts: Union[str, None] = None):
         """
         Requests the list of chat partners (people and groups). This is called roster in XMPP terms.
         """
         self.log.info("Requesting roster (list of chat partners)...")
-        return self._send_xmpp_element(roster.FetchRosterRequest(is_big=is_big, timestamp=timestamp))
+        return self._send_xmpp_element(roster.FetchRosterRequest(is_batched=is_batched, timestamp=timestamp, mts=mts))
 
     # -------------------------------
     # Common Messaging Operations
     # -------------------------------
 
-    def send_chat_message(self, peer_jid: str, message: str, bot_mention_jid=None):
+    def send_chat_message(self, peer_jid: str, message: str):
         """
         Sends a text chat message to another person or a group with the given JID/username.
 
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param message: The actual message body
-        :param bot_mention_jid: If an official bot is referenced, their jid must be embedded as mention for them
-        to respond.
         """
         peer_jid = self.get_jid(peer_jid)
 
-        if self.is_group_jid(peer_jid):
-            self.log.info(f"Sending chat message '{message}' to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGroupChatMessage(peer_jid, message, bot_mention_jid))
-        else:
-            self.log.info(f"Sending chat message '{message}' to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingChatMessage(peer_jid, message, False, bot_mention_jid))
+        chat_message = chatting.OutgoingChatMessage(peer_jid, message)
+        self.log.info(f"Sending chat message '{message}' to {'group' if chat_message.is_group else 'chat'} '{peer_jid}'...")
+        return self._send_xmpp_element(chat_message)
 
-    def send_chat_image(self, peer_jid: str, file, forward=True):
+    def send_chat_image(self, peer_jid: str, file, forward: bool = True):
         """
         Sends an image chat message to another person or a group with the given JID/username.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com)
                          If you don't know the JID of someone, you can also specify a kik username here.
         :param file: The path to the image file OR its bytes OR an IOBase object to send.
+        :param forward: True to allow the client to forward the image to other chats
         """
         peer_jid = self.get_jid(peer_jid)
+        image = chatting.OutgoingChatImage(peer_jid, file, forward)
+        self.log.info(f"Sending chat image to {'group' if image.is_group else 'user'} '{peer_jid}'...")
 
-        if self.is_group_jid(peer_jid):
-            self.log.info(f"Sending chat image to group '{peer_jid}'...")
-            imageRequest = chatting.OutgoingGroupChatImage(peer_jid, file, forward)
-        else:
-            self.log.info(f"Sending chat image to user '{peer_jid}'...")
-            imageRequest = chatting.OutgoingChatImage(peer_jid, file, False, forward)
         content.upload_gallery_image(
-            imageRequest,
+            image,
             f'{self.kik_node}@talk.kik.com',
             self.username,
             self.password,
         )
-        return self._send_xmpp_element(imageRequest)
+        return self._send_xmpp_element(image)
 
-    def send_read_receipt(self, peer_jid: str, receipt_message_id: str, group_jid=None):
+    def send_read_receipt(self, peer_jid: str, receipt_message_id: Union[str, list[str]], group_jid=None):
         """
-        Sends a read receipt for a previously sent message, to a specific user or group.
+        Sends a receipt indicating that the message was read.
 
-        :param peer_jid: The JID of the user to which to send the receipt.
-        :param receipt_message_id: The message ID that the receipt is sent for
-        :param group_jid If the receipt is sent for a message that was sent in a group,
-                         this parameter should contain the group's JID
+        :param peer_jid: The author of the message to send a receipt for
+        :param receipt_message_id: The ID of the message read. Can be a single ID or a list of IDs
+        :param group_jid: The Group JID if the message is from a group, else None
         """
-        self.log.info(f"Sending read receipt to JID {peer_jid} for message ID {receipt_message_id}")
-        return self._send_xmpp_element(chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid))
+        self.log.info(f"Sending read receipt to {peer_jid} for message ID {receipt_message_id}")
+        receipt = chatting.OutgoingReadReceipt(peer_jid, receipt_message_id, group_jid)
+        return self._send_xmpp_element(receipt)
 
-    def send_delivered_receipt(self, peer_jid: str, receipt_message_id: str, group_jid: str = None):
+    def send_read_receipt_with_message(self, messages: Union[XMPPResponse, list[XMPPResponse]]) -> list[str]:
         """
-        Sends a receipt indicating that a specific message was received, to another person.
+        Sends a receipt indicating that the message was read.
 
-        :param peer_jid: The other peer's JID to send to receipt to
-        :param receipt_message_id: The message ID for which to generate the receipt
-        :param group_jid: The group's JID, in case the receipt is sent in a group (None otherwise)
+        This makes it easy for callers to read incoming messages.
+
+        :param messages: The message to send a delivered receipt for, can be a single message or a list of messages
         """
-        self.log.info(f"Sending delivered receipt to JID {peer_jid} for message ID {receipt_message_id}")
-        return self._send_xmpp_element(chatting.OutgoingDeliveredReceipt(peer_jid, receipt_message_id, group_jid))
+        if isinstance(messages, list):
+            outgoing_ids = []
+            sender_map = dict()
+            for message in messages:
+                map_key = message.from_jid
+                if message.is_group:
+                    map_key += message.group_jid
+
+                if map_key in sender_map:
+                    items = sender_map.get(map_key)
+                else:
+                    items = list[XMPPResponse]()
+                    sender_map[map_key] = items
+                items.append(message)
+
+            for batch in sender_map.values():
+                outgoing_ids.append(self.send_read_receipt(
+                    peer_jid=batch[0].from_jid, receipt_message_id=[m.message_id for m in batch], group_jid=batch[0].group_jid))
+            return outgoing_ids
+        else:
+            return [self.send_read_receipt(
+                peer_jid=messages.from_jid, receipt_message_id=messages.message_id, group_jid=messages.group_jid)]
+
+    def send_delivered_receipt(self, message: Union[XMPPResponse, list[XMPPResponse]]):
+        """
+        Sends a receipt indicating that the message was delivered
+
+        :param message: The message to send a delivered receipt for.
+                        This can be a single message or a list of messages.
+        """
+        self.log.info(f"Sending delivered receipt to {message.from_jid} for message ID {message.message_id}")
+        return self._send_xmpp_element(history.OutgoingAcknowledgement(message))
 
     def send_is_typing(self, peer_jid: str, is_typing: bool):
         """
@@ -243,27 +283,21 @@ class KikClient:
         :param peer_jid: The JID that the notification will be sent to
         :param is_typing: If true, indicates that we're currently typing, or False otherwise.
         """
-        if self.is_group_jid(peer_jid):
-            return self._send_xmpp_element(chatting.OutgoingGroupIsTypingEvent(peer_jid, is_typing))
-        else:
-            return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
+        return self._send_xmpp_element(chatting.OutgoingIsTypingEvent(peer_jid, is_typing))
 
     # Uncomment if you want to set your api key here
-    # def send_gif_image(self, peer_jid, search_term, API_key = "YOUR_API_KEY"):
-    def send_gif_image(self, peer_jid: str, search_term: str, API_key: str):
+    # def send_gif_image(self, peer_jid, search_term, api_key = "YOUR_API_KEY"):
+    def send_gif_image(self, peer_jid: str, search_term: str, api_key: str):
         """
         Sends a GIF image to another person or a group with the given JID/username.
-        The GIF is taken from tendor.com, based on search keywords.
+        The GIF is taken from tenor.com, based on search keywords.
         :param peer_jid: The Jabber ID for which to send the message (looks like username_ejs@talk.kik.com
-        :param search_term: The search term to use when searching GIF images on tendor.com
-        :param API_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
+        :param search_term: The search term to use when searching GIF images on tenor.com
+        :param api_key: The API key for tenor (Get one from https://developers.google.com/tenor/)
         """
-        if self.is_group_jid(peer_jid):
-            self.log.info(f"Sending a GIF message to group '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, True))
-        else:
-            self.log.info(f"Sending a GIF message to user '{peer_jid}'...")
-            return self._send_xmpp_element(chatting.OutgoingGIFMessage(peer_jid, search_term, API_key, False))
+        gif = chatting.OutgoingGIFMessage(peer_jid, search_term, api_key)
+        self.log.info(f"Sending a GIF message to {'group' if gif.is_group else 'user'} '{peer_jid}'...")
+        return self._send_xmpp_element(gif)
 
     def request_info_of_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -274,16 +308,84 @@ class KikClient:
                           If you want to request information for more than one user, supply a list of strings.
                           Otherwise, supply a string
         """
-        return self._send_xmpp_element(roster.QueryUsersInfoRequest(peer_jids))
+        if isinstance(peer_jids, str) and '@' not in peer_jids:
+            return self.request_info_of_username(peer_username=peer_jids)
+        elif isinstance(peer_jids, list) and len(peer_jids) == 1 and '@' not in peer_jids[0]:
+            return self.request_info_of_username(peer_username=peer_jids[0])
+        else:
+            return self._send_xmpp_element(roster.PeersInfoRequest(peer_jids))
 
-    def add_friend(self, peer_jid):
+    def request_info_of_username(self, peer_username: str):
+        """
+        Requests basic information (username, JID, display name, picture) of a single user by their username.
+        When the information arrives, the callback on_peer_info_received() will fire.
+
+        :param peer_username: The username for which to request the information.
+        """
+        return self._send_xmpp_element(roster.QueryUserByUsernameRequest(peer_username))
+
+    def add_friend(self, peer_jid: str):
+        """
+        Add a user to your friends list. Doing this allows the user to add you to groups.
+
+        :param peer_jid: The JID of the user to remove from friends list
+        """
         return self._send_xmpp_element(roster.AddFriendRequest(peer_jid))
 
-    def remove_friend(self, peer_jid):
+    def remove_friend(self, peer_jid: str):
+        """
+        Removes a user from your friends list. Doing this prevents the user from adding you to groups,
+        and you will stop receiving roster updates containing profile information for this user.
+
+        :param peer_jid: The JID of the user to remove from friends list
+        """
         return self._send_xmpp_element(roster.RemoveFriendRequest(peer_jid))
 
-    def send_link(self, peer_jid, link, title, text='', app_name='Webpage'):
-        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name))
+    def block_user(self, peer_jid: str):
+        """
+        Blocks a user. Doing this prevents the user from adding you to groups (same as remove_friend),
+        and mobile clients hide the messages received.
+
+        :param peer_jid: The JID of the user to block
+        """
+        return self._send_xmpp_element(roster.BlockUserRequest(peer_jid))
+
+    def unblock_user(self, peer_jid: str):
+        """
+        Unblocks a user. Doing this puts the user back in your friends list and allows the user to add you to groups.
+
+        :param peer_jid: The JID of the user to unblock
+        """
+        return self._send_xmpp_element(roster.UnblockUserRequest(peer_jid))
+
+    def get_muted_users(self):
+        """
+        Retrieves a list of muted users.
+
+        Clients will receive the muted user list as a callback to on_muted_convos_received().
+        """
+        return self._send_xmpp_element(roster.GetMutedUsersRequest())
+
+    def mute_user(self, peer_jid: str, expires: Union[time, None] = None):
+        """
+        Mutes a user, this prevents push notifications from being sent to mobile clients.
+
+        :param peer_jid: The JID of the user to mute
+        :param expires: The time at which the mute status is automatically removed.
+                        The time must be in the future and no more than 30 days in the future.
+        """
+        return self._send_xmpp_element(roster.MuteUserRequest(peer_jid, expires))
+
+    def unmute_user(self, peer_jid: str):
+        """
+        Unmutes a user.
+
+        :param peer_jid: The JID of the user to unmute
+        """
+        return self._send_xmpp_element(roster.UnmuteUserRequest(peer_jid))
+
+    def send_link(self, peer_jid: str, link: str, title: str, text: str = '', app_name: str = 'Webpage', preview_jpg_bytes: Union[bytes, None] = None):
+        return self._send_xmpp_element(chatting.OutgoingLinkShareEvent(peer_jid, link, title, text, app_name, preview_jpg_bytes))
 
     def xiphias_get_users(self, peer_jids: Union[str, List[str]]):
         """
@@ -308,17 +410,20 @@ class KikClient:
 
     def change_group_name(self, group_jid: str, new_name: str):
         """
-        Changes the a group's name to something new
+        Changes the name of the group.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The JID of the group whose name should be changed
-        :param new_name: The new name to give to the group
+        :param new_name: The new name to give to the group.
+                         Note: if you pass in an empty string, the group name is removed.
         """
         self.log.info(f"Requesting a group name change for JID {group_jid} to '{new_name}'")
         return self._send_xmpp_element(group_adminship.ChangeGroupNameRequest(group_jid, new_name))
 
-    def add_peer_to_group(self, group_jid, peer_jid):
+    def add_peer_to_group(self, group_jid: str, peer_jid: str):
         """
-        Adds someone to a group
+        Adds someone to a group.
+        The caller must be a current member the group for this request to succeed.
 
         :param group_jid: The JID of the group into which to add a user
         :param peer_jid: The JID of the user to add
@@ -326,9 +431,10 @@ class KikClient:
         self.log.info(f"Requesting to add user {peer_jid} into the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddToGroupRequest(group_jid, peer_jid))
 
-    def remove_peer_from_group(self, group_jid, peer_jid):
+    def remove_peer_from_group(self, group_jid: str, peer_jid: str):
         """
-        Kicks someone out of a group
+        Kicks someone out of a group.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The group JID from which to remove the user
         :param peer_jid: The JID of the user to remove
@@ -336,9 +442,11 @@ class KikClient:
         self.log.info(f"Requesting removal of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.RemoveFromGroupRequest(group_jid, peer_jid))
 
-    def ban_member_from_group(self, group_jid, peer_jid):
+    def ban_member_from_group(self, group_jid: str, peer_jid: str):
         """
-        Bans a member from the group
+        Bans a member from the group.
+        The caller must be a current owner or admin of the group for this request to succeed.
+        The user that is being banned must have joined the group at least once.
 
         :param group_jid: The JID of the relevant group
         :param peer_jid: The JID of the user to ban
@@ -346,17 +454,19 @@ class KikClient:
         self.log.info(f"Requesting ban of user {peer_jid} from group {group_jid}")
         return self._send_xmpp_element(group_adminship.BanMemberRequest(group_jid, peer_jid))
 
-    def unban_member_from_group(self, group_jid, peer_jid):
+    def unban_member_from_group(self, group_jid: str, peer_jid: str):
         """
-        Undos a ban of someone from a group
+        Unbans a currently banned member of a group.
+        The caller must be a current owner or admin of the group for this request to succeed.
+        The user that is being banned must have joined the group at least once.
 
         :param group_jid: The JID of the relevant group
-        :param peer_jid: The JID of the user to un-ban from the gorup
+        :param peer_jid: The JID of the user to unban from the group
         """
         self.log.info(f"Requesting un-banning of user {peer_jid} from the group {group_jid}")
         return self._send_xmpp_element(group_adminship.UnbanRequest(group_jid, peer_jid))
 
-    def join_group_with_token(self, group_hashtag, group_jid, join_token):
+    def join_group_with_token(self, group_hashtag: str, group_jid: str, join_token):
         """
         Tries to join into a specific group, using a cryptographic token that was received earlier from a search
 
@@ -368,7 +478,7 @@ class KikClient:
         self.log.info(f"Trying to join the group '{group_hashtag}' with JID {group_jid}")
         return self._send_xmpp_element(roster.GroupJoinRequest(group_hashtag, join_token, group_jid))
 
-    def leave_group(self, group_jid):
+    def leave_group(self, group_jid: str):
         """
         Leaves a specific group
 
@@ -377,9 +487,10 @@ class KikClient:
         self.log.info(f"Leaving group {group_jid}")
         return self._send_xmpp_element(group_adminship.LeaveGroupRequest(group_jid))
 
-    def promote_to_admin(self, group_jid, peer_jid):
+    def promote_to_admin(self, group_jid: str, peer_jid: str):
         """
-        Turns some group member into an admin
+        Promotes a group member to admin.
+        The caller must be a current owner or admin of the group for this request to succeed.
 
         :param group_jid: The group JID for which the member will become an admin
         :param peer_jid: The JID of user to turn into an admin
@@ -387,9 +498,10 @@ class KikClient:
         self.log.info(f"Promoting user {peer_jid} to admin in group {group_jid}")
         return self._send_xmpp_element(group_adminship.PromoteToAdminRequest(group_jid, peer_jid))
 
-    def demote_admin(self, group_jid, peer_jid):
+    def demote_admin(self, group_jid: str, peer_jid: str):
         """
-        Turns an admin of a group into a regular user with no amidships capabilities.
+        Removes admin status from a group member.
+        The caller must be a current owner of the group for this request to succeed.
 
         :param group_jid: The group JID in which the rights apply
         :param peer_jid: The admin user to demote
@@ -398,9 +510,10 @@ class KikClient:
         self.log.info(f"Demoting user {peer_jid} to a regular member in group {group_jid}")
         return self._send_xmpp_element(group_adminship.DemoteAdminRequest(group_jid, peer_jid))
 
-    def add_members(self, group_jid, peer_jids: Union[str, List[str]]):
+    def add_members(self, group_jid: str, peer_jids: Union[str, List[str]]):
         """
         Adds multiple users to a specific group at once
+        The caller must be a current member of the group for this request to succeed.
 
         :param group_jid: The group into which to join the users
         :param peer_jids: a list (or a single string) of JIDs to add to the group
@@ -408,16 +521,35 @@ class KikClient:
         self.log.info(f"Adding some members to the group {group_jid}")
         return self._send_xmpp_element(group_adminship.AddMembersRequest(group_jid, peer_jids))
 
+    def set_dm_disabled_status(self, group_jid: str, is_dm_disabled: bool):
+        """
+        Enables or disables direct messaging for a public group.
+        The caller must be a current member of the group for this request to succeed.
+        Note: this only works for public groups. Private groups have no effect.
+
+        :param group_jid: The group to change the DM disabled status of.
+        :param is_dm_disabled: the new DM disabled status.
+                               True to close DMs in the group, False to open DMs in the group
+        """
+        self.log.info(f"Setting DM disabled status to {is_dm_disabled} for group {group_jid}")
+        client_jid = f'{self.kik_node}@talk.kik.com'  # Caller can only change their own dmd status
+        return self._send_xmpp_element(group_adminship.ChangeDmDisabledRequest(group_jid, client_jid, is_dm_disabled))
+
     # ----------------------
     # Other Operations
     # ----------------------
 
-    def send_ack(self, messages: list[history.KikHistoryItem] | history.KikHistoryItem | None, request_history: bool = False):
+    def send_ack(self, messages: Union[list[XMPPResponse], XMPPResponse, None], request_history: bool = False):
         """
         Sends an acknowledgement for a list of messages.
         """
-        self.log.info(f"Sending acknowledgement for {len(messages)} message(s)")
-        return self._send_xmpp_element(history.OutgoingAcknowledgement(messages=messages, request_history=request_history))
+        if isinstance(messages, list) and len(messages) == 0 and not request_history:
+            self.log.debug(f"Skipping acknowledgement request (no messages and not requesting history)")
+        elif messages is None and not request_history:
+            self.log.debug(f"Skipping acknowledgement request (message is None and not requesting history)")
+        else:
+            return self._send_xmpp_element(history.OutgoingAcknowledgement(
+                messages=messages, request_history=request_history))
 
     def request_messaging_history(self):
         """
@@ -435,7 +567,7 @@ class KikClient:
         :param search_query: The query that contains some of the desired groups' name.
         """
         self.log.info(f"Initiating a search for groups using the query '{search_query}'")
-        return self._send_xmpp_element(roster.GroupSearchRequest(search_query))
+        return self._send_xmpp_element(xiphias.GroupSearchRequest(search_query))
 
     def check_username_uniqueness(self, username):
         """
@@ -447,35 +579,52 @@ class KikClient:
         self.log.info(f"Checking for Uniqueness of username '{username}'")
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
-    def set_profile_picture(self, filename):
+    def set_profile_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the profile picture of the current user
 
-        :param filename: The path to the file OR its bytes OR an IOBase object to set
+        :param file: The path to the file OR its bytes OR an IOBase object to set
         """
-        self.log.info(f"Setting the profile picture to file '{filename}'")
+        self.log.info(f"Changing profile picture for {self.username}")
         profile_pictures.set_profile_picture(
-            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
+            file, f'{self.kik_node}@talk.kik.com', self.username, self.password
         )
 
-    def set_background_picture(self, filename):
+    def set_background_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
         """
         Sets the background picture of the current user
 
-        :param filename: The path to the image file OR its bytes OR an IOBase object to set
+        :param file: The path to the image file OR its bytes OR an IOBase object to set
         """
-        self.log.info(f"Setting the background picture to filename '{filename}'")
+        self.log.info(f"Changing background picture for {self.username}")
         profile_pictures.set_background_picture(
-            filename, f'{self.kik_node}@talk.kik.com', self.username, self.password
-        )
+            file, f'{self.kik_node}@talk.kik.com', self.username, self.password)
+
+    def set_group_picture(self, file: str or bytes or pathlib.Path or io.IOBase, group_jid: str, silent: bool = False):
+        """
+        Sets the profile picture for a group JID.
+
+        The authenticated client must be an admin or owner of the group, otherwise this request will fail.
+
+        :param file: The path to the image file OR its bytes OR an IOBase object to set
+        :param group_jid: the JID of the group to change the picture for
+        :param silent: If true, no status message is generated when the picture is changed
+        """
+        self.log.info(f"Changing group picture for {self.username} in {group_jid} (silent={silent})")
+        profile_pictures.set_group_picture(
+            file, f'{self.kik_node}@talk.kik.com', group_jid, self.username, self.password, silent)
 
     def send_ping(self):
         """
-               Sends Ping Stanza A response Pong Should return from the server
-               Pong Object will include round trip time
+        Sends a ping stanza.
+
+        Once received, Kik replies with a `<pong/>` and KikClientCallback.on_pong will be called.
+
+        Clients do not require authentication to send pings.
         """
-        self.log.info(f'Sending KIK servers a ping.')
-        return self._send_xmpp_element(chatting.KikPingRequest())
+        self.log.debug(f'Sending ping')
+        self._send_xmpp_element(chatting.KikPingRequest())
+        self._last_ping_sent_time = KikServerClock.get_system_time()
 
     def send_captcha_result(self, stc_id, captcha_result):
         """
@@ -516,15 +665,14 @@ class KikClient:
         self.log.info("Changing the password of the account")
         return self._send_xmpp_element(account.ChangePasswordRequest(self.password, new_password, email, self.username))
 
-    def change_email(self, old_email, new_email):
+    def change_email(self, new_email):
         """
         Changes the email of the current account
 
-        :param old_email: The current email
         :param new_email: The new email to set
         """
         self.log.info(f"Changing account email to '{new_email}'")
-        return self._send_xmpp_element(account.ChangeEmailRequest(self.password, old_email, new_email))
+        return self._send_xmpp_element(account.ChangeEmailRequest(self.password, new_email))
 
     def disconnect(self, permanent: bool = True):
         """
@@ -534,15 +682,12 @@ class KikClient:
 
         :permanent: if True, the client will not reconnect and future attempts to reconnect will fail.
         """
-        if not self.connection or self.connection.is_closed:
-            return
-
-        self.log.warning("Disconnecting.")
-        self.connection.close()
-        self.is_expecting_connection_reset = True
         self.is_permanent_disconnection = True if self.is_permanent_disconnection else permanent
-
-        # self.loop.call_soon(self.loop.stop)
+        if self.connection:
+            self.log.info("Disconnecting.")
+            self.connection.close()
+        else:
+            self.log.error("Can't disconnect, no connection")
 
     # -----------------
     # Internal methods
@@ -551,20 +696,19 @@ class KikClient:
     def _send_xmpp_element(self, message: XMPPElement):
         """
         Serializes and sends the given XMPP element to kik servers
-        :param xmpp_element: The XMPP element to send
+        :param message: The XMPP element to send
         :return: The UUID of the element that was sent
         """
         while not self.connected:
             self.log.debug("Waiting for connection.")
-            time.sleep(0.1)
+            time.sleep(0.5)  # Reduces console spam
 
-        packets = message.serialize()
-        if isinstance(packets, list):
-            self.log.debug("Sending multi packet data.")
-            for packet in packets:
-                self.loop.call_soon_threadsafe(self.connection.send_raw_data, packet)
-        else:
-            self.loop.call_soon_threadsafe(self.connection.send_raw_data, packets)
+        packet = message.serialize()
+        if not isinstance(packet, bytes):
+            # This is a dom tree
+            packet = xml_utilities.encode_etree(packet)
+
+        self.loop.call_soon_threadsafe(self.connection.send_raw_data, packet)
 
         return message.message_id
 
@@ -590,7 +734,8 @@ class KikClient:
         elif xml_element.name == 'ack':
             pass
         elif xml_element.name == 'pong':
-            self.callback.on_pong(chatting.KikPongResponse(xml_element))
+            latency = KikServerClock.get_system_time() - self._last_ping_sent_time
+            self.callback.on_pong(chatting.KikPongResponse(latency))
         else:
             self.log.warning(f'Unknown element type: {xml_element.name}')
 
@@ -609,6 +754,8 @@ class KikClient:
 
             if 'ts' in k_element.attrs:
                 # authenticated!
+                KikServerClock.recalculate_offset(int(k_element['ts']))
+
                 self.log.info("Authenticated successfully.")
                 self.authenticated = True
                 if not self.disable_auth_cert:
@@ -634,15 +781,20 @@ class KikClient:
 
         :param iq_element: The iq XML element we just received from kik.
         """
-        if iq_element.error and "bad-request" in dir(iq_element.error):
-            if "bad-request" in dir(iq_element.error):
-                raise Exception(f'Received a Bad Request error for stanza with ID {iq_element.attrs["id"]}')
-            if iq_element.error.find("service-unavailable"):
-                raise Exception(f'Received a service Unavailable error for stanza with ID {iq_element.attrs["id"]}')
+        result_type = iq_element["type"]
+        if result_type == 'error':
+            error = iq_element.find('error', recursive=False)
+            if error:
+                if error.find("bad-request", recursive=False):
+                    raise Exception(f'Received a Bad Request error for stanza with ID {iq_element.attrs["id"]}')
+                elif error.find("service-unavailable", recursive=False):
+                    raise Exception(f'Received a service Unavailable error for stanza with ID {iq_element.attrs["id"]}')
 
-        query = iq_element.query
-        xml_namespace = query['xmlns'] if 'xmlns' in query.attrs else query['xmlns:']
-        self._handle_response(xml_namespace, iq_element)
+        # Some successful IQ responses don't have a query element
+        query = iq_element.find('query', recursive=False)
+        if query:
+            xml_namespace = iq_element.query['xmlns']
+            self._handle_response(xml_namespace, iq_element)
 
     def _handle_response(self, xmlns, iq_element):
         """
@@ -668,57 +820,39 @@ class KikClient:
             xmlns_handlers.HistoryHandler(self.callback, self).handle(iq_element)
         elif xmlns == 'kik:iq:user-profile':
             xmlns_handlers.UserProfileHandler(self.callback, self).handle(iq_element)
+        elif xmlns == 'kik:iq:convos':
+            xmlns_handlers.MutedConvosHandler(self.callback, self).handle(iq_element)
 
-    def _handle_xmpp_message(self, xmpp_message: BeautifulSoup):
+    def _handle_xmpp_message(self, data: BeautifulSoup):
         """
         an XMPP 'message' in the case of Kik is the actual stanza we receive when someone sends us a message
         (weather groupchat or not), starts typing, stops typing, reads our message, etc.
         Examples: http://slixmpp.readthedocs.io/api/stanza/message.html
 
-        :param xmpp_message: The XMPP 'message' element we received
+        :param data: The XMPP 'message' element we received, or 'msg' if from QoS history
         """
-        self._handle_kik_event(xmpp_message)
+        # The XML namespace is different for iOS and Android, handle the messages with their actual type
+        message = XMPPResponse(data)
+        message_type = message.type
 
-    def _handle_kik_event(self, xmpp_element):
-        """
-        Handles kik "push" events, like a new message that arrives.
-
-        :param xmpp_element: The XML element that we received with the information about the event
-        """
-        if "xmlns" in xmpp_element.attrs:
-            # The XML namespace is different for iOS and Android, handle the messages with their actual type
-            if xmpp_element['type'] == "chat":
-                xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            elif xmpp_element['type'] == "groupchat":
-                xmlns_handlers.GroupXMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            elif xmpp_element['type'] == "receipt":
-                if xmpp_element.g:
-                    self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(xmpp_element))
-                else:
-                    xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            elif xmpp_element['type'] == "is-typing":
-                # some clients send is-typing this way?
-                xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
-            elif xmpp_element['type'] == "error":
-                # error type happens on KIK jail (Restricted Group Access)
-                pass
-            else:
-                self.log.warning(f'Received unknown XMPP element type: {xmpp_element}')
+        if message_type == "chat":
+            xmlns_handlers.XMPPChatMessageHandler(self.callback, self).handle(data)
+        elif message_type == "groupchat":
+            xmlns_handlers.XMPPGroupChatMessageHandler(self.callback, self).handle(data)
+        elif message_type == 'receipt' and data.find('receipt', recursive=False):
+            receipt_type = data.find('receipt', recursive=False)['type']
+            if message.is_group:
+                self.callback.on_group_receipts_received(chatting.IncomingGroupReceiptsEvent(data))
+            elif receipt_type == 'delivered':
+                self.callback.on_message_delivered(chatting.IncomingMessageDeliveredEvent(data))
+            elif receipt_type == 'read':
+                self.callback.on_message_read(chatting.IncomingMessageReadEvent(data))
+        elif message_type == "is-typing":
+            self.callback.on_is_typing_event_received(chatting.IncomingIsTypingEvent(data))
+        elif message_type == "error":
+            self.callback.on_error_message_received(chatting.IncomingErrorMessage(data))
         else:
-            # iPads send messages without xmlns, try to handle it as jabber:client
-            xmlns_handlers.XMPPMessageHandler(self.callback, self).handle(xmpp_element)
-
-    def _on_connection_lost(self):
-        """
-        Gets called when the connection to kik's servers is (unexpectedly) lost.
-        It could be that we received a connection reset packet for example.
-        :return:
-        """
-        self.connected = False
-        if not self.is_expecting_connection_reset:
-            self.log.warning("The connection was unexpectedly lost")
-
-        self.is_expecting_connection_reset = False
+            self.log.warning(f'Received unknown XMPP element type: {data}')
 
     def _kik_connection_thread_function(self):
         """
@@ -727,7 +861,7 @@ class KikClient:
         """
         # If there is already a connection going, then wait for it to stop
         if self.connection and not self.connection.is_closed:
-            self.loop.call_soon_threadsafe(self.connection.close)
+            self.connection.close()
             self.log.debug("Waiting for the previous connection to stop.")
             while not self.connection.is_closed:
                 self.log.debug("Still waiting for the previous connection to stop.")
@@ -737,7 +871,7 @@ class KikClient:
 
         # create the connection and launch the asyncio loop
         self.connection = KikConnection(self)
-        task = self.loop.create_task(self.connection.main_loop())
+        task = self.loop.create_task(self.connection.read_loop())
 
         self.loop.run_until_complete(task)
         self.log.debug("Main loop ended.")
@@ -745,9 +879,10 @@ class KikClient:
         self._connect()
 
     def get_jid(self, username_or_jid):
-        if '@' in username_or_jid:
+        if jid_utilities.is_pm_jid(username_or_jid):
             # this is already a JID.
             return username_or_jid
+
         username = username_or_jid
 
         # first search if we already have it
@@ -755,7 +890,7 @@ class KikClient:
             # go request for it
 
             self._new_user_added_event.clear()
-            self.request_info_of_users(username)
+            self.request_info_of_username(username)
             if not self._new_user_added_event.wait(5.0):
                 raise TimeoutError(f"Could not get the JID for username {username} in time")
 
@@ -770,52 +905,44 @@ class KikClient:
 
     @staticmethod
     def is_group_jid(jid: str) -> bool:
-        if jid is None or len(jid) != 30:
-            return False
-        if not jid.endswith('_g@groups.kik.com'):
-            return False
-        group_id = jid[0:13]
-        if not group_id.isdigit():
-            return False
-
-        group_number = int(group_id)
-        # See XiGid in protobuf docs for an explanation
-        return 1099511627776 <= group_number <= 2199023255551
+        return jid_utilities.is_group_jid(jid)
 
 
 class KikConnection:
     def __init__(self, api: KikClient):
         self.api = api
-        self.loop = self.api.loop
-        self.reader = None  # type: StreamReader
-        self.writer = None  # type: StreamWriter
         self.log = api.log
+        self.reader = None  # type: StreamReader | None
+        self.writer = None  # type: StreamWriter | None
         self.is_closed = False
 
-    async def main_loop(self):
+    # noinspection PyProtectedMember
+    async def read_loop(self):
         try:
             self.reader, self.writer = await asyncio.open_connection(host=HOST, port=PORT, ssl=ssl.create_default_context())
+            parser = KikXmlParser(self.reader, self.log)
+
             self.log.info("Connected.")
             self.api._on_connection_made()
-
-            parser = KikXmlParser(self.reader, self.log)
 
             k = await parser.read_initial_k()
             self.log.debug("%s bind: %s", self.api.username, k)
 
             if not self.api._handle_received_k_element(k):
-                self.api.is_expecting_connection_reset = True
+                self.close()
                 return
 
-            while True:
+            while not self.is_closed:
                 stanza = await parser.read_next_stanza()
                 self.log.debug("Received: %s", stanza)
-                self.loop.call_soon_threadsafe(self.api._on_new_stanza_received, stanza)
-        except Exception as e:
-            self.log.warning("Received error in main loop: %s", e)
+                self.api.loop.call_soon_threadsafe(self.api._on_new_stanza_received, stanza)
+        except Exception:
+            self.log.warning("Received error in main loop: %s", traceback.format_exc())
         finally:
-            self.is_closed = True
-            self.api._on_connection_lost()
+            self.api.connected = False
+            if not self.is_closed:
+                self.log.warning("Connection unexpectedly lost")
+            self.close()
 
     def send_raw_data(self, data: bytes):
         if not self.writer:
@@ -827,7 +954,9 @@ class KikConnection:
             self.writer.write(data)
 
     def close(self):
-        if self.writer and not self.writer.is_closing():
-            self.writer.write(b'</k>')
-            self.writer.close()
+        if not self.is_closed:
+            self.is_closed = True
+            if self.writer and not self.writer.is_closing():
+                self.writer.write(b'</k>')
+                self.writer.close()
 

@@ -1,44 +1,63 @@
 import base64
 from builtins import NotImplementedError
-from typing import List
+from typing import List, TypeVar, final
 
 from bs4 import BeautifulSoup
-from google.protobuf import message
+from google.protobuf import message as proto_message
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.protobuf.entity.v1.entity_service_pb2 import GetUsersRequest, GetUsersResponse, GetUsersByAliasRequest, RequestedJid, \
-    GetUsersByAliasResponse
+from kik_unofficial.protobuf.entity.v1.entity_service_pb2 import \
+    GetUsersRequest, GetUsersResponse, GetUsersByAliasRequest, RequestedJid, GetUsersByAliasResponse
+
+from kik_unofficial.protobuf.groups.v1.group_search_service_pb2 import FindGroupsRequest, FindGroupsResponse
+from kik_unofficial.utilities import jid_utilities
+from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
+
+GROUP_SEARCH_SERVICE_NAME = 'mobile.groups.v1.GroupSearch'
+ENTITY_SERVICE_NAME = 'mobile.entity.v1.Entity'
+
+# Generic type for objects that extend google.protobuf.Message
+T = TypeVar("T", bound=proto_message)
 
 
 class XiphiasRequest(XMPPElement):
-    def __init__(self, method):
+    def __init__(self, service: str, method: str):
         super().__init__()
+        self.service = service
         self.method = method
 
-    def get_protobuf_payload(self) -> message.Message:
+    def get_protobuf_payload(self) -> T:
         raise NotImplementedError
 
-    def serialize(self):
+    @final
+    def serialize(self) -> bytes:
         payload = self.get_protobuf_payload()
         protobuf_data = base64.b64encode(payload.SerializeToString()).decode()
         data = (f'<iq type="set" id="{self.message_id}">'
-                f'<query xmlns="kik:iq:xiphias:bridge" service="mobile.entity.v1.Entity" method="{self.method}">'
+                f'<query xmlns="kik:iq:xiphias:bridge" service="{self.service}" method="{self.method}">'
                 f'<body>{protobuf_data}</body>'
                 '</query>'
                 '</iq>')
         return data.encode()
 
 
+class XiphiasResponse(XMPPResponse):
+    def __init__(self, data: BeautifulSoup, message: T):
+        super().__init__(data)
+        self.message = message
+        message.ParseFromString(base64.urlsafe_b64decode(ParsingUtilities.fix_base64_padding(data.query.body.text)))
+
+
 class UsersRequest(XiphiasRequest):
     def __init__(self, peer_jids):
-        super().__init__('GetUsers')
+        super().__init__(service=ENTITY_SERVICE_NAME, method='GetUsers')
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
-    def get_protobuf_payload(self):
+    def get_protobuf_payload(self) -> T:
         request = GetUsersRequest()
         for peer_jid in self.peer_jids:
             jid = request.ids.add()
-            jid.local_part = peer_jid.split('@')[0]
+            jid.local_part = jid_utilities.get_local_part(peer_jid)
         return request
 
 
@@ -98,32 +117,67 @@ class UsersResponseUser:
             self.kin_user_id = user.kin_user_id_element.kin_user_id.id
 
 
-class UsersResponse(XMPPResponse):
+class UsersResponse(XiphiasResponse):
     def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        text = base64.urlsafe_b64decode(data.query.body.text.encode())
-        response = GetUsersResponse()
-        response.ParseFromString(text)
-        self.users = [UsersResponseUser(user) for user in response.users]
+        super().__init__(data, GetUsersResponse())
+        self.users = [UsersResponseUser(user) for user in self.message.users]
 
 
 class UsersByAliasRequest(XiphiasRequest):
     def __init__(self, alias_jids):
-        super().__init__('GetUsersByAlias')
+        super().__init__(service=ENTITY_SERVICE_NAME, method='GetUsersByAlias')
         self.alias_jids = alias_jids if isinstance(alias_jids, List) else [alias_jids]
 
-    def get_protobuf_payload(self):
+    def get_protobuf_payload(self) -> T:
         request = GetUsersByAliasRequest()
         for peer_jid in self.alias_jids:
             jid = request.ids.add()  # type: RequestedJid
-            jid.alias_jid.local_part = peer_jid.split('@')[0]
+            jid.alias_jid.local_part = jid_utilities.get_local_part(peer_jid)
         return request
 
 
-class UsersByAliasResponse(XMPPResponse):
+class UsersByAliasResponse(XiphiasResponse):
     def __init__(self, data: BeautifulSoup):
-        super().__init__(data)
-        text = base64.urlsafe_b64decode(data.query.body.text.encode())
-        response = GetUsersByAliasResponse()
-        response.ParseFromString(text)
-        self.users = [UsersResponseUser(payload) for payload in response.payloads]
+        super().__init__(data, GetUsersByAliasResponse())
+        self.users = [UsersResponseUser(payload) for payload in self.message.payloads]
+
+
+class GroupSearchRequest(XiphiasRequest):
+    """
+    Represents a request to search for groups by name
+    """
+    def __init__(self, query):
+        super().__init__(service=GROUP_SEARCH_SERVICE_NAME, method='FindGroups')
+        self.query = query.lstrip('#')
+
+    def get_protobuf_payload(self) -> T:
+        request = FindGroupsRequest()
+        request.query = self.query
+        return request
+
+
+class GroupSearchResponse(XiphiasResponse):
+    """
+    Represents a response to a groups search, that was previously conducted using a query
+    """
+    def __init__(self, data: BeautifulSoup):
+        super().__init__(data, message=FindGroupsResponse())
+        self.groups = [self.GroupSearchEntry(result) for result in self.message.match]  # type: List[GroupSearchResponse.GroupSearchEntry]
+
+    def __repr__(self):
+        return f"GroupSearchResponse(groups={self.groups})"
+
+    class GroupSearchEntry:
+        """
+        Represents a group entry that was found in the search results
+        """
+        def __init__(self, result):
+            self.jid = f"{result.jid.local_part}@groups.kik.com"
+            self.hashtag = result.display_data.hashtag
+            self.display_name = result.display_data.display_name
+            self.picture_url = result.display_data.display_pic_base_url
+            self.member_count = result.member_count
+            self.group_join_token = result.group_join_token.token
+
+        def __repr__(self):
+            return f"GroupSearchEntry(jid={self.jid}, hashtag={self.hashtag}, name={self.display_name}, members={self.member_count})"

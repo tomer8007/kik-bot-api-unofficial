@@ -3,15 +3,13 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPRespons
 from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
 
-captcha_element = '<challenge><response>{}</response></challenge>'
-
 
 class RegisterRequest(XMPPElement):
     """
     Represents a Kik sign up request
     """
 
-    def __init__(self, email, username, password, first_name, last_name, birthday="1974-11-20", captcha_result=None, device_id=None,
+    def __init__(self, email, username, password, first_name, last_name, birthday, captcha_result=None, device_id=None,
                  android_id=None):
         super().__init__()
         self.email = email
@@ -24,10 +22,10 @@ class RegisterRequest(XMPPElement):
         self.device_id = device_id
         self.android_id = android_id
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         passkey_e = CryptographicUtils.key_from_password(self.email, self.password)
         passkey_u = CryptographicUtils.key_from_password(self.username, self.password)
-        captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
+        captcha = f'<challenge><response>{self.captcha_result}</response></challenge>' if self.captcha_result else ''
         data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="jabber:iq:register">'
                 f'<email>{self.email}</email>'
@@ -41,18 +39,17 @@ class RegisterRequest(XMPPElement):
                 f'{captcha}'
                 f'<version>{kik_version_info["kik_version"]}</version>'
                 '<device-type>android</device-type>'
-                '<model>Nexus 7</model>'
-                '<android-sdk>25</android-sdk>'
-                '<registrations-since-install>1</registrations-since-install>'
+                '<model>Samsung Galaxy S23 Ultra</model>'
+                '<android-sdk>34</android-sdk>'
+                '<registrations-since-install>0</registrations-since-install>'
                 '<install-date>unknown</install-date>'
                 '<logins-since-install>0</logins-since-install>'
                 '<prefix>CAN</prefix>'
                 '<lang>en_US</lang>'
-                '<brand>google</brand>'
+                '<brand>samsung</brand>'
                 f'<android-id>{self.android_id}</android-id>'
                 '</query>'
                 '</iq>')
-
 
         return data.encode()
 

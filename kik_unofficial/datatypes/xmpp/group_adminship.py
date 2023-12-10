@@ -4,7 +4,7 @@ from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 
 
 class AddToGroupRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -19,8 +19,9 @@ class AddToGroupRequest(XMPPElement):
                 '</iq>')
         return data.encode()
 
+
 class ChangeGroupNameRequest(XMPPElement):
-    def __init__(self, group_jid, new_name):
+    def __init__(self, group_jid: str, new_name: str):
         super().__init__()
         self.group_jid = group_jid
         self.new_name = new_name
@@ -35,8 +36,9 @@ class ChangeGroupNameRequest(XMPPElement):
                 '</iq>')
         return data.encode()
 
+
 class RemoveFromGroupRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -53,7 +55,7 @@ class RemoveFromGroupRequest(XMPPElement):
 
 
 class UnbanRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -71,7 +73,7 @@ class UnbanRequest(XMPPElement):
 
 
 class BanMemberRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -88,7 +90,7 @@ class BanMemberRequest(XMPPElement):
 
 
 class LeaveGroupRequest(XMPPElement):
-    def __init__(self, group_jid):
+    def __init__(self, group_jid: str):
         super().__init__()
         self.group_jid = group_jid
 
@@ -104,7 +106,7 @@ class LeaveGroupRequest(XMPPElement):
 
 
 class PromoteToAdminRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -121,7 +123,7 @@ class PromoteToAdminRequest(XMPPElement):
 
 
 class DemoteAdminRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jid):
+    def __init__(self, group_jid: str, peer_jid: str):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jid = peer_jid
@@ -138,7 +140,7 @@ class DemoteAdminRequest(XMPPElement):
 
 
 class AddMembersRequest(XMPPElement):
-    def __init__(self, group_jid, peer_jids: Union[str, List[str]]):
+    def __init__(self, group_jid: str, peer_jids: Union[str, List[str]]):
         super().__init__()
         self.group_jid = group_jid
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
@@ -149,6 +151,24 @@ class AddMembersRequest(XMPPElement):
                 '<query xmlns="kik:groups:admin">'
                 f'<g jid="{self.group_jid}">'
                 f'{items}'
+                '</g>'
+                '</query>'
+                '</iq>')
+        return data.encode()
+
+
+class ChangeDmDisabledRequest(XMPPElement):
+    def __init__(self, group_jid: str, client_jid: str, is_dm_disabled: bool):
+        super().__init__()
+        self.group_jid = group_jid
+        self.client_jid = client_jid
+        self.is_dm_disabled = is_dm_disabled
+
+    def serialize(self) -> bytes:
+        data = (f'<iq type="set" id="{self.message_id}">'
+                '<query xmlns="kik:groups:admin">'
+                f'<g jid="{self.group_jid}">'
+                f'<m dmd="{'1' if self.is_dm_disabled else '0'}">{self.client_jid}/null</m>'
                 '</g>'
                 '</query>'
                 '</iq>')

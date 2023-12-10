@@ -2,14 +2,15 @@ import base64
 import binascii
 import hashlib
 import hmac
+import uuid
 
 import rsa
 from bs4 import BeautifulSoup
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement
 from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.utilities.cryptographic_utilities import CryptographicUtils
+from kik_unofficial.utilities.parsing_utilities import is_tag_present
 
-captcha_element = '<challenge><response>{}</response></challenge>'
 kik_version = kik_version_info["kik_version"]
 
 private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Yie9GSM8t75ZvdTeqT7kOF40kvDHIp" \
@@ -18,7 +19,7 @@ private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIBPAIBAAJBANEWUEINqV1KNG7Y
                   "+8noQIhAPh5haTSGu0MFs0YiLRLqirJWXa4QPm4W5nz5VGKXaKtAiEA12tpUlkyxJBuuKCykIQbiUXHEwzFYbMHK5E" \
                   "/uGkFoe0CIQC6uYgHPqVhcm5IHqHM6/erQ7jpkLmzcCnWXgT87ABF2QIhAIzrfyKXp1ZfBY9R0H4pbboHI4uatySKc" \
                   "Q5XHlAMo9qhAiEA43zuIMknJSGwa2zLt/3FmVnuCInD6Oun5dbcYnqraJo=\n-----END RSA PRIVATE KEY----- "
-private_key = rsa.PrivateKey.load_pkcs1(private_key_pem, format='PEM')
+private_key = rsa.PrivateKey.load_pkcs1(private_key_pem.encode('utf-8'), format='PEM')
 
 
 class LoginRequest(XMPPElement):
@@ -26,42 +27,41 @@ class LoginRequest(XMPPElement):
     Represents a Kik Login request.
     """
 
-    def __init__(self, username, password, captcha_result=None, device_id=None, android_id=None):
+    def __init__(self, email_or_username, password, captcha_result=None, device_id=None, android_id=None):
         super().__init__()
-        self.username = username
+        self.email_or_username = email_or_username
         self.password = password
         self.captcha_result = captcha_result
         self.device_id = device_id
         self.android_id = android_id
 
     def serialize(self) -> bytes:
-        password_key = CryptographicUtils.key_from_password(self.username, self.password)
-        captcha = captcha_element.format(self.captcha_result) if self.captcha_result else ''
-        if '@' in self.username:
-            tag = ('<email>{}</email>'
-                   '<passkey-e>{}</passkey-e>')
+        password_key = CryptographicUtils.key_from_password(self.email_or_username, self.password)
+        captcha = f'<challenge><response>{self.captcha_result}</response></challenge>' if self.captcha_result else ''
+
+        if '@' in self.email_or_username:
+            creds = f'<email>{self.email_or_username}</email><passkey-e>{password_key}</passkey-e>'
         else:
-            tag = ('<username>{}</username>'
-                   '<passkey-u>{}</passkey-u>')
+            creds = f'<username>{self.email_or_username}</username><passkey-u>{password_key}</passkey-u>'
 
         data = (f'<iq type="set" id="{self.message_id}">'
                 f'<query xmlns="jabber:iq:register">'
-                f'{tag.format(self.username, password_key)}'
+                f'{creds}'
                 f'<device-id>{self.device_id}</device-id>'
                 '<install-referrer>utm_source=google-play&amp;utm_medium=organic</install-referrer>'
                 '<operator>unknown</operator>'
                 '<install-date>unknown</install-date>'
                 '<device-type>android</device-type>'
-                '<brand>generic</brand>'
-                '<logins-since-install>1</logins-since-install>'
+                '<brand>samsung</brand>'
+                '<logins-since-install>0</logins-since-install>'
                 f'<version>{kik_version}</version>'
                 '<lang>en_US</lang>'
-                '<android-sdk>19</android-sdk>'
+                '<android-sdk>34</android-sdk>'
                 '<registrations-since-install>0</registrations-since-install>'
-                '<prefix>CAN</prefix>' \
+                '<prefix>CAN</prefix>'
                 f'<android-id>{self.android_id}</android-id>'
-                '<model>Samsung Galaxy S5 - 4.4.4 - API 19 - 1080x1920</model>'
-                f'{captcha}' \
+                '<model>Samsung Galaxy S23 Ultra</model>'
+                f'{captcha}'
                 '</query>'
                 '</iq>')
 
@@ -88,12 +88,12 @@ class MakeAnonymousStreamInitTag(XMPPElement):
         self.device_id = device_id
         self.n = n
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         can = 'CAN'  # XmppSocketV2.java line 180, 
 
         device = self.device_id
         timestamp = str(CryptographicUtils.make_kik_timestamp())
-        sid = CryptographicUtils.make_kik_uuid()
+        sid = str(uuid.uuid4())
 
         signature = rsa.sign(f"{can + device}:{kik_version}:{timestamp}:{sid}".encode(), private_key, 'SHA-256')
         signature = base64.b64encode(signature, '-_'.encode()).decode().rstrip('=')
@@ -147,11 +147,11 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
         self.password = password
         self.device_id = device_id
 
-    def serialize(self):
+    def serialize(self) -> bytes:
         jid = f"{self.node}@talk.kik.com"
         jid_with_resource = f"{jid}/CAN{self.device_id}"
         timestamp = str(CryptographicUtils.make_kik_timestamp())
-        sid = CryptographicUtils.make_kik_uuid()
+        sid = str(uuid.uuid4())
 
         # some super secret cryptographic stuff
 
@@ -163,8 +163,19 @@ class EstablishAuthenticatedSessionRequest(XMPPElement):
 
         password_key = CryptographicUtils.key_from_password(self.username, self.password)
 
-        the_map = {'from': jid_with_resource, 'to': 'talk.kik.com', 'p': password_key, 'cv': cv, 'v': kik_version,
-                   'sid': sid, 'n': '1', 'conn': 'WIFI', 'ts': timestamp, 'lang': 'en_US', 'signed': signature}
+        the_map = {
+            'from': jid_with_resource,
+            'to': 'talk.kik.com',
+            'p': password_key,
+            'cv': cv,
+            'v': kik_version,
+            'sid': sid,
+            'n': '1',
+            'conn': 'WIFI',
+            'ts': timestamp,
+            'lang': 'en_US',
+            'signed': signature
+        }
         packet = CryptographicUtils.make_connection_payload(*CryptographicUtils.sort_kik_map(the_map))
         return packet.encode()
 
@@ -174,19 +185,19 @@ class ConnectionFailedResponse:
     Describes an error response when attempting to connect.
     """
     def __init__(self, data: BeautifulSoup):
-        """
-        :param is_auth_revoked: True if the password / device ID pair was invalidated (auth rejected)
-        :param message: the error message received. Will be an empty string if is_auth_revoked = False
+        """True if the password / device ID pair was invalidated (auth rejected)"""
+        self.is_auth_revoked = is_tag_present(data, 'noauth')
+        """the error message received. Will be an empty string if is_auth_revoked = False"""
+        self.message = data.noauth.msg.text if is_tag_present(data, 'noauth') else ''
 
-        :param is_backoff:True if a backoff was requested by Kik's server
-        :param backoff_seconds: the number of seconds that Kik requested the client to wait for before reconnecting. Will be undefined if is_backoff = False
-        """
-        self.is_auth_revoked = data.find('noauth', recursive=False) is not None
-        self.message = data.find('msg').text if self.is_auth_revoked else ''
-
-        self.is_backoff = data.find('wait', recursive=False) is not None
+        """True if a backoff was requested by Kik's server"""
+        self.is_backoff = is_tag_present(data, 'wait')
         if self.is_backoff:
-            self.backoff_seconds = int(data.find('wait', recursive=False).get('t'))
+            """
+            the number of seconds that Kik requested the client to wait for before reconnecting. 
+            Will be undefined if is_backoff = False
+            """
+            self.backoff_seconds = int(data.find('wait', recursive=False)['t'])
 
 
 class CaptchaElement:

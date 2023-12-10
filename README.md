@@ -20,12 +20,13 @@ Here's a simple example of how to use the Kik Bot API:
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 import kik_unofficial.datatypes.xmpp.chatting as chatting
+from kik_unofficial.datatypes.xmpp.errors import LoginError
 
 # This bot class handles all the callbacks from the kik client
 class EchoBot(KikClientCallback):
     def __init__(self):
         # On initialization, the kik client will attempt to login to kik
-        self.client = KikClient(self, "your_kik_username", "your_kik_password", logging=True)
+        self.client = KikClient(self, "your_kik_username", "your_kik_password", enable_logging=True)
         self.client.wait_for_messages()
 
     # This method is called when the bot receives a direct message from a user

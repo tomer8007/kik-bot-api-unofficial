@@ -25,17 +25,10 @@ class KikCaptchaException(KikErrorException):
 class KikLoginException(KikErrorException):
     pass
 
- 
-class KikInvalidAckException(KikErrorException):
-    pass
-
-
-class KikEmptyResponseException(KikErrorException):
-    pass
-
 
 class KikApiException(Exception):
     pass
+
 
 class KikParsingException(Exception):
     pass
@@ -43,7 +36,7 @@ class KikParsingException(Exception):
 
 class KikUploadError(Exception):
     def __init__(self, status_code, reason=None):
-        self.status_code = reason
+        self.status_code = status_code
         self.reason = reason
 
     def __str__(self):

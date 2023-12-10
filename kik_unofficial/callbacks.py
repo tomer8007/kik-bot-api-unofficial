@@ -1,12 +1,10 @@
-from typing import Union
-
-from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse
+from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse, GetMutedConvosResponse
 from kik_unofficial.datatypes.xmpp.chatting import *
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement, TempBanElement
-from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse, GroupSearchResponse
+from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
 from kik_unofficial.datatypes.xmpp.sign_up import RegisterResponse, UsernameUniquenessResponse
-from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse
+from kik_unofficial.datatypes.xmpp.xiphias import UsersResponse, UsersByAliasResponse, GroupSearchResponse
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
 from kik_unofficial.datatypes.xmpp.chatting import KikPongResponse
 
@@ -35,6 +33,10 @@ class KikClientCallback:
         pass
 
     def on_status_message_received(self, response: IncomingStatusResponse):
+        """
+        Gets called when a status message is received.
+        :param response: The new status message
+        """
         pass
 
     def on_username_uniqueness_received(self, response: UsernameUniquenessResponse):
@@ -56,6 +58,13 @@ class KikClientCallback:
         """
         Gets called when a response is received after requesting your own profile information.
         :param response: The user profile data received (will be for the account currently authenticated)
+        """
+        pass
+
+    def on_muted_convos_received(self, response: GetMutedConvosResponse):
+        """
+        Gets called when a response is received after requesting a list of muted chats.
+        :param response: The muted convos received.
         """
         pass
 
@@ -97,6 +106,16 @@ class KikClientCallback:
         pass
 
     def on_group_receipts_received(self, response: IncomingGroupReceiptsEvent):
+        pass
+
+    def on_error_message_received(self, response: IncomingErrorMessage):
+        """
+        Gets called when an error message is received in response to an outgoing message.
+
+        The ID of this message should contain the same ID corresponding to the message that triggered the error.
+
+        This can be used for retry logic when sending messages or debugging.
+        """
         pass
 
     def on_group_sticker(self, response: IncomingGroupSticker):

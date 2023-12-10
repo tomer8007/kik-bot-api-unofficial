@@ -1,10 +1,11 @@
 import uuid
-import time
 import hashlib
 import binascii
 import pbkdf2
 import base64
 from collections import OrderedDict
+
+from kik_unofficial.utilities.kik_server_clock import KikServerClock
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities
 from kik_unofficial.device_configuration import kik_version_info
 
@@ -15,12 +16,9 @@ class CryptographicUtils:
     and sending messages.
     """
 
-    def __init__(self):
-        pass
-
     @staticmethod
-    def make_kik_timestamp():
-        j = int(round(time.time() * 1000))
+    def make_kik_timestamp() -> int:
+        j = KikServerClock.get_server_time()
 
         i1 = (-16777216 & j) >> 24
         i2 = (16711680 & j) >> 16
@@ -34,7 +32,7 @@ class CryptographicUtils:
         return j4 | (j3 << 5) | j2
 
     @staticmethod
-    def key_from_password(username, password):
+    def key_from_password(username, password) -> str:
         # kik's secret algorithm for encrypting passwords
         # relevant source file: classes1\kik\android\chat\fragment\KikLoginFragmentAbstract.java
         sha1_password = binascii.hexlify(hashlib.sha1(password.encode('UTF-8')).digest())
@@ -43,7 +41,7 @@ class CryptographicUtils:
         return binascii.hexlify(key).decode('UTF-8')
 
     @staticmethod
-    def build_hmac_key():
+    def build_hmac_key() -> bytes:
         # secret algorithm for creating the hmac key
         # relevant kik source files:
         # classes1\kik\android\c.java
@@ -78,7 +76,7 @@ class CryptographicUtils:
         return base64.b64encode(hashlib.sha1(source_bytes).digest())
 
     @staticmethod
-    def make_kik_uuid():
+    def make_kik_uuid() -> str:
         # a manually converted code from classes2/kik/core/net/f.java
         # used to make UUIDs for messages
         random_uuid = uuid.uuid4().int
@@ -90,9 +88,9 @@ class CryptographicUtils:
         least_significant_bits = int.from_bytes(bytes_array[8:], byteorder='big')
         i = 1
         i2 = int((-1152921504606846976 & most_significant_bits) >> 62)
-        iArr = [(3, 6), (2, 5), (7, 1), (9, 5)]
-        i3 = iArr[i2][0]
-        i2 = iArr[i2][1]
+        i_arr = [(3, 6), (2, 5), (7, 1), (9, 5)]
+        i3 = i_arr[i2][0]
+        i2 = i_arr[i2][1]
         j = (((-16777216 & most_significant_bits) >> 22) ^ ((16711680 & most_significant_bits) >> 16)) ^ (
                 (65280 & most_significant_bits) >> 8)
         i2 = (CryptographicUtils.kik_uuid_sub_func(most_significant_bits, i2) + 1) | (
@@ -118,7 +116,7 @@ class CryptographicUtils:
         )
 
     @staticmethod
-    def make_connection_payload(ordered_map, spaces):
+    def make_connection_payload(ordered_map, spaces) -> str:
         payload = "<k"
         for key in ordered_map.keys():
             payload += " "
@@ -197,7 +195,7 @@ class CryptographicUtils:
         # by using the minor and major version numbers
         # talk(major)(minor)0an.kik.com
 
-        split = kik_version_info['kik_version'].split('.')
+        split = kik_version_info['kik_version'].split(sep='.', maxsplit=3)
         ret = 'talk'
 
         for i in range(0, 2):

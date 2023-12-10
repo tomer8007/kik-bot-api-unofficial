@@ -13,7 +13,7 @@ from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.errors import LoginError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse
-from kik_unofficial.datatypes.xmpp.history import HistoryResponse, KikHistoryItem
+from kik_unofficial.datatypes.xmpp.history import HistoryResponse
 
 username = sys.argv[1] if len(sys.argv) > 1 else input("Username: ")
 password = sys.argv[2] if len(sys.argv) > 2 else input('Password: ')
@@ -53,18 +53,15 @@ class AckBot(KikClientCallback):
         print(f"Full name: {response.first_name} {response.last_name}")
 
     def on_message_history_response(self, response: HistoryResponse):
-        if len(response.messages) > 0:
-            self.client.send_ack(messages=response.messages, request_history=response.more)
-        elif response.more:
-            self.client.request_messaging_history()
+        self.client.send_ack(messages=response.messages, request_history=response.more)
 
     def on_chat_message_received(self, chat_message: chatting.IncomingChatMessage):
         print(f"[+] '{chat_message.from_jid}' says: {chat_message.body}")
-        self.client.send_ack(KikHistoryItem(chat_message.raw_element))
+        self.client.send_ack(chat_message)
 
     def on_group_message_received(self, chat_message: chatting.IncomingGroupChatMessage):
         print(f"[+] '{chat_message.from_jid}' from group ID {chat_message.group_jid} says: {chat_message.body}")
-        self.client.send_ack(KikHistoryItem(chat_message.raw_element))
+        self.client.send_ack(chat_message)
 
     # Error handling
 

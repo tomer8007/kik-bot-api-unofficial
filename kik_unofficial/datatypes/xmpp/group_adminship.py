@@ -166,7 +166,7 @@ class ChangeDmDisabledRequest(XMPPElement):
 
     def serialize(self) -> bytes:
         is_dm_disabled_string = '1' if self.is_dm_disabled else '0'
-
+        
         data = (f'<iq type="set" id="{self.message_id}">'
                 '<query xmlns="kik:groups:admin">'
                 f'<g jid="{self.group_jid}">'

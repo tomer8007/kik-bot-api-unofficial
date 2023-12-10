@@ -103,7 +103,7 @@ After creating a bot, you can bootstrap it to run in a Docker container. This se
     <sub>**Note**: You only need to use `--build` when you first clone the repo, or if you make changes to the code.</sub>
 
 ## More functionality
-Before investigating the format of certain requests/responses, it's worth checking if they are already documented in the [Message Formats]([https://github.com/tomer8007/kik-bot-api-unofficial/wiki/Message-Formats](https://github.com/tomer8007/kik-bot-api-unofficial/blob/new/docs/message_formats.md)) page.
+Before investigating the format of certain requests/responses, it's worth checking if they are already documented in the [Message Formats](https://github.com/tomer8007/kik-bot-api-unofficial/blob/new/docs/message_formats.md) page.
 
 ## Troubleshooting
 If you are on Windows and you are unable to install the `lxml` package, use the binary installers from PyPi [here](https://pypi.python.org/pypi/lxml/3.3.5#downloads).

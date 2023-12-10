@@ -17,7 +17,7 @@ GROUP_SEARCH_SERVICE_NAME = 'mobile.groups.v1.GroupSearch'
 ENTITY_SERVICE_NAME = 'mobile.entity.v1.Entity'
 
 # Generic type for objects that extend google.protobuf.Message
-T = TypeVar("T", bound=proto_message)
+T = TypeVar("T", bound=proto_message.Message)
 
 
 class XiphiasRequest(XMPPElement):

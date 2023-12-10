@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Union, final
 
 from bs4 import BeautifulSoup

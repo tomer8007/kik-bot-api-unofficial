@@ -104,7 +104,7 @@ class SignUpError(KikCaptchaError):
         elif self.error.find('invalid-birthday', recursive=False):
             self.message = "Kik rejected the birthday when creating the account"
         elif self.error.find('version-no-longer-supported', recursive=False):
-            self.message = f"Client version ({kik_version_info["kik_version"]}) no longer supported for use with sign ups"
+            self.message = f"Client version ({kik_version_info['kik_version']}) no longer supported for use with sign ups"
         elif self.error.find('verify-phone', recursive=False):
             self.message = "Phone verification is required to sign up (not implemented)"
         elif self.error.find('message', recursive=False):

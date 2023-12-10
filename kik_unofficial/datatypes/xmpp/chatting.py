@@ -2,6 +2,8 @@
 Defines classes for dealing with generic chatting (text messaging, read receipts, etc)
 """
 
+from __future__ import annotations
+
 import time
 from typing import Union
 

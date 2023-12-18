@@ -17,7 +17,7 @@ def is_valid_jid(jid: str) -> bool:
         return False
     if len(jid) == 67:
         return is_alias_jid(jid)
-    elif jid.endswith('_g@groups.kik.com'):
+    elif len(jid) == 30 and jid.endswith('_g@groups.kik.com'):
         return is_group_jid(jid)
     else:
         return is_pm_jid(jid)
@@ -104,8 +104,10 @@ def get_local_part(jid: str) -> str:
     This is commonly used for xiphias messages, but it also can be useful
     for database storage, as the domain parts will never change.
 
-    ted_w6w@talk.kik.com -> ted
+    Examples:
+    ted_w6w@talk.kik.com -> ted_w6w
     kikteam@talk.kik.com -> kikteam
+    1100137485028_g@groups.kik.com -> 1100137485028_g
 
     Raises a ValueError if the JID is invalid.
     """
@@ -117,6 +119,10 @@ def get_local_part(jid: str) -> str:
 def jid_to_username(jid: str) -> str:
     """
     Converts a real / PM JID to a username.
+
+    Examples:
+    ted_w6w@talk.kik.com -> ted
+    kikteam@talk.kik.com -> kikteam
 
     Raises a ValueError if the JID is invalid or not a PM JID,
     as aliases can't be converted to usernames directly.

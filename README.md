@@ -26,7 +26,7 @@ from kik_unofficial.datatypes.xmpp.errors import LoginError
 class EchoBot(KikClientCallback):
     def __init__(self):
         # On initialization, the kik client will attempt to login to kik
-        self.client = KikClient(self, "your_kik_username", "your_kik_password", enable_logging=True)
+        self.client = KikClient(self, "your_kik_username", "your_kik_password", enable_console_logging=True)
         self.client.wait_for_messages()
 
     # This method is called when the bot receives a direct message from a user

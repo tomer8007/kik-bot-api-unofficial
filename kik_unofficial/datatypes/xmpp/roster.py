@@ -12,6 +12,7 @@ from kik_unofficial.datatypes.peers import Group, User, Peer, RosterUser
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
 from kik_unofficial.device_configuration import kik_version_info
 from kik_unofficial.utilities import jid_utilities
+from kik_unofficial.utilities.parsing_utilities import get_optional_attribute
 
 
 class FetchRosterRequest(XMPPElement):
@@ -76,10 +77,10 @@ class FetchRosterResponse(XMPPResponse):
         name = element.name
 
         if name == 'item':
-            # 'item' contains new or updated accounts in the roster.
+            # 'item' contains new or updated user accounts in the roster.
             self.peers.append(RosterUser(element))
         elif name == 'g':
-            # 'g' contains new or updated accounts in the roster.
+            # 'g' contains new or updated groups in the roster.
             self.peers.append(Group(element))
         elif name == 'remove':
             # 'remove' indicates that the user JID is no longer in the callers roster.
@@ -87,7 +88,7 @@ class FetchRosterResponse(XMPPResponse):
         elif name == 'remove-group':
             # 'remove-group' indicates that the group JID is no longer in the callers roster.
             self.removed_groups.append(element['jid'])
-        elif name == 'full':
+        elif name == 'roster' and get_optional_attribute(element, 'full') == '1':
             # If encountered, Kik is indicating that a full refresh is needed.
             # Client should delete the 'ts' and 'mts' page tokens from its cache / storage,
             # and request roster after 30-60 seconds without any page tokens specified.
@@ -112,7 +113,7 @@ class PeersInfoRequest(XMPPElement):
             if jid_utilities.is_pm_jid(jid) or jid_utilities.is_alias_jid(jid):
                 items += f'<item jid="{jid}" />'
             else:
-                raise ValueError("Usernames cannot be requested using FriendBatchRequest")
+                raise ValueError(f'Invalid JID {jid}, must be a valid user JID')
 
         data = (f'<iq type="get" id="{self.message_id}">'
                 f'<query xmlns="kik:iq:friend:batch">{items}</query>'

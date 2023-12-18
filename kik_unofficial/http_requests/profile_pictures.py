@@ -30,7 +30,7 @@ def set_background_picture(file: str or bytes or pathlib.Path or io.IOBase, jid:
 def set_group_picture(file: str or bytes or pathlib.Path or io.IOBase, user_jid: str, group_jid: str, username: str, password: str, silent: bool = False):
     url = f'{BASE_URL}?g={group_jid}'
     if silent:
-        url += '&silent=true'
+        url += '&silent=1'
     send(url, file, user_jid, username, password)
 
 

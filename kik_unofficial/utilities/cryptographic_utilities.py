@@ -33,7 +33,7 @@ class CryptographicUtils:
 
     @staticmethod
     def key_from_password(username, password) -> str:
-        # kik's secret algorithm for encrypting passwords
+        # Kik's secret algorithm for hashing passwords
         # relevant source file: classes1\kik\android\chat\fragment\KikLoginFragmentAbstract.java
         sha1_password = binascii.hexlify(hashlib.sha1(password.encode('UTF-8')).digest())
         salt = username.lower() + "niCRwL7isZHny24qgLvy"

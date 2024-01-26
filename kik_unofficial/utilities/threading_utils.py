@@ -1,7 +1,7 @@
 import threading
 
-def run_in_new_thread(fn):
 
+def run_in_new_thread(fn):
     def run(*k, **kw):
         t = threading.Thread(target=fn, args=k, kwargs=kw)
         t.start()
@@ -9,6 +9,7 @@ def run_in_new_thread(fn):
 
     run.thread_decorated = True
     return run
+
 
 """
 class RunInNewThreadDecorate(type):
@@ -30,4 +31,3 @@ class RunInNewThreadDecorate(type):
 
         return super(RunInNewThreadDecorate, mcls).__new__(mcls, name, bases, newattrs)
 """
-

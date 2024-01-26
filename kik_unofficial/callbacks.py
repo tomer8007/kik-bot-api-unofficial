@@ -1,5 +1,24 @@
+from typing import Union
 from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse, GetMutedConvosResponse
-from kik_unofficial.datatypes.xmpp.chatting import *
+from kik_unofficial.datatypes.xmpp.chatting import (
+    IncomingCardMessage,
+    IncomingChatMessage,
+    IncomingGifMessage,
+    IncomingGroupChatMessage,
+    IncomingImageMessage,
+    IncomingStatusResponse,
+    IncomingFriendAttribution,
+    IncomingMessageReadEvent,
+    IncomingMessageDeliveredEvent,
+    IncomingGroupIsTypingEvent,
+    IncomingIsTypingEvent,
+    IncomingGroupStatus,
+    IncomingGroupSysmsg,
+    IncomingGroupReceiptsEvent,
+    IncomingErrorMessage,
+    IncomingGroupSticker,
+    IncomingVideoMessage,
+)
 from kik_unofficial.datatypes.xmpp.errors import LoginError, SignUpError
 from kik_unofficial.datatypes.xmpp.login import LoginResponse, ConnectionFailedResponse, CaptchaElement, TempBanElement
 from kik_unofficial.datatypes.xmpp.roster import FetchRosterResponse, PeersInfoResponse
@@ -10,7 +29,6 @@ from kik_unofficial.datatypes.xmpp.chatting import KikPongResponse
 
 
 class KikClientCallback:
-
     def on_authenticated(self):
         """
         Gets called when the kik user is fully logged-in and authenticated as himself.

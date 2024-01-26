@@ -15,15 +15,15 @@ from kik_unofficial.utilities.blockhash import blockhash
 def get_file_bytes(file_location: str or bytes or pathlib.Path or io.IOBase):
     if isinstance(file_location, (str, pathlib.Path)):
         if not os.path.exists(file_location):
-            raise Exception('The file path %s does not exist', file_location)
+            raise Exception("The file path %s does not exist", file_location)
         with open(file_location, "rb") as f:
             data = f.read()
-    elif isinstance(file_location, io.IOBase) or hasattr(file_location, 'getvalue'):
+    elif isinstance(file_location, io.IOBase) or hasattr(file_location, "getvalue"):
         data = file_location.getvalue()
     elif isinstance(file_location, bytes):
         data = file_location
     else:
-        raise ValueError('File cannot be a type of %s', type(file_location))
+        raise ValueError("File cannot be a type of %s", type(file_location))
     return data
 
 
@@ -79,7 +79,7 @@ class ParsingUtilities:
 
     @staticmethod
     def sign_extend_with_mask(x):
-        x &= 0xffffffff
+        x &= 0xFFFFFFFF
         return x - (1 << 32) if x & (1 << (32 - 1)) else x
 
     @staticmethod
@@ -88,7 +88,7 @@ class ParsingUtilities:
         # based on http://stackoverflow.com/a/9807138/1806873
         missing_padding = len(data) % 4
         if missing_padding != 0:
-            data += b'=' * (4 - missing_padding)
+            data += b"=" * (4 - missing_padding)
         return base64.decodebytes(data)
 
     @staticmethod
@@ -119,14 +119,14 @@ class ParsingUtilities:
         width, height = img.size
         larger_dim = max(height, width)
         if img.mode != "RGB":
-            img = img.convert('RGB')
-        ratio = larger_dim/1600
+            img = img.convert("RGB")
+        ratio = larger_dim / 1600
         image = img.resize((round(width / ratio), round(height / ratio)))
-        preview_ratio = larger_dim/400
+        preview_ratio = larger_dim / 400
         preview_image = img.resize((round(width / preview_ratio), round(height / preview_ratio)))
 
-        image.save(image_out, format='JPEG')
-        preview_image.save(preview_out, format='JPEG')
+        image.save(image_out, format="JPEG")
+        preview_image.save(preview_out, format="JPEG")
 
         size = image_out.tell()
         final_og = image_out.getvalue()
@@ -143,18 +143,18 @@ class ParsingUtilities:
         img.close()
 
         return {
-            'image_bytes': image_bytes,
-            'size': size,
-            'original': final_og,
-            'SHA1': sha1_og,
-            'SHA1Scaled': sha1_scaled,
-            'blockhash': block_scaled,
-            'MD5': md5,
+            "image_bytes": image_bytes,
+            "size": size,
+            "original": final_og,
+            "SHA1": sha1_og,
+            "SHA1Scaled": sha1_scaled,
+            "blockhash": block_scaled,
+            "MD5": md5,
         }
 
     @staticmethod
     def fix_base64_padding(data):
-        return data + '=' * (-len(data) % 4)
+        return data + "=" * (-len(data) % 4)
 
     @staticmethod
     def byte_to_signed_int(byte):
@@ -166,13 +166,13 @@ class ParsingUtilities:
             return
         for x in dictionary:
             data = dictionary[x]
-            info = f'{data[:50]}...' if isinstance(data, str) and len(data) > 50 else data
-            print("\t" + x + ':', info)
+            info = f"{data[:50]}..." if isinstance(data, str) and len(data) > 50 else data
+            print("\t" + x + ":", info)
 
     @staticmethod
     def escape_xml(s: str):
         s = s.replace("&", "&amp;")
         s = s.replace("<", "&lt;")
         s = s.replace(">", "&gt;")
-        s = s.replace("\"", "&quot;")
+        s = s.replace('"', "&quot;")
         return s

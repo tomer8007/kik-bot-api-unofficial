@@ -10,13 +10,15 @@ class AddToGroupRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<m>{self.peer_jid}</m>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f"<m>{self.peer_jid}</m>"
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -27,13 +29,15 @@ class ChangeGroupNameRequest(XMPPElement):
         self.new_name = new_name
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<n>{self.new_name}</n>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f"<n>{self.new_name}</n>"
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -44,13 +48,15 @@ class RemoveFromGroupRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<m r="1">{self.peer_jid}</m>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f'<m r="1">{self.peer_jid}</m>'
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -61,13 +67,15 @@ class UnbanRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<b r="1">{self.peer_jid}</b>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f'<b r="1">{self.peer_jid}</b>'
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
 
         return data.encode()
 
@@ -79,13 +87,15 @@ class BanMemberRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<b>{self.peer_jid}</b>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f"<b>{self.peer_jid}</b>"
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -95,13 +105,7 @@ class LeaveGroupRequest(XMPPElement):
         self.group_jid = group_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                '<l />'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = f'<iq type="set" id="{self.message_id}">' '<query xmlns="kik:groups:admin">' f'<g jid="{self.group_jid}">' "<l />" "</g>" "</query>" "</iq>"
         return data.encode()
 
 
@@ -112,13 +116,15 @@ class PromoteToAdminRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<m a="1">{self.peer_jid}</m>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f'<m a="1">{self.peer_jid}</m>'
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -129,13 +135,15 @@ class DemoteAdminRequest(XMPPElement):
         self.peer_jid = peer_jid
 
     def serialize(self) -> bytes:
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<m a="0">{self.peer_jid}</m>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f'<m a="0">{self.peer_jid}</m>'
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()
 
 
@@ -146,14 +154,8 @@ class AddMembersRequest(XMPPElement):
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
     def serialize(self) -> bytes:
-        items = ''.join([f'<m>{jid}</m>' for jid in self.peer_jids])
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'{items}'
-                '</g>'
-                '</query>'
-                '</iq>')
+        items = "".join([f"<m>{jid}</m>" for jid in self.peer_jids])
+        data = f'<iq type="set" id="{self.message_id}">' '<query xmlns="kik:groups:admin">' f'<g jid="{self.group_jid}">' f"{items}" "</g>" "</query>" "</iq>"
         return data.encode()
 
 
@@ -165,13 +167,15 @@ class ChangeDmDisabledRequest(XMPPElement):
         self.is_dm_disabled = is_dm_disabled
 
     def serialize(self) -> bytes:
-        is_dm_disabled_string = '1' if self.is_dm_disabled else '0'
-        
-        data = (f'<iq type="set" id="{self.message_id}">'
-                '<query xmlns="kik:groups:admin">'
-                f'<g jid="{self.group_jid}">'
-                f'<m dmd="{is_dm_disabled_string}">{self.client_jid}/null</m>'
-                '</g>'
-                '</query>'
-                '</iq>')
+        is_dm_disabled_string = "1" if self.is_dm_disabled else "0"
+
+        data = (
+            f'<iq type="set" id="{self.message_id}">'
+            '<query xmlns="kik:groups:admin">'
+            f'<g jid="{self.group_jid}">'
+            f'<m dmd="{is_dm_disabled_string}">{self.client_jid}/null</m>'
+            "</g>"
+            "</query>"
+            "</iq>"
+        )
         return data.encode()

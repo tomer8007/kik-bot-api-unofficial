@@ -7,6 +7,7 @@ class KikServerClock:
 
     This should be used when sending stanzas that contain timestamps.
     """
+
     _server_time_offset = 0  # type: int
 
     @staticmethod

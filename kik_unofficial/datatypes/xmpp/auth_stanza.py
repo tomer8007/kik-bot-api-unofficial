@@ -34,7 +34,7 @@ class AuthStanza(XMPPElement):
         Send the outgoing auth stanza
         """
         stanza = self.serialize()
-        log.info('Sending authentication certificate')
+        log.info("Sending authentication certificate")
         self.client.loop.call_soon_threadsafe(self.client.connection.send_raw_data, stanza)
 
     def revalidate(self) -> None:
@@ -44,7 +44,7 @@ class AuthStanza(XMPPElement):
         if KikServerClock.get_server_time() < self.cert_revalidate_time:
             return
         stanza = self.serialize()
-        log.info('Revalidating the authentication certificate')
+        log.info("Revalidating the authentication certificate")
         self.client.loop.call_soon_threadsafe(self.client.connection.send_raw_data, stanza)
 
     def serialize(self) -> bytes:
@@ -53,14 +53,14 @@ class AuthStanza(XMPPElement):
         """
         der = self.get_public_key_base64()
         signature = self.get_signature()
-        urlattr = f' url="{self.cert_url}"' if self.cert_url else ''
+        urlattr = f' url="{self.cert_url}"' if self.cert_url else ""
 
         query = (
             f'<iq type="set" id="{self.message_id}"><query xmlns="kik:auth:cert"{urlattr}>'
             '<key type="rsa">'
-            f'<der>{der}</der><signature>{signature}</signature>'
-            '</key>'
-            '</query></iq>'
+            f"<der>{der}</der><signature>{signature}</signature>"
+            "</key>"
+            "</query></iq>"
         )
         return query.encode()
 
@@ -69,8 +69,8 @@ class AuthStanza(XMPPElement):
         Generate new 2048 bits RSA keys, could take from about a second to six
         """
         (pubkey, privkey) = rsa.newkeys(2048)
-        self.rsa_public_key = bytes.fromhex(identifierHex) + pubkey.save_pkcs1('DER')
-        self.rsa_private_key = bytes.fromhex(identifierHex) + privkey.save_pkcs1('DER')
+        self.rsa_public_key = bytes.fromhex(identifierHex) + pubkey.save_pkcs1("DER")
+        self.rsa_private_key = bytes.fromhex(identifierHex) + privkey.save_pkcs1("DER")
 
     def get_key_phrase(self) -> bytes:
         """
@@ -86,7 +86,7 @@ class AuthStanza(XMPPElement):
         """
         username = self.client.username
         device = self.client.device_id
-        data = (device + '-' + username).encode()
+        data = (device + "-" + username).encode()
         return hashlib.sha1(data).digest()
 
     def get_public_key_bytes(self) -> bytes:
@@ -138,7 +138,7 @@ class AuthStanza(XMPPElement):
         tmp = list(byte_array)
         for _ in range(8):
             b = tmp[i] & 254
-            tmp[i] = (((bin(b).count('1') & 1) ^ 1) | b)
+            tmp[i] = ((bin(b).count("1") & 1) ^ 1) | b
             i = i + 1
         self.des_secret_key = bytes(tmp)
         return self.des_secret_key
@@ -158,11 +158,11 @@ class AuthStanza(XMPPElement):
         Handles the auth response (result/error) sent by Kik
         """
         if data.error:
-            log.error('kik:auth:cert [' + data.error.get('code') + '] ' + data.error.get_text())
+            log.error("kik:auth:cert [" + data.error.get("code") + "] " + data.error.get_text())
             log.debug(str(data))
             return
-        if data.find('regenerate-key', recursive=True):
-            log.info('Regenerating the keys for certificate authentication')
+        if data.find("regenerate-key", recursive=True):
+            log.info("Regenerating the keys for certificate authentication")
             self.teardown()
             self.send_stanza()
             return
@@ -171,7 +171,7 @@ class AuthStanza(XMPPElement):
         self.cert_url = data.certificate.url.text
         self.cert_revalidate_time = current + (revalidate * 1000)
         self.client.loop.call_later(revalidate, self.revalidate)
-        log.info('Successfully validated the authentication certificate')
+        log.info("Successfully validated the authentication certificate")
 
     def teardown(self):
         """

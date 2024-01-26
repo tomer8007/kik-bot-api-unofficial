@@ -1,2 +1,4 @@
 [flake8]
 max-line-length = 160
+extend-exclude = kik_unofficial/protobuf/*
+

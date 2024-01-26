@@ -84,7 +84,8 @@ class KikClient:
         self.android_id = android_id
 
         self.callback = callback
-        self.callback._on_client_init(self)
+        if self.callback:
+            self.callback._on_client_init(self)
         self.authenticator = AuthStanza(self)
 
         self.connected = False

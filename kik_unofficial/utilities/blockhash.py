@@ -11,7 +11,7 @@
 # Copyright 2014 Commons Machinery http://commonsmachinery.se/
 # Distributed under an MIT license, please see LICENSE in the top dir.
 
-# Slight modifications by @feba66 to make black and flake8 happy.
+# Slight modifications to make black and flake8 happy.
 
 
 import math

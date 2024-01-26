@@ -4,20 +4,7 @@ from bs4 import BeautifulSoup
 
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.account import GetMyProfileResponse, GetMutedConvosResponse
-from kik_unofficial.datatypes.xmpp.chatting import (
-    IncomingChatMessage,
-    IncomingGroupChatMessage,
-    IncomingFriendAttribution,
-    IncomingGroupStatus,
-    IncomingGroupIsTypingEvent,
-    IncomingStatusResponse,
-    IncomingGroupSticker,
-    IncomingGroupSysmsg,
-    IncomingImageMessage,
-    IncomingGifMessage,
-    IncomingVideoMessage,
-    IncomingCardMessage,
-)
+from kik_unofficial.datatypes.xmpp import chatting
 from kik_unofficial.datatypes.xmpp.errors import SignUpError, LoginError
 from kik_unofficial.datatypes.xmpp.history import HistoryResponse
 from kik_unofficial.datatypes.xmpp.login import LoginResponse
@@ -47,13 +34,13 @@ class XMPPChatMessageHandler(XmppHandler):
             self.handle_content(data)
         elif get_text_of_tag(data, "body"):
             # regular text message
-            self.callback.on_chat_message_received(IncomingChatMessage(data))
+            self.callback.on_chat_message_received(chatting.IncomingChatMessage(data))
         elif data.find("friend-attribution", recursive=False):
             # friend attribution
-            self.callback.on_friend_attribution(IncomingFriendAttribution(data))
+            self.callback.on_friend_attribution(chatting.IncomingFriendAttribution(data))
         elif data.find("status", recursive=False):
             # status
-            self.callback.on_status_message_received(IncomingStatusResponse(data))
+            self.callback.on_status_message_received(chatting.IncomingStatusResponse(data))
         elif data.find("xiphias-mobileremote-call", recursive=False):
             # this is usually a Play Integrity request
             mobile_remote_call = data.find("xiphias-mobileremote-call", recursive=False)
@@ -65,15 +52,15 @@ class XMPPChatMessageHandler(XmppHandler):
         content = data.find("content", recursive=False)
         app_id = content["app-id"]
         if app_id == "com.kik.cards":
-            self.callback.on_card_received(IncomingCardMessage(data))
+            self.callback.on_card_received(chatting.IncomingCardMessage(data))
         elif app_id in ["com.kik.ext.gallery", "com.kik.ext.camera"]:
-            self.callback.on_image_received(IncomingImageMessage(data))
+            self.callback.on_image_received(chatting.IncomingImageMessage(data))
         elif app_id == "com.kik.ext.gif":
-            self.callback.on_gif_received(IncomingGifMessage(data))
+            self.callback.on_gif_received(chatting.IncomingGifMessage(data))
         elif app_id == "com.kik.ext.stickers":
-            self.callback.on_group_sticker(IncomingGroupSticker(data))
+            self.callback.on_group_sticker(chatting.IncomingGroupSticker(data))
         elif app_id in ["com.kik.ext.video-camera", "com.kik.ext.video-gallery"]:
-            self.callback.on_video_received(IncomingVideoMessage(data))
+            self.callback.on_video_received(chatting.IncomingVideoMessage(data))
         else:
             log.debug(f"[-] Received unknown content message. contents: {str(data)}")
 
@@ -83,13 +70,13 @@ class XMPPGroupChatMessageHandler(XMPPChatMessageHandler):
         if data.find("content", recursive=False):
             self.handle_content(data)
         elif get_text_of_tag(data, "body"):
-            self.callback.on_group_message_received(IncomingGroupChatMessage(data))
+            self.callback.on_group_message_received(chatting.IncomingGroupChatMessage(data))
         elif data.find("is-typing", recursive=False):
-            self.callback.on_group_is_typing_event_received(IncomingGroupIsTypingEvent(data))
+            self.callback.on_group_is_typing_event_received(chatting.IncomingGroupIsTypingEvent(data))
         elif data.find("status", recursive=False):
-            self.callback.on_group_status_received(IncomingGroupStatus(data))
+            self.callback.on_group_status_received(chatting.IncomingGroupStatus(data))
         elif data.find("sysmsg", recursive=False):
-            self.callback.on_group_sysmsg_received(IncomingGroupSysmsg(data))
+            self.callback.on_group_sysmsg_received(chatting.IncomingGroupSysmsg(data))
         else:
             log.debug(f"[-] Received unknown group message. contents: {str(data)}")
 

@@ -6,13 +6,7 @@ from bs4 import BeautifulSoup
 from google.protobuf import message as proto_message
 
 from kik_unofficial.datatypes.xmpp.base_elements import XMPPElement, XMPPResponse
-from kik_unofficial.protobuf.entity.v1.entity_service_pb2 import (
-    GetUsersRequest,
-    GetUsersResponse,
-    GetUsersByAliasRequest,
-    RequestedJid,
-    GetUsersByAliasResponse,
-)
+from kik_unofficial.protobuf.entity.v1 import entity_service_pb2
 
 from kik_unofficial.protobuf.groups.v1.group_search_service_pb2 import FindGroupsRequest, FindGroupsResponse
 from kik_unofficial.utilities import jid_utilities
@@ -61,7 +55,7 @@ class UsersRequest(XiphiasRequest):
         self.peer_jids = peer_jids if isinstance(peer_jids, List) else [peer_jids]
 
     def get_protobuf_payload(self) -> T:
-        request = GetUsersRequest()
+        request = entity_service_pb2.GetUsersRequest()
         for peer_jid in self.peer_jids:
             jid = request.ids.add()
             jid.local_part = jid_utilities.get_local_part(peer_jid)
@@ -127,7 +121,7 @@ class UsersResponseUser:
 
 class UsersResponse(XiphiasResponse):
     def __init__(self, data: BeautifulSoup):
-        super().__init__(data, GetUsersResponse())
+        super().__init__(data, entity_service_pb2.GetUsersResponse())
         self.users = [UsersResponseUser(user) for user in self.message.users]
 
 
@@ -137,16 +131,16 @@ class UsersByAliasRequest(XiphiasRequest):
         self.alias_jids = alias_jids if isinstance(alias_jids, List) else [alias_jids]
 
     def get_protobuf_payload(self) -> T:
-        request = GetUsersByAliasRequest()
+        request = entity_service_pb2.GetUsersByAliasRequest()
         for peer_jid in self.alias_jids:
-            jid: RequestedJid = request.ids.add()
+            jid: entity_service_pb2.RequestedJid = request.ids.add()
             jid.alias_jid.local_part = jid_utilities.get_local_part(peer_jid)
         return request
 
 
 class UsersByAliasResponse(XiphiasResponse):
     def __init__(self, data: BeautifulSoup):
-        super().__init__(data, GetUsersByAliasResponse())
+        super().__init__(data, entity_service_pb2.GetUsersByAliasResponse())
         self.users = [UsersResponseUser(payload) for payload in self.message.payloads]
 
 

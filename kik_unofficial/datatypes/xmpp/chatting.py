@@ -12,20 +12,13 @@ from lxml import etree
 from lxml.etree import Element
 
 from kik_unofficial.datatypes.peers import Group
-from kik_unofficial.datatypes.xmpp.base_elements import (
-    XMPPElement,
-    XMPPResponse,
-    XMPPContentResponse,
-    XMPPReceiptResponse,
-    XMPPOutgoingContentMessageElement,
-    XMPPOutgoingMessageElement,
-    XMPPOutgoingIsTypingMessageElement,
-)
+from kik_unofficial.datatypes.xmpp.base_elements import XMPPResponse, XMPPContentResponse, XMPPReceiptResponse, XMPPOutgoingContentMessageElement
+from kik_unofficial.datatypes.xmpp import base_elements
 from kik_unofficial.http_requests.tenor_client import KikTenorClient
 from kik_unofficial.utilities.parsing_utilities import ParsingUtilities, get_text_of_tag, get_optional_attribute
 
 
-class OutgoingChatMessage(XMPPOutgoingMessageElement):
+class OutgoingChatMessage(base_elements.XMPPOutgoingMessageElement):
     """
     Represents an outgoing text chat message to another kik entity (member or group)
     """
@@ -88,7 +81,7 @@ class IncomingGroupChatMessage(IncomingChatMessage):
         self.alias_sender = get_text_of_tag(data, "alias-sender")
 
 
-class OutgoingReadReceipt(XMPPOutgoingMessageElement):
+class OutgoingReadReceipt(base_elements.XMPPOutgoingMessageElement):
     """
     Represents an outgoing read receipt to a specific user, for one or more messages
     """
@@ -113,7 +106,7 @@ class OutgoingReadReceipt(XMPPOutgoingMessageElement):
             g.set("jid", self.group_jid)
 
 
-class OutgoingIsTypingEvent(XMPPOutgoingIsTypingMessageElement):
+class OutgoingIsTypingEvent(base_elements.XMPPOutgoingIsTypingMessageElement):
     """
     Represents an outgoing is-typing event
     """
@@ -315,7 +308,7 @@ class IncomingCardMessage(XMPPContentResponse):
         self.uri = self.uris[0] if len(self.uris) > 0 else None
 
 
-class KikPingRequest(XMPPElement):
+class KikPingRequest(base_elements.XMPPElement):
     def __init__(self):
         super().__init__()
 

@@ -6,6 +6,8 @@ import sys
 import time
 import threading
 
+import yaml
+
 from kik_unofficial.client import KikClient
 from kik_unofficial.callbacks import KikClientCallback
 from kik_unofficial.datatypes.xmpp.chatting import IncomingChatMessage, IncomingGroupChatMessage, IncomingStatusResponse, IncomingGroupStatus
@@ -14,8 +16,17 @@ from kik_unofficial.datatypes.xmpp.login import ConnectionFailedResponse
 
 friends = {}
 
+# Global client variable might not be the best solution, but it works for this example
+client = None
+
 
 class InteractiveChatClient(KikClientCallback):
+    client = None
+
+    def __init__(self, client) -> None:
+        super().__init__()
+        client = client
+
     def on_authenticated(self):
         cli_thread = threading.Thread(target=chat)
         cli_thread.start()
@@ -51,46 +62,51 @@ class InteractiveChatClient(KikClientCallback):
 
 
 def jid_to_username(jid):
-    return jid.split('@')[0][:-4]
+    return jid.split("@")[0][:-4]
 
 
 def chat():
+    # fmt: off
     print("-Usage-\n\n"
           "/c [first letters of username]  -  Chat with peer\n"
           "/f  -  List peers\n\n"
           "Type a line to send a message.\n")
+    # fmt: on
     peer_jid = None
     while True:
         message = input()
-        if message.startswith('/'):
+        if message.startswith("/"):
             action = message[1]
-            if action == 'c' and len(message) > 3:
+            if action == "c" and len(message) > 3:
                 for jid in friends:
                     if jid.startswith(message[3:]):
                         print(f"Chatting with {jid_to_username(jid)}")
                         peer_jid = jid
                         break
-            elif action == 'f':
+            elif action == "f":
                 client.request_roster()
         elif peer_jid and message:
             client.send_chat_message(peer_jid, message)
 
+
 def main():
+    global client  # with client being global, we can write to it and see the changes outside of the main() scope
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--credentials', default='creds.yaml', help='Credentials file containing at least username, device_id and android_id.')
+    parser.add_argument("-c", "--credentials", default="creds.yaml", help="Credentials file containing at least username, device_id and android_id.")
     args = parser.parse_args()
-    
+
     with open(args.credentials) as f:
         creds = yaml.safe_load(f)
-    device_id = creds['device_id']
-    android_id = creds['android_id']
-    username = creds['username']
-    node = creds.get('node')
-    password = creds.get('password')
+    device_id = creds["device_id"]
+    android_id = creds["android_id"]
+    username = creds["username"]
+    node = creds.get("node")
+    password = creds.get("password")
     if not password:
-        password = input('Password: ')
+        password = input("Password: ")
 
-    # set up logging
+    # set up logging  # aint this obsolete?
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler(sys.stdout)
@@ -102,5 +118,6 @@ def main():
     client = KikClient(callback=callback, kik_username=username, kik_password=password, kik_node=node, device_id=device_id, android_id=android_id)
     client.wait_for_messages()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

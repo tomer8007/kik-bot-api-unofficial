@@ -29,6 +29,14 @@ from kik_unofficial.datatypes.xmpp.chatting import KikPongResponse
 
 
 class KikClientCallback:
+    def _on_client_init(self, client=None):
+        """
+        Gets called when the client is initialized.
+        :param client: The client instance that was initialized
+        """
+        if client:
+            self.client = client
+
     def on_authenticated(self):
         """
         Gets called when the kik user is fully logged-in and authenticated as himself.

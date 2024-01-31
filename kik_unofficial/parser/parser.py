@@ -16,23 +16,23 @@ class KikXmlParser:
         self.handler = StanzaHandler(log)
 
     async def read_initial_k(self) -> BeautifulSoup:
-        response = await self.reader.readuntil(separator=b'>')
-        if not response.startswith(b'<k '):
-            raise ValueError('unexpected init stream response tag: ' + response.decode('utf-8'))
-        if b' ok="1"' in response or b'</k>' in response:
+        response = await self.reader.readuntil(separator=b">")
+        if not response.startswith(b"<k "):
+            raise ValueError("unexpected init stream response tag: " + response.decode("utf-8"))
+        if b' ok="1"' in response or b"</k>" in response:
             return self._parse_from_bytes(response)
         else:
-            response += await self.reader.readuntil(separator=b'</k>')
+            response += await self.reader.readuntil(separator=b"</k>")
             return self._parse_from_bytes(response)
 
     async def read_next_stanza(self) -> BeautifulSoup:
-        xml = b''
+        xml = b""
         parser = self._make_parser()
 
         while True:
-            packet = await self.reader.readuntil(separator=b'>')
-            if xml == b'':
-                if packet == b'</k>' or packet == b'</stream:stream>':
+            packet = await self.reader.readuntil(separator=b">")
+            if xml == b"":
+                if packet == b"</k>" or packet == b"</stream:stream>":
                     raise SAXException(f"stream closed: {packet.decode('utf-8')}")
 
             xml += packet
@@ -53,7 +53,7 @@ class KikXmlParser:
 
     @staticmethod
     def _parse_from_bytes(xml: bytes) -> BeautifulSoup:
-        element = BeautifulSoup(xml, features='xml', from_encoding='utf-8')
+        element = BeautifulSoup(xml, features="xml", from_encoding="utf-8")
         return next(iter(element)) if len(element) > 0 else element
 
 
@@ -63,6 +63,7 @@ class StanzaHandler(ContentHandler, ErrorHandler):
 
     This also handles a case where Kik sends multiple stanzas back in the same chunk of data from the socket.
     """
+
     def __init__(self, log):
         super().__init__()
         self.log = log
@@ -78,8 +79,7 @@ class StanzaHandler(ContentHandler, ErrorHandler):
         self.depth -= 1
         if self.depth == 0:
             if self.expected_name != name:
-                raise SAXException(
-                    f"end tag closed with wrong name (expected {self.expected_name}, received {name})")
+                raise SAXException(f"end tag closed with wrong name (expected {self.expected_name}, received {name})")
             else:
                 self.expected_name = None
                 raise StopIteration

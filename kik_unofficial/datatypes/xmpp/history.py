@@ -15,6 +15,7 @@ class OutgoingAcknowledgement(XMPPElement):
     """
     Represents an outgoing acknowledgement for a list of history items
     """
+
     def __init__(self, messages: Union[list[XMPPResponse], XMPPResponse, None], request_history: bool = False):
         super().__init__()
         self.request_history = request_history
@@ -29,19 +30,19 @@ class OutgoingAcknowledgement(XMPPElement):
     def serialize(self) -> Element:
         timestamp = str(KikServerClock.get_server_time())
 
-        iq = etree.Element('iq')
-        iq.set('type', 'set')
-        iq.set('id', self.message_id)
-        iq.set('cts', timestamp)
+        iq = etree.Element("iq")
+        iq.set("type", "set")
+        iq.set("id", self.message_id)
+        iq.set("cts", timestamp)
 
-        query = etree.SubElement(iq, 'query')
-        query.set('xmlns', 'kik:iq:QoS')
+        query = etree.SubElement(iq, "query")
+        query.set("xmlns", "kik:iq:QoS")
 
-        msg_acks = etree.SubElement(query, 'msg-acks')
+        msg_acks = etree.SubElement(query, "msg-acks")
         self._compute_msg_acks(msg_acks)
 
-        history = etree.SubElement(query, 'history')
-        history.set('attach', 'true' if self.request_history else 'false')
+        history = etree.SubElement(query, "history")
+        history.set("attach", "true" if self.request_history else "false")
 
         return iq
 
@@ -64,14 +65,14 @@ class OutgoingAcknowledgement(XMPPElement):
             correspondent_jid = owner.from_jid
             needs_group_tag = owner.group_jid is not None and owner.group_jid != correspondent_jid
 
-            sender = etree.SubElement(msg_acks, 'sender')
-            sender.set('jid', owner.from_jid)
+            sender = etree.SubElement(msg_acks, "sender")
+            sender.set("jid", owner.from_jid)
             if needs_group_tag:
-                sender.set('g', owner.group_jid)
+                sender.set("g", owner.group_jid)
 
             for message in batch:
-                ack_id = etree.SubElement(sender, 'ack-id')
-                ack_id.set('receipt', 'true' if message.request_delivered_receipt else 'false')
+                ack_id = etree.SubElement(sender, "ack-id")
+                ack_id.set("receipt", "true" if message.request_delivered_receipt else "false")
                 ack_id.text = message.message_id
 
 
@@ -79,6 +80,7 @@ class OutgoingHistoryRequest(OutgoingAcknowledgement):
     """
     Represents an outgoing request for the account's messaging history
     """
+
     def __init__(self):
         super().__init__(messages=None, request_history=True)
 
@@ -87,13 +89,14 @@ class HistoryResponse(XMPPResponse):
     """
     Represents a Kik messaging history response.
     """
+
     def __init__(self, data: BeautifulSoup):
         super().__init__(data)
         self.more = False
         self.messages = []  # type: list[XMPPResponse]
 
-        history = data.find('query', recursive=False).find('history', recursive=False)
+        history = data.find("query", recursive=False).find("history", recursive=False)
         if history:
-            self.more = history['more'] == '1' if history.has_attr('more') else False
-            for message in history.find_all('msg', recursive=False):
+            self.more = history["more"] == "1" if history.has_attr("more") else False
+            for message in history.find_all("msg", recursive=False):
                 self.messages.append(XMPPResponse(message))

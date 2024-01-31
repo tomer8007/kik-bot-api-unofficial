@@ -1,12 +1,12 @@
 import re
 
-pm_jid_re = re.compile('^[a-z_0-9\\.]{2,30}(_[a-z0-9]{3})?$')
-alias_jid_re = re.compile('^[a-z0-9_-]{52}_[ab]$')
-group_alias_jid_re = re.compile('^[a-z0-9_-]{52}_a$')
-anon_alias_jid_re = re.compile('^[a-z0-9_-]{52}_b$')
+pm_jid_re = re.compile("^[a-z_0-9\\.]{2,30}(_[a-z0-9]{3})?$")
+alias_jid_re = re.compile("^[a-z0-9_-]{52}_[ab]$")
+group_alias_jid_re = re.compile("^[a-z0-9_-]{52}_a$")
+anon_alias_jid_re = re.compile("^[a-z0-9_-]{52}_b$")
 
-TALK_DOMAIN = 'talk.kik.com'
-GROUPS_DOMAIN = 'groups.kik.com'
+TALK_DOMAIN = "talk.kik.com"
+GROUPS_DOMAIN = "groups.kik.com"
 
 
 def is_valid_jid(jid: str) -> bool:
@@ -17,7 +17,7 @@ def is_valid_jid(jid: str) -> bool:
         return False
     if len(jid) == 67:
         return is_alias_jid(jid)
-    elif len(jid) == 30 and jid.endswith('_g@groups.kik.com'):
+    elif len(jid) == 30 and jid.endswith("_g@groups.kik.com"):
         return is_group_jid(jid)
     else:
         return is_pm_jid(jid)
@@ -32,7 +32,7 @@ def is_pm_jid(jid: str) -> bool:
     """
     if jid is None or not 15 <= len(jid) <= 47:
         return False
-    if not jid.endswith('@talk.kik.com'):
+    if not jid.endswith("@talk.kik.com"):
         return False
 
     local_part = jid[:-13]
@@ -47,7 +47,7 @@ def is_group_jid(jid: str) -> bool:
     """
     if jid is None or len(jid) != 30:
         return False
-    if not jid.endswith('_g@groups.kik.com'):
+    if not jid.endswith("_g@groups.kik.com"):
         return False
     group_id = jid[0:13]
     if not group_id.isdigit():
@@ -66,7 +66,7 @@ def is_alias_jid(jid: str) -> bool:
     """
     if jid is None or len(jid) != 67:
         return False
-    if not jid.endswith('@talk.kik.com'):
+    if not jid.endswith("@talk.kik.com"):
         return False
     local_part = jid[0:54]
     return re.match(alias_jid_re, local_part) is not None
@@ -80,7 +80,7 @@ def is_group_alias_jid(jid: str) -> bool:
     """
     if jid is None or len(jid) != 67:
         return False
-    if not jid.endswith('_a@talk.kik.com'):
+    if not jid.endswith("_a@talk.kik.com"):
         return False
     local_part = jid[0:54]
     return re.match(group_alias_jid_re, local_part) is not None
@@ -92,7 +92,7 @@ def is_anon_alias_jid(jid: str) -> bool:
     """
     if jid is None or len(jid) != 67:
         return False
-    if not jid.endswith('_b@talk.kik.com'):
+    if not jid.endswith("_b@talk.kik.com"):
         return False
     local_part = jid[0:54]
     return re.match(anon_alias_jid_re, local_part) is not None
@@ -113,7 +113,7 @@ def get_local_part(jid: str) -> str:
     """
     if not is_valid_jid(jid):
         raise ValueError(f"invalid jid '{jid}'")
-    return jid[:jid.rindex('@')]  # substring before the last '@'
+    return jid[: jid.rindex("@")]  # substring before the last '@'
 
 
 def jid_to_username(jid: str) -> str:
@@ -130,10 +130,10 @@ def jid_to_username(jid: str) -> str:
     if not is_pm_jid(jid):
         raise ValueError(f"Only PM / real jids can be directly converted into usernames. Got '{jid}'")
     try:
-        index = jid.rindex('_')
+        index = jid.rindex("_")
     except ValueError:
         # Some jids don't have the underscore and 3 character suffix,
         # such as kikteam@talk.kik.com
-        index = jid.rindex('@')
+        index = jid.rindex("@")
 
     return jid[:index]

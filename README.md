@@ -66,18 +66,25 @@ With the Kik Bot API, you can:
 Sending videos or recordings is not supported yet.
 
 ## Captcha Solving ##
-Once the bot starts running, you might see a message like this:
-`To continue, complete the captcha in this URL using a browser: https://captcha.kik.com/?id=...`
+Here's a step-by-step guide to solving a captcha when prompted while running a bot, assuming you're using different browsers and VS Code:
 
+1. **Receive Captcha Prompt:** When your bot starts running, you might receive a message indicating that a captcha needs to be solved. It usually provides a URL to solve the captcha.
 
-This means that Kik has detected that you are using a bot and requires you to solve a captcha to continue. You can solve the captcha by opening the URL in a browser and following these steps:
+2. **Open the URL in a Browser:** Copy the provided URL and paste it into the address bar of your preferred browser (e.g., Chrome, Firefox, Edge).
 
-- Press F12 to open the developer tools
-- Open the network tab
-- Solve the captcha
-- Look for a file header that starts with `captcha-url?response=[your captcha response]`
-- Click on it and copy the response from the response tab
-- Paste the response in the terminal where the bot is running
+3. **Access Developer Tools:** Once the page loads, open the developer tools by pressing F12 or right-clicking anywhere on the page and selecting "Inspect" or "Inspect Element."
+
+4. **Navigate to the Network Tab:** Within the developer tools, navigate to the "Network" tab. This tab will display all network activity, including requests and responses made by the webpage.
+
+5. **Solve the Captcha:** Follow the instructions on the webpage to solve the captcha. This might involve identifying objects, entering text, or completing a task to prove you're not a bot.
+
+6. **Find Captcha Response:** After successfully solving the captcha, look for a network request with a URL that includes "captcha-url" in the "Name" or "Path" column.
+
+7. **Copy Response:** Click on the network request corresponding to the captcha response. In the request details, navigate to the "Headers" or "Response" tab and locate the parameter containing your captcha response. It typically starts with "captcha-url?response=" followed by a string of characters.
+
+8. **Paste Response:** Copy the captcha response from the developer tools and paste it into the terminal where your bot is running, typically prompted after the captcha message.
+
+By following these steps, you can successfully solve the captcha and continue running your bot seamlessly.
 
 
 ### Docker ###

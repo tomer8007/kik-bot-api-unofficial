@@ -70,7 +70,7 @@ Once the bot starts running, you might see a message like this:
 `To continue, complete the captcha in this URL using a browser: https://captcha.kik.com/?id=...`
 
 
-This means that Kik has detected that you are using a bot and requires you to solve a captcha to continue. You can solve the captcha by opening the URL in a browser and following these steps:
+This means that Kik has detected that you are logging in using a new device and requires you to solve a captcha to continue. You can solve the captcha by opening the URL in a browser and following these steps:
 
 - Press F12 to open the developer tools
 - Open the network tab

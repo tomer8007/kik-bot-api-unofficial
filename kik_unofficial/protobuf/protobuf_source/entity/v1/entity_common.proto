@@ -11,6 +11,7 @@ import "common_model.proto";
 import "entity/v1/element_common.proto";
 import "common/v1/model.proto";
 import "google/protobuf/timestamp.proto";
+import "accounts/v1/user_info_shared.proto";
 
 //**************************************************
 // Key used by Entity Warehouse, Subscription Service, etc
@@ -128,6 +129,9 @@ message EntityUserRosterEntry {
     
     // The presence of this element indicates that this User is a bot, regardless of the element's content; Regular Users will never have this element.
     common.entity.v1.BotExtensionElement bot_extension = 6;
+
+    // User type of the account
+    common.accounts.v1.UserType user_type = 7;
 }
 
 // Entity containing information of group that is broadcast to its members' rosters.

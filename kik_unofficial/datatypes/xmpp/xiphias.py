@@ -84,6 +84,7 @@ class UsersResponseUser:
     background_pic_updated_seconds = None
     interests = None
     kin_user_id = None
+    user_type = None
 
     def __init__(self, user):
         if hasattr(user, "private_profile"):
@@ -117,6 +118,8 @@ class UsersResponseUser:
             self.interests = [element.localized_verbiage for element in user.interests_element.interests_element]
         if hasattr(user, "kin_user_id_element"):
             self.kin_user_id = user.kin_user_id_element.kin_user_id.id
+        if hasattr(user, "user_type_element"):
+            self.user_type = user.user_type_element
 
 
 class UsersResponse(XiphiasResponse):

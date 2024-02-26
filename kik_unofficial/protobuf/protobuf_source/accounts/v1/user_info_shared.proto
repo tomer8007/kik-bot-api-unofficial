@@ -54,3 +54,9 @@ enum AccountStatus {
     UNCONFIRMED = 11;              //  1 + 10
     CONFIRMED = 12;                //  2 + 10
 }
+
+enum UserType {
+    NORMAL = 0;
+    TEST = 1;
+    RAGEBOT = 2;
+}

@@ -85,6 +85,10 @@ class User(Peer):
         # Callers should migrate to self.profile_pic
         self.pic = self.profile_pic.url if self.profile_pic else None
 
+        # Known user types: "TEST", "RAGEBOT"
+        # Normal users will have a type of None
+        self.user_type = get_text_of_tag(data, "user-type")
+
     def _parse_entity(self, entity):
         decoded_entity = base64.urlsafe_b64decode(ParsingUtilities.fix_base64_padding(entity))
         user = EntityUser()

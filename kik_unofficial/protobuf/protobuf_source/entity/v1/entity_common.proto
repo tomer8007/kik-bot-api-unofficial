@@ -11,7 +11,6 @@ import "common_model.proto";
 import "entity/v1/element_common.proto";
 import "common/v1/model.proto";
 import "google/protobuf/timestamp.proto";
-import "accounts/v1/user_info_shared.proto";
 
 //**************************************************
 // Key used by Entity Warehouse, Subscription Service, etc

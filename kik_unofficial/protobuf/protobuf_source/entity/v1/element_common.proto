@@ -10,6 +10,7 @@ import "protobuf_validation.proto";
 import "common_model.proto";
 import "google/protobuf/timestamp.proto";
 import "common/v1/model.proto";
+import "accounts/v1/user_info_shared.proto";
 
 //**************************************************
 //
@@ -215,4 +216,8 @@ message AnonMatchAvatarElement {
 
 message DeactivationElement {
     bool deactivated = 1;
+}
+
+message UserTypeElement {
+    common.accounts.v1.UserType user_type = 1;
 }

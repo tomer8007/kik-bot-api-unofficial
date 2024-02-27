@@ -128,6 +128,9 @@ message EntityUserRosterEntry {
     
     // The presence of this element indicates that this User is a bot, regardless of the element's content; Regular Users will never have this element.
     common.entity.v1.BotExtensionElement bot_extension = 6;
+
+    // User type of the account
+    common.entity.v1.UserTypeElement user_type = 7;
 }
 
 // Entity containing information of group that is broadcast to its members' rosters.

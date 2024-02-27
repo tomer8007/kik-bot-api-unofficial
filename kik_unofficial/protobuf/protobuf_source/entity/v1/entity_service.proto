@@ -361,6 +361,9 @@ message PublicGroupMemberProfile {
 
     // An optional Kin User ID Element
     common.entity.v1.KinUserIdElement kin_user_id_element = 8;
+
+    // An optional User Type Element
+    common.entity.v1.UserTypeElement user_type_element = 9;
 }
 
 // Information that should be available to everyone for anon chat alias jids

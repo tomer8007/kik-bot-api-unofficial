@@ -119,7 +119,7 @@ class UsersResponseUser:
         if hasattr(user, "kin_user_id_element"):
             self.kin_user_id = user.kin_user_id_element.kin_user_id.id
         if hasattr(user, "user_type_element"):
-            self.user_type = user.user_type_element
+            self.user_type = user.user_type_element.user_type
 
 
 class UsersResponse(XiphiasResponse):

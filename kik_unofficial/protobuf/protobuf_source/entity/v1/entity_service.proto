@@ -10,7 +10,6 @@ import "protobuf_validation.proto";
 import "entity/v1/entity_common.proto";
 import "common/v1/model.proto";
 import "entity/v1/element_common.proto";
-import "accounts/v1/user_info_shared.proto";
 
 //----------------------------------------------------------------------------
 // Service Interfaces - GetXXX methods
@@ -364,7 +363,7 @@ message PublicGroupMemberProfile {
     common.entity.v1.KinUserIdElement kin_user_id_element = 8;
 
     // An optional User Type Element
-    common.accounts.v1.UserType user_type_element = 9;
+    common.entity.v1.UserTypeElement user_type_element = 9;
 }
 
 // Information that should be available to everyone for anon chat alias jids

@@ -80,7 +80,7 @@ This means that Kik has detected that you are logging in using a new device and 
 - Paste the response in the terminal where the bot is running
 
 
-### Docker ###
+## Docker ##
 After creating a bot, you can bootstrap it to run in a Docker container. This section assumes you have [Docker](https://docs.docker.com/get-docker/) installed on your system.
 
 1. Set up your environment variables. Copy the example file to a new file called `.env`:

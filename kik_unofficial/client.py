@@ -581,7 +581,7 @@ class KikClient:
         self.log.info(f"Checking for Uniqueness of username '{username}'")
         return self._send_xmpp_element(sign_up.CheckUsernameUniquenessRequest(username))
 
-    def set_profile_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
+    def set_profile_picture(self, file: Union[str, bytes, pathlib.Path, io.IOBase]):
         """
         Sets the profile picture of the current user
 
@@ -590,7 +590,7 @@ class KikClient:
         self.log.info(f"Changing profile picture for {self.username}")
         profile_pictures.set_profile_picture(file, f"{self.kik_node}@talk.kik.com", self.username, self.password)
 
-    def set_background_picture(self, file: str or bytes or pathlib.Path or io.IOBase):
+    def set_background_picture(self, file: Union[str, bytes, pathlib.Path, io.IOBase]):
         """
         Sets the background picture of the current user
 
@@ -599,7 +599,7 @@ class KikClient:
         self.log.info(f"Changing background picture for {self.username}")
         profile_pictures.set_background_picture(file, f"{self.kik_node}@talk.kik.com", self.username, self.password)
 
-    def set_group_picture(self, file: str or bytes or pathlib.Path or io.IOBase, group_jid: str, silent: bool = False):
+    def set_group_picture(self, file: Union[str, bytes, pathlib.Path, io.IOBase], group_jid: str, silent: bool = False):
         """
         Sets the profile picture for a group JID.
 
